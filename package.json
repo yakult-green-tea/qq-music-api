@@ -1,6 +1,6 @@
 {
   "name": "@yakult-green-tea/qq-music-api",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "QQ 音乐 API 服务，Rain120/qq-music-api 的修改版：新增原生扫码登录（QQ / 微信）、二维码会话取消接口，并可作为 npm 包内嵌进 Docker 或 Electron 主进程。仅供学习使用。",
   "main": "dist/src/app.js",
   "files": [
