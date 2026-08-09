@@ -1,38 +1,30 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
+about: Report a reproducible problem without exposing credentials
+title: "bug: "
+labels: bug
 assignees: ''
-
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Environment
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+- Package version or commit:
+- Node.js and npm versions:
+- Operating system:
+- Usage mode: standalone / Docker / Electron or other embedded host
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Reproduction
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+Describe the smallest reproducible sequence, including the endpoint and sanitized parameters.
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+## Expected and actual behavior
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+Describe what should happen and what happened instead.
 
-**Additional context**
-Add any other context about the problem here.
+## Verification
+
+State whether the problem is reproducible without a real QQ login and whether it depends on a live QQ Music response.
+
+## Sanitized logs
+
+Do not include cookies, QR keys, opaque session values, musickey values, auth-state files, `.env` contents, or complete authenticated URLs. For security-sensitive reports, use a private security advisory instead of a public issue.

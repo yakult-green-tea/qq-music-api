@@ -20,6 +20,8 @@
 
 在参与本项目时，请确保尊重他人、保持友善，并以建设性的方式提出意见或代码。我们致力于提供一个无骚扰的参与体验。
 
+安全漏洞、凭证暴露或登录态问题请遵循 [SECURITY.md](./SECURITY.md) 使用私密渠道报告。公开 Issue、PR、测试 fixture 与日志中不得包含真实 cookie、QR key、opaque session、`musickey`、auth-state 或 `.env` 内容。
+
 ## 开发环境配置
 
 本项目基于 `Koa2` 构建，请确保您的本地环境满足以下要求：
@@ -139,6 +141,8 @@ qq-music-api/
 3. **本地 hooks**: `pre-commit` 只对暂存文件运行 `lint-staged`，`commit-msg` 只运行 `commitlint`。它们用于快速反馈，不替代 CI，也不在 `pre-push` 重跑完整构建或测试。
 4. **CI 质量门**: GitHub Actions CI 是仓库的权威验证，PR 合并前必须通过 lint、类型检查、测试、JavaScript 构建和 npm package 内容检查。
 5. **PR 附件**: 请在 PR 描述中说明已运行的验证。如果因为特殊原因无法完成某项检查，请在 PR 中进行说明。
+6. **上游网络测试**: 不要仅凭测试是否导入 `supertest` 判断它是否访问真实 QQ 音乐服务。任何测试分层都必须使用明确的文件约定或清单，并确保巢状目录、JavaScript suite 与 coverage threshold 不会被漏掉。
+7. **发布边界**: 一般 PR 不修改版本、不建立或移动 tag，也不发布 npm。发布步骤只由维护者依 [RELEASING.md](./RELEASING.md) 明确执行。
 
 ---
 

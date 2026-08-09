@@ -1,3 +1,49 @@
+## Unreleased
+
+### Repository governance
+
+- Document the protected-branch, verification, security-reporting, and release processes.
+- Clarify that Folia consumes the published npm package through its own dependency update process.
+- Replace misleading runtime-agent documentation with repository automation guidance.
+
+## [2.3.0](https://github.com/yakult-green-tea/qq-music-api/compare/v2.2.2...v2.3.0) (2026-08-09)
+
+### Features
+
+- Add an injectable authentication-session repository for trusted npm hosts while retaining the in-memory default.
+
+## [2.2.2](https://github.com/yakult-green-tea/qq-music-api/compare/v2.2.1...v2.2.2) (2026-08-09)
+
+### Bug fixes
+
+- Isolate the legacy QQ request client from shared `axios.defaults` so importing the package does not modify its host process.
+
+## [2.2.1](https://github.com/yakult-green-tea/qq-music-api/compare/v2.2.0...v2.2.1) (2026-08-09)
+
+### Bug fixes
+
+- Publish only account identifiers that are actually available from the login credential.
+
+## [2.2.0](https://github.com/yakult-green-tea/qq-music-api/compare/v2.1.0...v2.2.0) (2026-08-08)
+
+### Features
+
+- Add `GET /user/albums` for authenticated favorite-album pagination.
+- Derive the account identifier required by authenticated user collections.
+
+## [2.1.0](https://github.com/yakult-green-tea/qq-music-api/compare/v1.0.4...v2.1.0) (2026-08-07)
+
+### Features
+
+- Migrate the maintained fork to TypeScript and add the local API Explorer.
+- Add native QQ Music App and WeChat QR login, authenticated playback, and cancellable QR sessions.
+- Add runnable JavaScript package output and export the HTTP server handle for npm embedders.
+
+### Bug fixes
+
+- Isolate authentication requests from global Axios defaults and persist a non-secret device context.
+- Correct runtime dependencies and disable the development version check for embedded consumers.
+
 ## [1.0.4](https://github.com/Rain120/qq-music-api/compare/v1.0.3...v1.0.4) (2021-01-25)
 
 

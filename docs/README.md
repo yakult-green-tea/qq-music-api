@@ -1,6 +1,6 @@
 <h2 align="center" id="qqmusicapi">QQ Music API</h2>
 
-!> QQ音乐API koa2 版本, 通过Web网页版请求QQ音乐接口数据, 有问题请提 [issue](https://github.com/Rain120/qq-music-api/issues), 或者你有其他想法欢迎`PR`.
+!> 这是非官方、社区维护的 QQ 音乐 API。问题与建议请提交到当前 fork 的 [issue](https://github.com/yakult-green-tea/qq-music-api/issues)。软件按 [MIT License](https://github.com/yakult-green-tea/qq-music-api/blob/main/LICENSE) 提供；使用者仍应自行遵守所在地法律、平台条款与内容授权要求。
 
 ## API结构图
 

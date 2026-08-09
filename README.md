@@ -3,18 +3,16 @@
 <div align="center">
 
 <img src='music.png' />
-![Ask DeepWiki](https://deepwiki.com/Rain120/qq-music-api) ![GitHub watchers](https\://img.shields.io/github/watchers/rain120/qq-music-api?style=social) ![GitHub stars](https\://img.shields.io/github/stars/rain120/qq-music-api?style=social) ![GitHub forks](https\://img.shields.io/github/forks/rain120/qq-music-api?style=social)
-
-![node](https\://img.shields.io/node/v/koa?style=flat-square) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Rain120/qq-music-api)
-
-![GitHub repo size](https\://img.shields.io/github/repo-size/rain120/qq-music-api?style=flat-square) ![GitHub package.json version](https\://img.shields.io/github/package-json/v/rain120/qq-music-api?style=flat-square) ![GitHub](https\://img.shields.io/github/license/rain120/qq-music-api?style=flat-square) ![GitHub open issues](https\://img.shields.io/github/issues/rain120/qq-music-api?style=flat-square) ![GitHub closed issues](https\://img.shields.io/github/issues-closed/rain120/qq-music-api) ![GitHub last commit](https\://img.shields.io/github/last-commit/rain120/qq-music-api?style=flat-square) ![GitHub top language](https\://img.shields.io/github/languages/top/rain120/qq-music-api?style=flat-square)
+[![npm](https://img.shields.io/npm/v/@yakult-green-tea/qq-music-api?style=flat-square)](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)
+[![License](https://img.shields.io/github/license/yakult-green-tea/qq-music-api?style=flat-square)](./LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/yakult-green-tea/qq-music-api?style=flat-square)](https://github.com/yakult-green-tea/qq-music-api/commits/main)
 
 [![CI](https://github.com/yakult-green-tea/qq-music-api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/yakult-green-tea/qq-music-api/actions/workflows/ci.yml)
 
 </div>
 
-> QQ 音乐 API，基于 `Koa2 + TypeScript` 构建，通过 Web 端请求 QQ 音乐接口数据。本项目集成了自动化数据处理代理，提供高效、易用的接口服务。
-> 有问题请提 [issue](https://github.com/yakult-green-tea/qq-music-api/issues)。欢迎阅读 [参与贡献指南](./CONTRIBUTING.md) 参与项目开发，并查阅 [AI 代理指南](./AGENTS.md) 了解自动化机制。
+> QQ 音乐 API，基于 `Koa2 + TypeScript` 构建，通过 Web 端请求 QQ 音乐接口数据。
+> 有问题请提 [issue](https://github.com/yakult-green-tea/qq-music-api/issues)。欢迎阅读 [参与贡献指南](./CONTRIBUTING.md)；自动化工具参与修改时请同时遵守 [仓库操作指南](./AGENTS.md)。
 > 当前主干分支已完成 TypeScript 化改造，核心源码、测试与构建链路均已切换到 TypeScript 体系。
 > `main` 是当前维护版本的主分支。
 
@@ -57,7 +55,7 @@ PORT=3200 node node_modules/@yakult-green-tea/qq-music-api/dist/src/app.js
 
 ### 环境要求
 
-> 本项目采用 `Koa2 + TypeScript` 技术栈，建议使用较新的 Node.js LTS 版本进行开发与运行。
+> 本项目采用 `Koa2 + TypeScript` 技术栈，开发与运行环境必须使用 Node.js 20 或更新版本。
 
 ```
 node -v
@@ -70,7 +68,7 @@ node -v
 请确保您的本地 Node.js 版本满足 [环境要求](#环境要求)。
 
 ```sh
-git clone git@github.com:Rain120/qq-music-api.git
+git clone git@github.com:yakult-green-tea/qq-music-api.git
 cd qq-music-api
 npm install
 ```
@@ -194,7 +192,7 @@ AUTO_OPEN_EXPLORER=false npm run dev
 - 持续补齐接口层、服务层与工具层测试用例，进一步提升覆盖率与回归稳定性。
 - 完善 TypeScript 类型建模，收敛控制器、服务返回结构与公共工具的类型边界。
 - 优化 Docker 与生产部署链路，确保构建产物、运行方式和发布流程保持一致。
-- 持续更新接口文档、贡献指南和 AI 代理说明，减少文档与实现之间的偏差。
+- 持续更新接口文档、贡献指南和仓库自动化说明，减少文档与实现之间的偏差。
 - 逐步推进登录态、个性化数据等高复杂度接口能力的调研与实现。
 
 ### 🐳 Docker
@@ -216,7 +214,7 @@ npm run run:images
 docker pull qq-music-api
 ```
 
-仓库根目录的 `Dockerfile` 是上游原有的单阶段镜像（`ts-node` 直跑源码）。Folia 部署不使用它：`folia-qq-api` 镜像由 folia-major 仓库的 `deploy/docker/images/qq-api.Dockerfile` 构建，用 vendored 源码走 `npm ci` → `npm run build:js` → `npm prune --omit=dev` 两阶段，以非 root 用户运行 `dist/src/app.js`。改动 `src/`、`public/`、`package.json` 或 tsconfig 后，需要在 folia-major 侧执行 `node deploy/docker/scripts/sync-qq-api-source.mjs` 同步副本。
+仓库根目录的 `Dockerfile` 是上游原有的单阶段镜像（`ts-node` 直跑源码）。Folia 的 `folia-qq-api` 镜像由 Folia 仓库独立维护，通过 npm 安装固定版本的 `@yakult-green-tea/qq-music-api`，再以非 root 用户运行 `dist/src/app.js`；它不复制本仓库源码。这里的改动只有在发布新版本、并由 Folia 明确更新依赖与 lockfile 后才会进入 Folia。
 
 ### 功能特性
 
@@ -266,7 +264,7 @@ docker pull qq-music-api
 4. 成功后调用 `GET /login/status`、`GET /user/detail`、`GET /user/playlist`；内建「我喜欢」歌曲以 `GET /user/liked-songs?offset=0&limit=100` 分页读取，收藏的专辑以 `GET /user/albums?offset=0&limit=20` 分页读取。
 5. `GET /getMusicPlay/:songmid?quality=flac` 会在 opaque session 有效时使用该登录态取得播放链接；`GET /logout` 清除登录态。
 
-凭证只存在服务端；默认仓库是短期内存，可信嵌入方也可注入加密仓库。`qr/check` 返回和设置的 cookie 是随机 opaque session ID，不包含 QQ 的 `musickey` 或 `musicid`。服务限制同一时间只有一个 QR，并在失败后通过 `Retry-After` 提示退避。Node 18 的 MQTT WebSocket 由最小 `ws` runtime dependency 提供，不需要升级 Docker runtime，也不需要二维码生成套件。
+凭证只存在服务端；默认仓库是短期内存，可信嵌入方也可注入加密仓库。`qr/check` 返回和设置的 cookie 是随机 opaque session ID，不包含 QQ 的 `musickey` 或 `musicid`。服务限制同一时间只有一个 QR，并在失败后通过 `Retry-After` 提示退避。Node.js 20+ 的 MQTT WebSocket 由最小 `ws` runtime dependency 提供，不需要二维码生成套件。
 
 同源浏览器会自动携带 HttpOnly session；跨来源 Folia transport 使用 `qr/check` 返回的完整 `qqmusic_session=<opaque token>` 作为 `cookie` query。不要记录或分享该 query 的完整 URL。播放请求仍通过 auth 专用的 `createAuthHttpClient` 发出，不依赖全局 axios defaults。
 
@@ -288,9 +286,11 @@ docker pull qq-music-api
 
 ### 使用文档
 
-使用`apis`详见[文档](https://rain120.github.io/qq-music-api/#/)
+通用上游 API 可参考 [Rain120/qq-music-api 文档](https://rain120.github.io/qq-music-api/#/)；本 fork 新增的 npm 嵌入、扫码登录与登录态接口以本 README 为准。
 
-### Star History
+### 上游 Star History
+
+以下图表记录原项目 `Rain120/qq-music-api` 的历史，不代表当前 fork 的发布或维护状态。
 
 <a href="https://www.star-history.com/?repos=rain120%2Fqq-music-api&type=date&legend=top-left">
  <picture>
@@ -321,9 +321,9 @@ docker pull qq-music-api
 1. 当前已补充基础 `unit test` 与接口测试，但整体覆盖率和复杂场景用例仍有继续提升空间。
 2. 独立服务默认使用进程内登录态；需要跨重启或多实例共享时，部署方必须自行提供受保护的 `AuthSessionRepository`。仓库的加密、并发一致性与密钥管理属于宿主责任。
 
-### 🤖 AI 代理 (Agents)
+### 自动化工具说明
 
-本项目引入了智能化代理架构以优化数据获取和解析链路。详细了解各 AI 代理的角色、功能以及调用规范，请查阅我们的 **[AI 代理指南 (AGENTS.md)](./AGENTS.md)**。
+本项目没有独立的 AI agent runtime。`AGENTS.md` 仅用于约束 coding agent 与自动化工具在仓库中的修改范围；项目运行时架构仍是标准的 `controller → service → util` 链路。
 
 #### 🤝 参与贡献 ![PR](https://img.shields.io/badge/PRs-Welcome-orange?style=flat-square&logo=appveyor)
 

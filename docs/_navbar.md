@@ -1,5 +1,4 @@
-* Github其他项目
-  * [Web-Study](https://github.com/Rain120/Web-Study)
-  * [vue-study](https://github.com/Rain120/vue-study)
-  * [program-learning-lists](https://github.com/Rain120/program-learning-lists)
-  * [Free-Source](https://github.com/Rain120/Free-Source)
+* 项目链接
+  * [当前仓库](https://github.com/yakult-green-tea/qq-music-api)
+  * [npm package](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)
+  * [原始上游](https://github.com/Rain120/qq-music-api)

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>QQ音乐API koa2版本</title>
+  <title>QQ Music API</title>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-  <meta name="description" content="QQ音乐API koa2版本, 仅用来学习使用">
+  <meta name="description" content="非官方、社区维护的 QQ 音乐 API，按 MIT License 提供">
   <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
   <link rel="icon" href="./logo.png">
   <link rel="stylesheet" href="//unpkg.com/docsify/lib/themes/vue.css">
@@ -14,7 +14,6 @@
 <body>
   <div id="app"></div>
   <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
-  <script src="//unpkg.com/docsify/lib/plugins/ga.js"></script>
   <script src="//unpkg.com/prismjs/components/prism-bash.js"></script>
   <script src="//unpkg.com/docsify/lib/plugins/zoom-image.js"></script>
   <script src="//unpkg.com/docsify-copy-code"></script>
@@ -26,9 +25,8 @@
     }
     window.$docsify = {
       el: '#app',
-      name: 'QQ音乐API koa2版本',
-      repo: 'https://github.com/Rain120/qq-music-api',
-      ga: 'UA-188525339-1',
+      name: 'QQ Music API',
+      repo: 'https://github.com/yakult-green-tea/qq-music-api',
       search: {
         noData: {
           '/': '找不到结果!'
@@ -45,15 +43,5 @@
       plugins: []
     }
   </script>
-  <!-- Global site tag (gtag.js) - Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-188525339-1"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'UA-188525339-1');
-  </script>
-
 </body>
 </html>

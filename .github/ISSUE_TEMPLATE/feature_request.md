@@ -1,20 +1,23 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
+about: Propose a focused, maintainable change
+title: "feature: "
+labels: enhancement
 assignees: ''
-
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## Problem
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+Describe the user or integration problem. Explain whether this is needed by standalone, Docker, Electron, or another npm consumer.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+## Proposed behavior
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+Describe the smallest public behavior or API change that would solve it.
+
+## Compatibility
+
+List any expected impact on existing routes, npm consumers, Node.js support, authentication state, or upstream QQ Music traffic.
+
+## Alternatives
+
+Describe workarounds or smaller alternatives you considered.
