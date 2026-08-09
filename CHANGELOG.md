@@ -5,6 +5,7 @@
 - Document the protected-branch, verification, security-reporting, and release processes.
 - Clarify that Folia consumes the published npm package through its own dependency update process.
 - Replace misleading runtime-agent documentation with repository automation guidance.
+- Record downstream contributor attribution in package metadata and documentation.
 
 ## [2.3.0](https://github.com/yakult-green-tea/qq-music-api/compare/v2.2.2...v2.3.0) (2026-08-09)
 

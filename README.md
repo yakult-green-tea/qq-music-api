@@ -11,6 +11,13 @@
 
 </div>
 
+## Contributors
+
+- [chthollyphile](https://github.com/chthollyphile) — Axios request isolation and
+  injectable authentication-session repository
+- The complete contributor record is preserved in the Git history and
+  [ATTRIBUTION.md](./ATTRIBUTION.md).
+
 > QQ 音乐 API，基于 `Koa2 + TypeScript` 构建，通过 Web 端请求 QQ 音乐接口数据。
 > 有问题请提 [issue](https://github.com/yakult-green-tea/qq-music-api/issues)。欢迎阅读 [参与贡献指南](./CONTRIBUTING.md)；自动化工具参与修改时请同时遵守 [仓库操作指南](./AGENTS.md)。
 > 当前主干分支已完成 TypeScript 化改造，核心源码、测试与构建链路均已切换到 TypeScript 体系。
