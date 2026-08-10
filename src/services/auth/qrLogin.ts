@@ -1741,9 +1741,10 @@ class QrLoginServiceImpl implements QrLoginService {
     for (const session of this.qrSessionStore.values()) {
       if (session.expiresAt > current) continue;
       // A pull channel has no background timer to raise `timeout` at expiry, so the expiry itself
-      // has to keep counting as a failure. The guard skips sessions a push listener already
-      // reported, which is what stops the App channel from being backed off twice.
-      if (!terminalState(session.state)) this.backoff();
+      // has to keep counting as a failure. Both guards mirror when a push listener would have
+      // raised it: only after a code exists to scan, and only if nothing terminal happened first.
+      // A key that was issued and abandoned before `createQr` never backed anything off.
+      if (!terminalState(session.state) && session.imageUrl !== undefined) this.backoff();
       this.dropSession(session);
     }
     this.authSessionStore.cleanup();

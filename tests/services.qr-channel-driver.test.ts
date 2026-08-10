@@ -204,6 +204,37 @@ describe('QR channel drivers', () => {
     expect(push.advances).toBe(0);
   });
 
+  it('should back off an expired scannable code but not an abandoned key', async () => {
+    let current = 1_000_000;
+    const now = () => current;
+    const build = async (channel: 'wechat', driver: QrChannelDriver, createCode: boolean) => {
+      const service = createQrLoginService({
+        http: createBootstrapHttp(),
+        drivers: { [channel]: driver },
+        now,
+        randomBytes: (size) => Buffer.alloc(size, 7),
+      });
+      const key = await service.createSession(channel);
+      if (createCode) await service.createQr(key);
+      return service;
+    };
+
+    // A key issued and abandoned before `createQr` never had anything to scan, and the
+    // pre-driver implementation never started a listener for it either.
+    const abandoned = await build('wechat', createPullDriverStub().driver, false);
+    current += 3 * 60 * 1000 + 1;
+    await expect(abandoned.createSession('wechat')).resolves.toEqual(expect.any(String));
+
+    // A code that was displayed and then left to expire keeps counting as a failure, which is
+    // what the App channel's `timeout` event has always done.
+    current = 1_000_000;
+    const expired = await build('wechat', createPullDriverStub().driver, true);
+    current += 3 * 60 * 1000 + 1;
+    const error = await expired.createSession('wechat').catch((reason: unknown) => reason);
+
+    expect(error).toEqual(expect.objectContaining({ httpStatus: 429 }));
+  });
+
   it('should close a push listener when the session is cancelled', async () => {
     const push = createPushDriverStub();
     const { service, key } = await startSession('qq', push.driver);
