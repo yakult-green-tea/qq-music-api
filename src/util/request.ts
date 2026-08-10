@@ -1,9 +1,8 @@
 import axios, { AxiosRequestConfig, AxiosResponse, Method, ResponseType } from 'axios';
-import { requestConfig } from '../config';
+import { apiConfig, requestConfig } from '../config';
+import type { LegacyHttpTransport } from '../services/httpTransport';
 import { logger } from './logger';
 import { summarizeValue } from './observability';
-
-require('../util/colors');
 
 // Keep the legacy QQ request defaults on a package-private client. This module is also
 // loaded when the npm package is embedded in a larger Electron or Node process, where the
@@ -79,5 +78,36 @@ function request<T = unknown>(
     },
   );
 }
+
+/**
+ * The Node composition root's legacy transport: the package-private axios client above, plus the
+ * request defaults the catalog services used to read straight from `src/config`.
+ *
+ * The defaults are getters rather than a snapshot so a host that reconfigures the package after
+ * import keeps observing the same values it does today.
+ */
+export const createAxiosLegacyTransport = (): LegacyHttpTransport => ({
+  kind: 'axios',
+  defaults: {
+    get baseURL() {
+      return {
+        y: requestConfig.baseURL.y,
+        c: requestConfig.baseURL.c,
+        u: requestConfig.baseURL.u,
+      };
+    },
+    get referer() {
+      return {
+        y: requestConfig.referer.y,
+        c: requestConfig.referer.c,
+        u: requestConfig.referer.u,
+      };
+    },
+    get commonParams() {
+      return apiConfig.commonParams;
+    },
+  },
+  request,
+});
 
 export default request;

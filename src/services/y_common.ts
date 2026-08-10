@@ -1,8 +1,7 @@
 import { AxiosRequestConfig } from 'axios';
-import { apiConfig, requestConfig } from '../config';
 import { BaseYCommonParams } from '../types/core/request';
 import { logger } from '../util/logger';
-import request from '../util/request';
+import { getLegacyHttpTransport } from './httpTransport';
 
 export default ({
   url,
@@ -10,14 +9,16 @@ export default ({
   options = {},
   hasCommonParams = true,
 }: BaseYCommonParams) => {
-  const commonParams = hasCommonParams ? apiConfig.commonParams : {};
+  // See `u_common.ts`: defaults come from the registered transport, never from `../config`.
+  const transport = getLegacyHttpTransport();
+  const commonParams = hasCommonParams ? transport.defaults.commonParams : {};
   const opts: AxiosRequestConfig = Object.assign({}, options, commonParams, {
     headers: {
-      referer: requestConfig.referer.c,
+      referer: transport.defaults.referer.c,
       host: 'c.y.qq.com',
       ...options.headers,
     },
   });
   logger.debug(url, { opts });
-  return request(url, method, opts);
+  return transport.request(url, method, opts);
 };

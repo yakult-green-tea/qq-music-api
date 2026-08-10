@@ -15,14 +15,21 @@ import {
 import cors from './middlewares/koa-cors';
 import router from './routes/router';
 import { configureAuthSessionPersistence } from './services/auth/fileAuthSessionRepository';
+import { setLegacyHttpTransport } from './services/httpTransport';
 import cookie from './util/cookie';
 import { logger, loggerState } from './util/logger';
 import { sanitizeRequestUrl } from './util/observability';
 import { autoOpenExplorer } from './util/openExplorer';
+import { createAxiosLegacyTransport } from './util/request';
 import { shouldCheckLatestVersion } from './util/updateCheck';
 import './util/colors';
 import pkg from '../package.json';
 import { serverConfig, userInfo } from './config';
+
+// Node composition root. Choosing the legacy HTTP transport here is dependency wiring, and
+// dependency wiring is the only thing this file performs: the middleware chain, the router
+// mounting, the `listen()` conditions and every export below stay exactly as they were.
+setLegacyHttpTransport(createAxiosLegacyTransport());
 
 const app = new Koa();
 const isTestEnv = loggerState.isTestEnv;

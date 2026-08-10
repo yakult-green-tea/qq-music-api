@@ -1,18 +1,22 @@
 import { AxiosRequestConfig } from 'axios';
-import { apiConfig, requestConfig } from '../config';
 import { BaseUCommonParams } from '../types/core/request';
 import { logger } from '../util/logger';
-import request from '../util/request';
+import { getLegacyHttpTransport } from './httpTransport';
 
 export default ({ options = {}, method = 'get' }: BaseUCommonParams) => {
-  const opts: AxiosRequestConfig = Object.assign({}, options, apiConfig.commonParams, {
+  // The registered transport owns both execution and the request defaults. Reading them from
+  // `../config` here is what pulled the filesystem-backed config manager into the serverless
+  // dependency graph (M0 0.2).
+  const transport = getLegacyHttpTransport();
+  const { baseURL, commonParams, referer } = transport.defaults;
+  const opts: AxiosRequestConfig = Object.assign({}, options, commonParams, {
     headers: {
-      referer: requestConfig.referer.u,
+      referer: referer.u,
       host: 'u.y.qq.com',
       'content-type': 'application/x-www-form-urlencoded',
       ...options.headers,
     },
   });
-  logger.debug(requestConfig.baseURL.u, { opts });
-  return request(requestConfig.baseURL.u, method, opts, 'u');
+  logger.debug(baseURL.u, { opts });
+  return transport.request(baseURL.u, method, opts, 'u');
 };

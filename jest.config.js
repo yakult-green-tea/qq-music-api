@@ -1,6 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/tests/setup.ts'],
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.worktrees/', '<rootDir>/dist/'],
   modulePathIgnorePatterns: ['<rootDir>/.worktrees/', '<rootDir>/dist/'],
   collectCoverage: true,
