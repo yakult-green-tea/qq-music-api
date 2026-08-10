@@ -21,6 +21,22 @@ export const numberOf = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+/**
+ * Recognises an aborted request across both transports: axios reports `CanceledError` /
+ * `ERR_CANCELED`, `fetch` reports `AbortError`, and `AbortSignal.timeout` reports `TimeoutError`.
+ */
+export const isAbortError = (error: unknown): boolean => {
+  if (!isDictionary(error) && !(error instanceof Error)) return false;
+  const candidate = error as { name?: unknown; code?: unknown };
+  return (
+    candidate.name === 'AbortError' ||
+    candidate.name === 'TimeoutError' ||
+    candidate.name === 'CanceledError' ||
+    candidate.code === 'ERR_CANCELED' ||
+    candidate.code === 'ABORT_ERR'
+  );
+};
+
 export const parseDictionary = (value: unknown): Dictionary => {
   if (isDictionary(value)) return value;
   if (typeof value !== 'string') return {};

@@ -1,6 +1,6 @@
 import { logger } from '../../util/logger';
 import type { AuthHttpClient } from './httpClient';
-import type { QrEvent, QrEventListener } from './qrLogin';
+import type { QrEvent } from './qrLogin';
 
 // WeChat QR login channel (`tmeLoginType: 1`).
 //
@@ -35,8 +35,12 @@ const STATUS_PATTERN = /window\.wx_errcode=(\d+);window\.wx_code='([^']*)'/;
 const PNG_MAGIC = '89504e470d0a1a0a';
 const JPEG_MAGIC = 'ffd8ff';
 
-const POLL_INTERVAL_MS = 1000;
-const MAX_CONSECUTIVE_POLL_ERRORS = 3;
+/**
+ * How long one long poll may hold the connection. The upstream keeps it open until the QR state
+ * changes, so the caller's budget — not a fixed interval — is what bounds a `check`.
+ */
+export const WECHAT_DEFAULT_POLL_BUDGET_MS = 1500;
+export const MAX_CONSECUTIVE_POLL_ERRORS = 3;
 
 /**
  * `window.wx_errcode` values. The reference pairs each state with its QQ `ptuiCB` counterpart;
@@ -60,10 +64,14 @@ export interface WechatQrStatus {
   code: string;
 }
 
-export interface WechatQrListenerOptions {
-  http: AuthHttpClient;
-  sleep?: (ms: number) => Promise<void>;
-  now?: () => number;
+export interface WechatRequestOptions {
+  /** Aborts the upstream request when the caller goes away or its deadline passes. */
+  signal?: AbortSignal;
+}
+
+export interface WechatPollOptions extends WechatRequestOptions {
+  /** Caps how long the long poll may hold; the upstream is aborted when it elapses. */
+  budgetMs?: number;
 }
 
 /**
@@ -96,16 +104,24 @@ const imageMimetype = (image: Buffer): string | null => {
   return null;
 };
 
-const realSleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms).unref?.();
-  });
+/**
+ * Merges the caller's abort signal with a deadline. Both runtimes this package targets ship
+ * `AbortSignal.any` and `AbortSignal.timeout`, so an upstream request never outlives its budget.
+ */
+const budgetSignal = (budgetMs?: number, signal?: AbortSignal): AbortSignal | undefined => {
+  if (budgetMs === undefined) return signal;
+  const deadline = AbortSignal.timeout(Math.max(1, budgetMs));
+  return signal ? AbortSignal.any([signal, deadline]) : deadline;
+};
 
 /**
  * Requests a WeChat QR and returns its `uuid` plus an inline data URL, so the transport keeps
  * handing the client a self-contained image exactly like the App channel does.
  */
-export const createWechatQr = async (http: AuthHttpClient): Promise<WechatQr> => {
+export const createWechatQr = async (
+  http: AuthHttpClient,
+  options: WechatRequestOptions = {},
+): Promise<WechatQr> => {
   const page = await http.request<string>({
     url: CONNECT_URL,
     method: 'GET',
@@ -118,6 +134,7 @@ export const createWechatQr = async (http: AuthHttpClient): Promise<WechatQr> =>
       href: STYLE_HREF,
     },
     responseType: 'text',
+    signal: options.signal,
   });
   const uuid = UUID_PATTERN.exec(textOf(page.data))?.[1] ?? '';
   if (!uuid) throw new WechatQrError('WeChat qrconnect response missing uuid');
@@ -127,6 +144,7 @@ export const createWechatQr = async (http: AuthHttpClient): Promise<WechatQr> =>
     method: 'GET',
     headers: { Referer: CONNECT_URL },
     responseType: 'arraybuffer',
+    signal: options.signal,
   });
   const bytes = bufferOf(image.data);
   const mimetype = imageMimetype(bytes);
@@ -144,20 +162,29 @@ export const createWechatQr = async (http: AuthHttpClient): Promise<WechatQr> =>
  * One long-poll of the WeChat QR state. The endpoint holds the connection open until the state
  * changes, so the caller does not need to poll aggressively.
  */
-export const pollWechatQr = async (http: AuthHttpClient, uuid: string): Promise<WechatQrStatus> => {
+export const pollWechatQr = async (
+  http: AuthHttpClient,
+  uuid: string,
+  options: WechatPollOptions = {},
+): Promise<WechatQrStatus> => {
   const response = await http.request<string>({
     url: POLL_URL,
     method: 'GET',
     params: { uuid, _: String(Date.now()) },
     headers: { Referer: POLL_REFERER },
     responseType: 'text',
+    signal: budgetSignal(options.budgetMs, options.signal),
   });
   const match = STATUS_PATTERN.exec(textOf(response.data));
   if (!match) throw new WechatQrError('WeChat poll response missing wx_errcode');
   return { upstreamCode: Number(match[1]), code: match[2] };
 };
 
-const eventForStatus = (status: WechatQrStatus): QrEvent => {
+/**
+ * Maps one poll result onto the event vocabulary the App channel listener uses, so the session
+ * state machine stays channel-agnostic.
+ */
+export const eventForWechatStatus = (status: WechatQrStatus): QrEvent => {
   switch (status.upstreamCode) {
     case WECHAT_STATUS.waiting:
       return { type: 'waiting', payload: null };
@@ -172,60 +199,4 @@ const eventForStatus = (status: WechatQrStatus): QrEvent => {
     default:
       throw new WechatQrError('Unrecognised WeChat QR status', status.upstreamCode);
   }
-};
-
-const TERMINAL_EVENTS = new Set(['authorized', 'timeout', 'canceled']);
-
-/**
- * Drives the WeChat QR to a terminal state, emitting the same event vocabulary the App channel
- * listener uses so the session state machine stays channel-agnostic.
- */
-export const createWechatQrListener = (
-  options: WechatQrListenerOptions,
-  uuid: string,
-  onEvent: (event: QrEvent) => void,
-  timeoutMs: number,
-): QrEventListener => {
-  const sleep = options.sleep ?? realSleep;
-  const now = options.now ?? Date.now;
-  let stopped = false;
-
-  const done = (async (): Promise<void> => {
-    // Nothing has to be negotiated before the code is scannable, so the caller is released as
-    // soon as the QR exists rather than after a long-poll round trip.
-    onEvent({ type: 'waiting', payload: null });
-    const deadline = now() + timeoutMs;
-    let consecutiveErrors = 0;
-
-    while (!stopped && now() < deadline) {
-      let status: WechatQrStatus;
-      try {
-        status = await pollWechatQr(options.http, uuid);
-        consecutiveErrors = 0;
-      } catch (error) {
-        // A dropped long-poll is normal; an unrecognised status code is not, and
-        // `eventForStatus` throws that one outside this guard so it fails the session.
-        consecutiveErrors += 1;
-        if (consecutiveErrors > MAX_CONSECUTIVE_POLL_ERRORS) throw error;
-        await sleep(POLL_INTERVAL_MS);
-        continue;
-      }
-      if (stopped) return;
-
-      const event = eventForStatus(status);
-      onEvent(event);
-      if (TERMINAL_EVENTS.has(event.type ?? '')) return;
-      await sleep(POLL_INTERVAL_MS);
-    }
-    if (!stopped) onEvent({ type: 'timeout', payload: null });
-  })();
-
-  void done.catch(() => undefined);
-  return {
-    ready: Promise.resolve(),
-    done,
-    close: () => {
-      stopped = true;
-    },
-  };
 };

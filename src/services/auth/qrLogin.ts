@@ -21,6 +21,7 @@ import {
   type Dictionary,
   dictionaryOf,
   identifierOf,
+  isAbortError,
   isDictionary,
   numberOf,
   parseDictionary,
@@ -28,8 +29,11 @@ import {
 } from './values';
 import {
   createWechatQr,
-  createWechatQrListener,
+  eventForWechatStatus,
+  MAX_CONSECUTIVE_POLL_ERRORS,
+  pollWechatQr,
   WECHAT_APP_ID,
+  WECHAT_DEFAULT_POLL_BUDGET_MS,
   WECHAT_LOGIN_TYPE,
   WechatQrError,
 } from './wechatLogin';
@@ -67,20 +71,9 @@ export type QrLoginChannel = 'qq' | 'wechat';
  */
 export type LegacyQrLoginChannel = 'mobile';
 export const DEFAULT_LOGIN_CHANNEL: QrLoginChannel = 'qq';
-export const SUPPORTED_LOGIN_CHANNELS: readonly QrLoginChannel[] = ['qq', 'wechat'];
 
-const LEGACY_LOGIN_CHANNEL_ALIASES = new Map<string, QrLoginChannel>([['mobile', 'qq']]);
-
-export const isSupportedLoginChannel = (value: unknown): value is QrLoginChannel =>
-  SUPPORTED_LOGIN_CHANNELS.includes(value as QrLoginChannel);
-
-/** Accepts a canonical channel or a legacy alias and answers with the canonical value. */
-export const normalizeLoginChannel = (value: unknown): QrLoginChannel | undefined => {
-  if (isSupportedLoginChannel(value)) return value;
-  return typeof value === 'string' ? LEGACY_LOGIN_CHANNEL_ALIASES.get(value) : undefined;
-};
-
-type QrState =
+/** Exported alongside `QrSessionRecord`: a serialized record cannot be typed without it. */
+export type QrState =
   | 'created'
   | 'creating'
   | 'waiting'
@@ -89,6 +82,36 @@ type QrState =
   | 'confirmed'
   | 'expired'
   | 'failed';
+
+/**
+ * What a runtime can actually serve. The Node entry point keeps declaring both channels and the
+ * process-local session store; a serverless runtime declares the subset it can honour, so the
+ * front end never offers a channel that is guaranteed to fail.
+ */
+export interface RuntimeCapabilities {
+  readonly channels: readonly QrLoginChannel[];
+  readonly sessionMode: 'stored' | 'sealed';
+}
+
+export const NODE_RUNTIME_CAPABILITIES: RuntimeCapabilities = {
+  channels: ['qq', 'wechat'],
+  sessionMode: 'stored',
+};
+
+/** The channels the Node entry point routes; unchanged, now derived from its capabilities. */
+export const SUPPORTED_LOGIN_CHANNELS: readonly QrLoginChannel[] =
+  NODE_RUNTIME_CAPABILITIES.channels;
+
+export const isSupportedLoginChannel = (value: unknown): value is QrLoginChannel =>
+  SUPPORTED_LOGIN_CHANNELS.includes(value as QrLoginChannel);
+
+const LEGACY_LOGIN_CHANNEL_ALIASES = new Map<string, QrLoginChannel>([['mobile', 'qq']]);
+
+/** Accepts a canonical channel or a legacy alias and answers with the canonical value. */
+export const normalizeLoginChannel = (value: unknown): QrLoginChannel | undefined => {
+  if (isSupportedLoginChannel(value)) return value;
+  return typeof value === 'string' ? LEGACY_LOGIN_CHANNEL_ALIASES.get(value) : undefined;
+};
 
 export interface QqCredential extends Dictionary {
   musicid: string | number;
@@ -107,7 +130,12 @@ export interface QrEventListener {
   close(): void;
 }
 
-interface QrSession {
+/**
+ * The serializable half of a QR session. Everything a runtime has to carry across a request
+ * boundary lives here; the live socket and cookie jar stay in `QrSessionRuntime`, which is
+ * process-local by nature and can never be persisted or sealed.
+ */
+export interface QrSessionRecord {
   key: string;
   channel: QrLoginChannel;
   state: QrState;
@@ -118,6 +146,17 @@ interface QrSession {
   /** App channel only; kept as-is because it is the `qrCodeID` exchange parameter. */
   qrcodeId?: string;
   imageUrl?: string;
+  authToken?: string;
+  upstreamCode?: number;
+  retryAfterMs?: number;
+}
+
+/**
+ * Process-local handles for one QR session. They die with the process, which is exactly why they
+ * are kept out of `QrSessionRecord`.
+ */
+interface QrSessionRuntime {
+  driver: QrChannelDriver;
   listener?: QrEventListener;
   /**
    * Web login channels hop across weixin.qq.com / qq.com carrying cookies. Sharing the musicu
@@ -125,9 +164,47 @@ interface QrSession {
    * with the session. The App channel keeps using the shared client.
    */
   http?: AuthHttpClient;
-  authToken?: string;
-  upstreamCode?: number;
-  retryAfterMs?: number;
+  /** Consecutive `advance()` failures tolerated before the session is failed. */
+  pollErrors: number;
+  /** The in-flight credential exchange, so a pull channel can await it before answering. */
+  finalizing?: Promise<void>;
+}
+
+/** Same contract as `AuthSessionRepository`, for the pre-login half of the state. */
+export interface QrSessionRepository {
+  readonly kind: string;
+  load(): unknown;
+  save(sessions: readonly QrSessionRecord[]): void;
+}
+
+export interface QrCodeMaterial {
+  identifier: string;
+  imageUrl: string;
+  expiresIn?: number;
+}
+
+export interface QrDriverContext {
+  /** Push drivers deliver events here the moment they arrive, exactly as the MQTT listener does. */
+  onEvent(event: QrEvent): void;
+  /** Remaining QR lifetime, used as the background listener's own deadline. */
+  timeoutMs: number;
+}
+
+/**
+ * The QR event source, per channel.
+ *
+ * `push` drivers own a background connection and report through `QrDriverContext.onEvent`, which
+ * is what keeps the MQTT channel's timing identical to the self-driving listener it replaces.
+ * `pull` drivers own nothing between calls: each `advance()` performs one time-boxed observation
+ * of the upstream, which is the only shape a serverless invocation can support.
+ */
+export interface QrChannelDriver {
+  readonly mode: 'push' | 'pull';
+  createQr(session: QrSessionRecord, signal?: AbortSignal): Promise<QrCodeMaterial>;
+  /** Push drivers only: starts the event source once the record is final. */
+  start?(session: QrSessionRecord, context: QrDriverContext): QrEventListener;
+  advance(session: QrSessionRecord, budgetMs: number, signal?: AbortSignal): Promise<QrEvent[]>;
+  close(session: QrSessionRecord): void;
 }
 
 /**
@@ -165,13 +242,22 @@ interface QrLoginDependencies {
   createSessionHttp?: () => AuthHttpClient;
   deviceRepository?: DeviceContextRepository;
   authSessionRepository?: AuthSessionRepository;
+  qrSessionRepository?: QrSessionRepository;
   listen?: (
     qrcodeId: string,
     onEvent: (event: QrEvent) => void,
     timeoutMs: number,
   ) => QrEventListener;
+  /** Replaces a channel's event source; the Node defaults are built from `listen` and `http`. */
+  drivers?: Partial<Record<QrLoginChannel, QrChannelDriver>>;
+  capabilities?: RuntimeCapabilities;
+  /**
+   * How long one `/login/qr/check` may observe a pull channel before answering. The Node default
+   * stays inside the client's existing 2 s poll cadence; a serverless runtime raises it so a
+   * single invocation can absorb a long poll.
+   */
+  checkBudgetMs?: number;
   now?: () => number;
-  sleep?: (ms: number) => Promise<void>;
   randomBytes?: (size: number) => Buffer;
 }
 
@@ -184,9 +270,11 @@ export interface QrCheckResult {
 }
 
 export interface QrLoginService {
+  getCapabilities(): RuntimeCapabilities;
   createSession(channel?: QrLoginChannel | LegacyQrLoginChannel): Promise<string>;
   createQr(key: string): Promise<string>;
-  checkQr(key: string): QrCheckResult;
+  /** Async since M1: a pull channel observes its upstream inside this call. */
+  checkQr(key: string, budgetMs?: number): Promise<QrCheckResult>;
   cancelSession(key: string): void;
   getLoginStatus(token?: string): Promise<Dictionary | null>;
   getUserDetail(token?: string): Promise<Dictionary | null>;
@@ -200,7 +288,7 @@ export interface QrLoginService {
     mediaId?: string,
   ): Promise<Dictionary | null>;
   configureAuthSessionRepository(repository: AuthSessionRepository): void;
-  logout(token?: string): void;
+  logout(token?: string): Promise<void>;
 }
 
 interface AuthSessionStore {
@@ -361,6 +449,110 @@ const createAuthSessionStore = (
       }
       if (currentSessions.length > 0) persist();
     },
+  };
+};
+
+const QR_STATES: readonly QrState[] = [
+  'created',
+  'creating',
+  'waiting',
+  'scanned',
+  'exchanging',
+  'confirmed',
+  'expired',
+  'failed',
+];
+
+/** A restored QR record is untrusted input, exactly like a restored auth session. */
+export const isQrSessionRecord = (value: unknown): value is QrSessionRecord => {
+  if (!isDictionary(value)) return false;
+  const optionalText = (key: string): boolean =>
+    value[key] === undefined ||
+    (typeof value[key] === 'string' && (value[key] as string).length > 0);
+  return (
+    typeof value.key === 'string' &&
+    value.key.length > 0 &&
+    isSupportedLoginChannel(value.channel) &&
+    QR_STATES.includes(value.state as QrState) &&
+    Number.isFinite(value.createdAt) &&
+    Number.isFinite(value.expiresAt) &&
+    ['identifier', 'qrcodeId', 'imageUrl', 'authToken'].every(optionalText)
+  );
+};
+
+const cloneQrSessionRecord = (session: QrSessionRecord): QrSessionRecord => ({ ...session });
+
+/** Backwards-compatible default: the process-local map the service has always used. */
+export const createMemoryQrSessionRepository = (
+  seed: readonly QrSessionRecord[] = [],
+): QrSessionRepository => {
+  let stored = seed.filter(isQrSessionRecord).map(cloneQrSessionRecord);
+  return {
+    kind: 'memory',
+    load: () => stored.map(cloneQrSessionRecord),
+    save: (sessions) => {
+      stored = sessions.map(cloneQrSessionRecord);
+    },
+  };
+};
+
+interface QrSessionStore {
+  get(key: string): QrSessionRecord | null;
+  set(session: QrSessionRecord): void;
+  /** The service mutates records in place; this mirrors the current map into the repository. */
+  persist(): void;
+  delete(key: string): boolean;
+  keys(): string[];
+  values(): QrSessionRecord[];
+}
+
+/**
+ * Mirrors `AuthSessionStore`: the map stays authoritative in-process and every mutation is
+ * mirrored into the repository, whose failures never reach the login protocol.
+ */
+const createQrSessionStore = (repository: QrSessionRepository): QrSessionStore => {
+  const sessions = new Map<string, QrSessionRecord>();
+
+  const persist = (): void => {
+    try {
+      repository.save(Array.from(sessions.values(), cloneQrSessionRecord));
+    } catch (error) {
+      logger.warn('qq-auth.qr-session.save-failed', {
+        kind: repository.kind,
+        name: error instanceof Error ? error.name : 'Error',
+      });
+    }
+  };
+
+  let loaded: unknown;
+  try {
+    loaded = repository.load();
+  } catch (error) {
+    logger.warn('qq-auth.qr-session.load-failed', {
+      kind: repository.kind,
+      name: error instanceof Error ? error.name : 'Error',
+    });
+  }
+  for (const value of Array.isArray(loaded) ? loaded : []) {
+    if (isQrSessionRecord(value)) sessions.set(value.key, cloneQrSessionRecord(value));
+  }
+
+  return {
+    get: (key) => sessions.get(key) ?? null,
+    set: (session) => {
+      // Stored by reference on purpose: the service mutates the live record through the same
+      // object it has always used, and only the repository ever receives a copy.
+      sessions.set(session.key, session);
+      persist();
+    },
+    persist,
+    delete: (key) => {
+      const removed = sessions.delete(key);
+      if (removed) persist();
+      return removed;
+    },
+    keys: () => Array.from(sessions.keys()),
+    values: () => Array.from(sessions.values()),
   };
 };
 
@@ -995,6 +1187,68 @@ const createNativeQr = async (http: AuthHttpClient, device: AndroidDevice) => {
   };
 };
 
+/**
+ * `qq` is a push channel: the MQTT listener started here delivers events the instant they
+ * arrive, which is what keeps this channel's timing identical to the pre-driver implementation.
+ * `advance()` therefore has nothing left to observe.
+ */
+const createQqQrDriver = (options: {
+  http: AuthHttpClient;
+  device: () => AndroidDevice;
+  listen: QrListenerFactory;
+}): QrChannelDriver => {
+  const listeners = new Map<string, QrEventListener>();
+  return {
+    mode: 'push',
+    createQr: async () => {
+      const qr = await createNativeQr(options.http, options.device());
+      return { identifier: qr.qrcodeId, imageUrl: qr.imageUrl, expiresIn: qr.expiresIn };
+    },
+    start: (session, context) => {
+      const listener = options.listen(session.identifier ?? '', context.onEvent, context.timeoutMs);
+      listeners.set(session.key, listener);
+      return listener;
+    },
+    advance: async () => [],
+    close: (session) => {
+      listeners.get(session.key)?.close();
+      listeners.delete(session.key);
+    },
+  };
+};
+
+/**
+ * `wechat` is a pull channel: every `advance()` is one time-boxed long poll and nothing runs
+ * between calls. A closed dialog therefore stops polling immediately instead of holding a loop
+ * open for the rest of the QR's life, and a serverless invocation can serve the channel at all.
+ */
+const createWechatQrDriver = (options: {
+  http: (session: QrSessionRecord) => AuthHttpClient;
+}): QrChannelDriver => ({
+  mode: 'pull',
+  createQr: async (session, signal) => {
+    const qr = await createWechatQr(options.http(session), { signal });
+    return { identifier: qr.identifier, imageUrl: qr.imageUrl };
+  },
+  advance: async (session, budgetMs, signal) => {
+    if (!session.identifier) return [];
+    try {
+      const status = await pollWechatQr(options.http(session), session.identifier, {
+        budgetMs,
+        signal,
+      });
+      return [eventForWechatStatus(status)];
+    } catch (error) {
+      // The budget elapsing is the normal outcome of a long poll that saw no state change, so it
+      // reports "nothing happened" rather than an upstream failure. A caller-driven abort is a
+      // real cancellation and stays an error.
+      if (isAbortError(error) && signal?.aborted !== true) return [];
+      throw error;
+    }
+  },
+  close: () => undefined,
+});
+
 const MOBILE_LOGIN_TYPE = 6;
 
 const credentialFrom = (value: Dictionary, defaultLoginType: number): QqCredential => {
@@ -1418,11 +1672,13 @@ type QrListenerFactory = (
 class QrLoginServiceImpl implements QrLoginService {
   private readonly http: AuthHttpClient;
   private readonly createSessionHttp: () => AuthHttpClient;
-  private readonly listen: QrListenerFactory;
   private readonly now: () => number;
-  private readonly sleep: (ms: number) => Promise<void>;
   private readonly random: (size: number) => Buffer;
-  private readonly qrSessions = new Map<string, QrSession>();
+  private readonly capabilities: RuntimeCapabilities;
+  private readonly checkBudgetMs: number;
+  private readonly drivers: Partial<Record<QrLoginChannel, QrChannelDriver>>;
+  private readonly qrSessionStore: QrSessionStore;
+  private readonly qrRuntimes = new Map<string, QrSessionRuntime>();
   private readonly authSessionStore: AuthSessionStore;
   private readonly deviceStore: DeviceContextStore;
   private creatingSession = false;
@@ -1432,10 +1688,10 @@ class QrLoginServiceImpl implements QrLoginService {
   public constructor(dependencies: QrLoginDependencies) {
     this.http = dependencies.http ?? createAuthHttpClient();
     this.createSessionHttp = dependencies.createSessionHttp ?? createAuthHttpClient;
-    this.listen = dependencies.listen ?? defaultListen;
     this.now = dependencies.now ?? Date.now;
-    this.sleep = dependencies.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.random = dependencies.randomBytes ?? crypto.randomBytes;
+    this.capabilities = dependencies.capabilities ?? NODE_RUNTIME_CAPABILITIES;
+    this.checkBudgetMs = dependencies.checkBudgetMs ?? WECHAT_DEFAULT_POLL_BUDGET_MS;
     this.deviceStore = createDeviceContextStore(
       dependencies.deviceRepository ?? createDefaultDeviceContextRepository(),
     );
@@ -1443,15 +1699,52 @@ class QrLoginServiceImpl implements QrLoginService {
       dependencies.authSessionRepository ?? createMemoryAuthSessionRepository(),
       this.now,
     );
+    this.qrSessionStore = createQrSessionStore(
+      dependencies.qrSessionRepository ?? createMemoryQrSessionRepository(),
+    );
+    this.drivers = {
+      qq: createQqQrDriver({
+        http: this.http,
+        device: () => this.deviceStore.get(),
+        listen: dependencies.listen ?? defaultListen,
+      }),
+      wechat: createWechatQrDriver({ http: (session) => this.sessionHttp(session) }),
+      ...dependencies.drivers,
+    };
+  }
+
+  public getCapabilities(): RuntimeCapabilities {
+    return this.capabilities;
+  }
+
+  private runtimeFor(session: QrSessionRecord): QrSessionRuntime {
+    const existing = this.qrRuntimes.get(session.key);
+    if (existing) return existing;
+    const driver = this.drivers[session.channel];
+    if (!driver)
+      throw new QrLoginServiceError(`Unsupported QR login channel: ${session.channel}`, 400);
+    const runtime: QrSessionRuntime = { driver, pollErrors: 0 };
+    this.qrRuntimes.set(session.key, runtime);
+    return runtime;
+  }
+
+  private dropSession(session: QrSessionRecord): void {
+    const runtime = this.qrRuntimes.get(session.key);
+    runtime?.listener?.close();
+    runtime?.driver.close(session);
+    this.qrRuntimes.delete(session.key);
+    this.qrSessionStore.delete(session.key);
   }
 
   private cleanup(): void {
     const current = this.now();
-    for (const [key, session] of this.qrSessions) {
-      if (session.expiresAt <= current) {
-        session.listener?.close();
-        this.qrSessions.delete(key);
-      }
+    for (const session of this.qrSessionStore.values()) {
+      if (session.expiresAt > current) continue;
+      // A pull channel has no background timer to raise `timeout` at expiry, so the expiry itself
+      // has to keep counting as a failure. The guard skips sessions a push listener already
+      // reported, which is what stops the App channel from being backed off twice.
+      if (!terminalState(session.state)) this.backoff();
+      this.dropSession(session);
     }
     this.authSessionStore.cleanup();
   }
@@ -1464,7 +1757,7 @@ class QrLoginServiceImpl implements QrLoginService {
   }
 
   private confirmingQrExists(): boolean {
-    return Array.from(this.qrSessions.values()).some((session) => confirmingState(session.state));
+    return this.qrSessionStore.values().some((session) => confirmingState(session.state));
   }
 
   /**
@@ -1474,17 +1767,16 @@ class QrLoginServiceImpl implements QrLoginService {
    * clear by retrying.
    */
   private discardPreemptibleSessions(): void {
-    for (const [key, session] of this.qrSessions) {
+    for (const session of this.qrSessionStore.values()) {
       if (terminalState(session.state) || confirmingState(session.state)) continue;
-      session.listener?.close();
-      this.qrSessions.delete(key);
+      this.dropSession(session);
       logger.info('qq-auth.qr-session-preempted', { loginChannel: session.channel });
     }
   }
 
-  private sessionFor(key: string): QrSession {
+  private sessionFor(key: string): QrSessionRecord {
     this.cleanup();
-    const session = this.qrSessions.get(key);
+    const session = this.qrSessionStore.get(key);
     if (!session) throw new QrLoginServiceError('QR session not found or expired', 404);
     return session;
   }
@@ -1515,11 +1807,12 @@ class QrLoginServiceImpl implements QrLoginService {
     return new QrLoginServiceError('Unable to start QR login', 502, retryAfterMs, upstreamCode);
   }
 
-  private failSession(session: QrSession, error: unknown): void {
+  private failSession(session: QrSessionRecord, error: unknown): void {
     if (terminalState(session.state)) return;
     session.state = 'failed';
     session.upstreamCode = upstreamCodeOf(error);
     session.retryAfterMs = this.backoff();
+    this.qrSessionStore.persist();
     logger.warn('qq-auth.session-failed', {
       loginChannel: session.channel,
       upstreamCode: session.upstreamCode,
@@ -1529,7 +1822,10 @@ class QrLoginServiceImpl implements QrLoginService {
   }
 
   /** QQ App channel: the MQTT payload carries an exchange token, never the final credential. */
-  private async exchangeQqLogin(session: QrSession, payload: unknown): Promise<QqCredential> {
+  private async exchangeQqLogin(
+    session: QrSessionRecord,
+    payload: unknown,
+  ): Promise<QqCredential> {
     const cookies = dictionaryOf(dictionaryOf(payload).cookies);
     const musicid = stringOf(dictionaryOf(cookies.qqmusic_uin).value);
     const mqttToken = stringOf(dictionaryOf(cookies.qqmusic_key).value);
@@ -1560,14 +1856,17 @@ class QrLoginServiceImpl implements QrLoginService {
   }
 
   /** WeChat channel: the web flow yields an OAuth code, and there is no MQTT fallback. */
-  private async exchangeWechatLogin(session: QrSession, payload: unknown): Promise<QqCredential> {
+  private async exchangeWechatLogin(
+    session: QrSessionRecord,
+    payload: unknown,
+  ): Promise<QqCredential> {
     const code = stringOf(dictionaryOf(payload).code);
     if (!code) throw new WechatQrError('WeChat authorization missing code');
     session.state = 'exchanging';
     return exchangeWechatCredential(this.http, this.deviceStore.get(), code);
   }
 
-  private async finalizeLogin(session: QrSession, payload: unknown): Promise<void> {
+  private async finalizeLogin(session: QrSessionRecord, payload: unknown): Promise<void> {
     let credential =
       session.channel === 'wechat'
         ? await this.exchangeWechatLogin(session, payload)
@@ -1583,6 +1882,7 @@ class QrLoginServiceImpl implements QrLoginService {
     });
     session.authToken = token;
     session.state = 'confirmed';
+    this.qrSessionStore.persist();
     this.failureCount = 0;
     this.nextQrAllowedAt = 0;
     logger.info('qq-auth.login-confirmed', {
@@ -1594,18 +1894,46 @@ class QrLoginServiceImpl implements QrLoginService {
     });
   }
 
-  private onQrEvent(session: QrSession, event: QrEvent): void {
+  private onQrEvent(session: QrSessionRecord, event: QrEvent): void {
     if (terminalState(session.state)) return;
     if (event.type === 'waiting') session.state = 'waiting';
     else if (event.type === 'scanned') session.state = 'scanned';
     else if (event.type === 'cookies' || event.type === 'authorized') {
-      void this.finalizeLogin(session, event.payload).catch((error) =>
+      const runtime = this.runtimeFor(session);
+      // Started the same way for both driver modes. A push channel leaves it running in the
+      // background exactly as before; a pull channel awaits it inside the same `advance()` so an
+      // invocation never ends with the credential exchange still in flight.
+      runtime.finalizing = this.finalizeLogin(session, event.payload).catch((error) =>
         this.failSession(session, error),
       );
+      void runtime.finalizing;
     } else if (['canceled', 'timeout', 'loginFailed'].includes(event.type ?? '')) {
       session.state = 'expired';
       session.retryAfterMs = this.backoff();
     }
+    this.qrSessionStore.persist();
+  }
+
+  /**
+   * Gives a pull channel its one time-boxed look at the upstream. Push channels have already
+   * delivered whatever arrived, so this is a no-op for them.
+   */
+  private async advanceSession(session: QrSessionRecord, budgetMs: number): Promise<void> {
+    const runtime = this.runtimeFor(session);
+    if (runtime.driver.mode !== 'pull' || terminalState(session.state)) return;
+    let events: QrEvent[];
+    try {
+      events = await runtime.driver.advance(session, budgetMs);
+      runtime.pollErrors = 0;
+    } catch (error) {
+      // A dropped long poll is normal; only a run of them fails the session. This is the same
+      // tolerance the self-driving WeChat loop applied before it became a pull driver.
+      runtime.pollErrors += 1;
+      if (runtime.pollErrors > MAX_CONSECUTIVE_POLL_ERRORS) this.failSession(session, error);
+      return;
+    }
+    for (const event of events) this.onQrEvent(session, event);
+    await runtime.finalizing;
   }
 
   public async createSession(
@@ -1614,7 +1942,9 @@ class QrLoginServiceImpl implements QrLoginService {
     // Normalizing here rather than deeper in is what keeps the legacy alias a boundary concern:
     // every field, log and comparison below this line only ever sees a canonical channel.
     const loginChannel = normalizeLoginChannel(channel);
-    if (!loginChannel)
+    // Validated against this runtime's declared capabilities, not a module-level constant, so a
+    // runtime that cannot serve a channel rejects it instead of failing further in.
+    if (!loginChannel || !this.capabilities.channels.includes(loginChannel))
       throw new QrLoginServiceError(`Unsupported QR login channel: ${channel}`, 400);
     this.cleanup();
     const retryAfterMs = Math.max(0, this.nextQrAllowedAt - this.now());
@@ -1631,7 +1961,7 @@ class QrLoginServiceImpl implements QrLoginService {
       await refreshAndroidSession(this.http, device);
       this.deviceStore.persist();
       const key = this.random(24).toString('hex');
-      this.qrSessions.set(key, {
+      this.qrSessionStore.set({
         key,
         channel: loginChannel,
         state: 'created',
@@ -1652,43 +1982,21 @@ class QrLoginServiceImpl implements QrLoginService {
    * closing its dialog kill a QR another client is confirming on their phone.
    */
   public cancelSession(key: string): void {
-    const session = this.qrSessions.get(key);
+    const session = this.qrSessionStore.get(key);
     // Idempotent by contract. The client cancels on dialog close as fire-and-forget, so an unknown
     // or already expired key is a success, never a 404.
     if (!session) return;
     // A confirmed session is left to expire on its own: the credential already reached authSessions
     // and a poll still in flight has to keep reading 803 rather than flip a login into "expired".
     if (session.state === 'confirmed') return;
-    session.listener?.close();
-    this.qrSessions.delete(key);
+    this.dropSession(session);
     logger.info('qq-auth.qr-session-canceled', { loginChannel: session.channel });
   }
 
-  private sessionHttp(session: QrSession): AuthHttpClient {
-    if (!session.http) session.http = this.createSessionHttp();
-    return session.http;
-  }
-
-  private async createChannelQr(
-    session: QrSession,
-  ): Promise<{ identifier: string; imageUrl: string; expiresIn?: number }> {
-    if (session.channel === 'wechat') return createWechatQr(this.sessionHttp(session));
-    const qr = await createNativeQr(this.http, this.deviceStore.get());
-    return { identifier: qr.qrcodeId, imageUrl: qr.imageUrl, expiresIn: qr.expiresIn };
-  }
-
-  private listenForChannel(session: QrSession, identifier: string): QrEventListener {
-    const onEvent = (event: QrEvent): void => this.onQrEvent(session, event);
-    const timeoutMs = session.expiresAt - this.now();
-    if (session.channel === 'wechat') {
-      return createWechatQrListener(
-        { http: this.sessionHttp(session), sleep: this.sleep, now: this.now },
-        identifier,
-        onEvent,
-        timeoutMs,
-      );
-    }
-    return this.listen(identifier, onEvent, timeoutMs);
+  private sessionHttp(session: QrSessionRecord): AuthHttpClient {
+    const runtime = this.runtimeFor(session);
+    if (!runtime.http) runtime.http = this.createSessionHttp();
+    return runtime.http;
   }
 
   public async createQr(key: string): Promise<string> {
@@ -1696,9 +2004,10 @@ class QrLoginServiceImpl implements QrLoginService {
     if (session.imageUrl) return session.imageUrl;
     if (session.state !== 'created')
       throw new QrLoginServiceError('QR session cannot create another code', 409);
+    const runtime = this.runtimeFor(session);
     session.state = 'creating';
     try {
-      const qr = await this.createChannelQr(session);
+      const qr = await runtime.driver.createQr(session);
       session.identifier = qr.identifier;
       if (session.channel === 'qq') session.qrcodeId = qr.identifier;
       session.imageUrl = qr.imageUrl;
@@ -1709,9 +2018,22 @@ class QrLoginServiceImpl implements QrLoginService {
         loginChannel: session.channel,
         qrIdentifierLength: qr.identifier.length,
       });
-      session.listener = this.listenForChannel(session, qr.identifier);
-      void session.listener.done.catch((error) => this.failSession(session, error));
-      await session.listener.ready;
+      if (runtime.driver.start) {
+        // The listener deadline is still computed after `expiresIn` narrowed the record, which is
+        // exactly the order the pre-driver implementation used.
+        const listener = runtime.driver.start(session, {
+          onEvent: (event) => this.onQrEvent(session, event),
+          timeoutMs: session.expiresAt - this.now(),
+        });
+        runtime.listener = listener;
+        void listener.done.catch((error) => this.failSession(session, error));
+        await listener.ready;
+      } else {
+        // A pull channel is scannable the moment the code exists. The self-driving loop it
+        // replaces emitted this same event before its first poll.
+        this.onQrEvent(session, { type: 'waiting', payload: null });
+      }
+      this.qrSessionStore.persist();
       return qr.imageUrl;
     } catch (error) {
       this.failSession(session, error);
@@ -1719,9 +2041,10 @@ class QrLoginServiceImpl implements QrLoginService {
     }
   }
 
-  public checkQr(key: string): QrCheckResult {
+  public async checkQr(key: string, budgetMs: number = this.checkBudgetMs): Promise<QrCheckResult> {
     try {
       const session = this.sessionFor(key);
+      await this.advanceSession(session, budgetMs);
       if (session.state === 'confirmed' && session.authToken) {
         return {
           code: 803,
@@ -1739,7 +2062,7 @@ class QrLoginServiceImpl implements QrLoginService {
     }
   }
 
-  private failedCheckResult(session: QrSession): QrCheckResult {
+  private failedCheckResult(session: QrSessionRecord): QrCheckResult {
     return {
       code: 800,
       message: session.state === 'expired' ? 'QR code expired' : 'QR login failed',
@@ -1814,10 +2137,9 @@ class QrLoginServiceImpl implements QrLoginService {
     this.authSessionStore.useRepository(repository);
   }
 
-  public logout(token?: string): void {
+  public async logout(token?: string): Promise<void> {
     if (token) this.authSessionStore.delete(token);
-    for (const session of this.qrSessions.values()) session.listener?.close();
-    this.qrSessions.clear();
+    for (const session of this.qrSessionStore.values()) this.dropSession(session);
   }
 }
 

@@ -376,9 +376,6 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
     deviceRepository,
     authSessionRepository: options.authSessionRepository,
     createSessionHttp: () => wechat.client,
-    // Must yield to the macrotask queue: an instantly resolved sleep would turn the poll loop
-    // into a microtask chain that starves every timer in the test.
-    sleep: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
     now: options.now,
     randomBytes: (size) => Buffer.alloc(size, 7),
     listen: (_qrcodeId, onEvent) => {
@@ -413,9 +410,9 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
 // Yields with a timer rather than setImmediate: the WeChat poll loop waits on setTimeout, and
 // a setImmediate loop can burn 200 turns of the event loop without a millisecond of wall clock
 // ever passing, so the poll would never get its turn.
-const waitFor = async (predicate: () => boolean): Promise<void> => {
+const waitFor = async (predicate: () => boolean | Promise<boolean>): Promise<void> => {
   for (let index = 0; index < 200; index += 1) {
-    if (predicate()) return;
+    if (await predicate()) return;
     await new Promise<void>((resolve) => setTimeout(resolve, 1));
   }
   throw new Error('condition was not reached');
@@ -429,8 +426,8 @@ const login = async (service: QrLoginService, emit: (event: TestQrEvent) => void
     type: 'cookies',
     payload: { cookies: { qqmusic_uin: { value: '123' }, qqmusic_key: { value: 'mqtt-key' } } },
   });
-  await waitFor(() => service.checkQr(key).code === 803);
-  return { key, imageUrl, result: service.checkQr(key) };
+  await waitFor(async () => (await service.checkQr(key)).code === 803);
+  return { key, imageUrl, result: await service.checkQr(key) };
 };
 
 describe('QQ native QR login service', () => {
@@ -440,16 +437,16 @@ describe('QQ native QR login service', () => {
     const imageUrl = await harness.service.createQr(key);
 
     expect(imageUrl).toMatch(/^data:image\/png;base64,/);
-    expect(harness.service.checkQr(key)).toMatchObject({ code: 801 });
+    expect(await harness.service.checkQr(key)).toMatchObject({ code: 801 });
     harness.emit({ type: 'scanned', payload: {} });
-    expect(harness.service.checkQr(key)).toMatchObject({ code: 802 });
+    expect(await harness.service.checkQr(key)).toMatchObject({ code: 802 });
     harness.emit({
       type: 'cookies',
       payload: { cookies: { qqmusic_uin: { value: '123' }, qqmusic_key: { value: 'mqtt-key' } } },
     });
-    await waitFor(() => harness.service.checkQr(key).code === 803);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
 
-    const confirmed = harness.service.checkQr(key);
+    const confirmed = await harness.service.checkQr(key);
     expect(confirmed).toMatchObject({
       code: 803,
       cookie: expect.stringMatching(/^qqmusic_session=/),
@@ -488,7 +485,7 @@ describe('QQ native QR login service', () => {
     harness.service.cancelSession(key);
 
     expect(harness.wasClosed()).toBe(true);
-    expect(harness.service.checkQr(key)).toMatchObject({ code: 800 });
+    expect(await harness.service.checkQr(key)).toMatchObject({ code: 800 });
     await expect(harness.service.createSession()).resolves.toEqual(expect.any(String));
   });
 
@@ -507,7 +504,7 @@ describe('QQ native QR login service', () => {
 
     harness.service.cancelSession(key);
 
-    expect(harness.service.checkQr(key)).toMatchObject({ code: 803 });
+    expect(await harness.service.checkQr(key)).toMatchObject({ code: 803 });
   });
 
   it('should preserve upstream 50006 and apply a retry backoff', async () => {
@@ -518,9 +515,9 @@ describe('QQ native QR login service', () => {
       type: 'cookies',
       payload: { cookies: { qqmusic_uin: { value: '123' }, qqmusic_key: { value: 'mqtt-key' } } },
     });
-    await waitFor(() => harness.service.checkQr(key).code === 800);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 800);
 
-    expect(harness.service.checkQr(key)).toEqual(
+    expect(await harness.service.checkQr(key)).toEqual(
       expect.objectContaining({
         code: 800,
         upstreamCode: 50006,
@@ -570,8 +567,8 @@ describe('QQ native QR login service', () => {
     const harness = createProtocolHarness({ nestedProfileOnly: true, placeholderMusicId: true });
     const key = await harness.service.createSession('wechat');
     await harness.service.createQr(key);
-    await waitFor(() => harness.service.checkQr(key).code === 803);
-    const token = harness.service.checkQr(key).cookie?.split('=')[1];
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
+    const token = (await harness.service.checkQr(key)).cookie?.split('=')[1];
 
     // A WeChat credential holds `musicid: 0`; publishing that raw would hand callers an id every
     // upstream call rejects — `/user/playlist?uid=0` answers with none of the created playlists.
@@ -656,7 +653,7 @@ describe('QQ native QR login service', () => {
 
     expect(authSessionRepository.load()).toEqual([expect.objectContaining({ token })]);
 
-    harness.service.logout(token);
+    await harness.service.logout(token);
 
     await expect(harness.service.getLoginStatus(token)).resolves.toBeNull();
     expect(authSessionRepository.load()).toEqual([]);
@@ -1011,8 +1008,14 @@ describe('QQ native QR login service', () => {
     await harness.service.createQr(key);
     harness.emit({ type: 'timeout', payload: null });
 
-    expect(harness.service.checkQr(key)).toMatchObject({ code: 800, message: 'QR code expired' });
-    expect(harness.service.checkQr('missing')).toEqual({ code: 800, message: 'QR code expired' });
+    expect(await harness.service.checkQr(key)).toMatchObject({
+      code: 800,
+      message: 'QR code expired',
+    });
+    expect(await harness.service.checkQr('missing')).toEqual({
+      code: 800,
+      message: 'QR code expired',
+    });
   });
 });
 
@@ -1084,12 +1087,12 @@ describe('QQ login channel routing', () => {
 
     const imageUrl = await harness.service.createQr(key);
     expect(imageUrl).toMatch(/^data:image\/png;base64,/);
-    expect(harness.service.checkQr(key)).toMatchObject({ code: 801 });
+    expect(await harness.service.checkQr(key)).toMatchObject({ code: 801 });
 
     harness.pushWechatStatus(wxStatusBody(404));
-    await waitFor(() => harness.service.checkQr(key).code === 802);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 802);
     harness.pushWechatStatus(wxStatusBody(405, WX_CODE));
-    await waitFor(() => harness.service.checkQr(key).code === 803);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
 
     // The WeChat exchange swaps an OAuth code, not the App channel's MQTT token.
     expect(loginParamOf(harness)).toEqual({ code: WX_CODE, strAppid: 'wx48db31d50e334801' });
@@ -1103,8 +1106,8 @@ describe('QQ login channel routing', () => {
     const harness = createProtocolHarness();
     const key = await harness.service.createSession('wechat');
     await harness.service.createQr(key);
-    await waitFor(() => harness.service.checkQr(key).code === 803);
-    const token = harness.service.checkQr(key).cookie?.split('=')[1];
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
+    const token = (await harness.service.checkQr(key)).cookie?.split('=')[1];
 
     await harness.service.getUserPlaylists(token);
 
@@ -1116,8 +1119,8 @@ describe('QQ login channel routing', () => {
     const harness = createProtocolHarness();
     const key = await harness.service.createSession('wechat');
     await harness.service.createQr(key);
-    await waitFor(() => harness.service.checkQr(key).code === 803);
-    const token = harness.service.checkQr(key).cookie?.split('=')[1];
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
+    const token = (await harness.service.checkQr(key)).cookie?.split('=')[1];
 
     await expect(harness.service.getUserPlaylists(token)).resolves.toMatchObject({
       v_playlist: [
@@ -1221,8 +1224,8 @@ describe('QQ login channel routing', () => {
     const harness = createProtocolHarness();
     const key = await harness.service.createSession('wechat');
     await harness.service.createQr(key);
-    await waitFor(() => harness.service.checkQr(key).code === 803);
-    const token = harness.service.checkQr(key).cookie?.split('=')[1];
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
+    const token = (await harness.service.checkQr(key)).cookie?.split('=')[1];
 
     await expect(harness.service.getUserAlbums(token, 0, 20)).resolves.toMatchObject({
       totalalbum: 2,
@@ -1266,8 +1269,8 @@ describe('QQ login channel routing', () => {
     const harness = createProtocolHarness({ wechatNeedsRefresh: true });
     const key = await harness.service.createSession('wechat');
     await harness.service.createQr(key);
-    await waitFor(() => harness.service.checkQr(key).code === 803);
-    const token = harness.service.checkQr(key).cookie?.split('=')[1];
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
+    const token = (await harness.service.checkQr(key)).cookie?.split('=')[1];
 
     // 刷新过的凭证是可用的，因此这里走的是 GetLoginUserInfo 成功那条路，`musicid` 由上游的数字覆盖
     // 掉凭证推导出来的字符串——与其余成功用例一致。
@@ -1330,7 +1333,7 @@ describe('QQ login channel routing', () => {
     const harness = createProtocolHarness();
     const key = await harness.service.createSession('wechat');
     await harness.service.createQr(key);
-    await waitFor(() => harness.service.checkQr(key).code === 803);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
 
     const serialized = JSON.stringify(harness.wechatRequests);
     for (const leak of [QIMEI_16, QIMEI_36, 'comm', 'tmeLoginType', 'session-sid'])
@@ -1344,9 +1347,12 @@ describe('QQ login channel routing', () => {
     const key = await harness.service.createSession('wechat');
     await harness.service.createQr(key);
 
-    await waitFor(() => harness.service.checkQr(key).code === 800);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 800);
 
-    expect(harness.service.checkQr(key)).toMatchObject({ code: 800, message: 'QR code expired' });
+    expect(await harness.service.checkQr(key)).toMatchObject({
+      code: 800,
+      message: 'QR code expired',
+    });
     expect(harness.calls).not.toContain('Login');
   });
 
@@ -1355,9 +1361,9 @@ describe('QQ login channel routing', () => {
     const key = await harness.service.createSession('wechat');
     await harness.service.createQr(key);
 
-    await waitFor(() => harness.service.checkQr(key).code === 800);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 800);
 
-    expect(harness.service.checkQr(key)).toEqual(
+    expect(await harness.service.checkQr(key)).toEqual(
       expect.objectContaining({ code: 800, upstreamCode: 500, retryAfterMs: 30000 }),
     );
   });
@@ -1370,7 +1376,7 @@ describe('QQ login channel routing', () => {
       const harness = createProtocolHarness();
       const key = await harness.service.createSession('wechat');
       await harness.service.createQr(key);
-      await waitFor(() => harness.service.checkQr(key).code === 803);
+      await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
 
       const logged = JSON.stringify(spies.map((spy) => spy.mock.calls));
       for (const secret of [WX_UUID, WX_CODE, 'wechat-credential-key'])

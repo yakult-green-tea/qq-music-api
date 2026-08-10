@@ -93,7 +93,7 @@ export const qrCheck = async (ctx: Context): Promise<void> => {
     ctx.body = { code: 400, message: 'key is required' };
     return;
   }
-  const result = qrLoginService.checkQr(String(key));
+  const result = await qrLoginService.checkQr(String(key));
   if (result.code === 803 && result.cookie) {
     const token = tokenFromCookieString(result.cookie);
     if (token)
@@ -134,8 +134,8 @@ export const userDetail = async (ctx: Context): Promise<void> => {
   ctx.body = profile ? { code: 200, profile } : { code: 401, message: 'Login required' };
 };
 
-export const logout = (ctx: Context): void => {
-  qrLoginService.logout(getAuthToken(ctx));
+export const logout = async (ctx: Context): Promise<void> => {
+  await qrLoginService.logout(getAuthToken(ctx));
   ctx.cookies.set(AUTH_COOKIE_NAME, '', { expires: new Date(0), overwrite: true });
   ctx.status = 200;
   ctx.body = { code: 200 };

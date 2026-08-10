@@ -1,10 +1,11 @@
 import type Koa from 'koa';
 import app, { configureAuthSessionRepository, server } from '../src/app';
 import router from '../src/routes/router';
+import { getLegacyHttpTransport } from '../src/services/httpTransport';
 
 // Executable form of the `src/app.ts` boundary: the file may perform composition-root dependency
 // wiring and nothing else. Every assertion below describes externally observable behaviour that
-// the encrypted-session work must leave untouched — the middleware chain, the route table, the
+// must survive the serverless refactor unchanged — the middleware chain, the route table, the
 // export shape and the condition under which the process starts listening.
 //
 // If one of these fails, the fix is to restore `app.ts`, not to update the expectation.
@@ -68,5 +69,11 @@ describe('src/app.ts composition root', () => {
     // in place, which is what every deployment that exists today relies on.
     expect(process.env.QQ_AUTH_SESSION_PATH).toBeUndefined();
     expect(process.env.QQ_SESSION_SECRET).toBeUndefined();
+  });
+
+  it('should register the legacy HTTP transport as dependency wiring', () => {
+    // The behaviour `app.ts` gained in M1: choosing the Node transport explicitly instead of
+    // letting an import side effect decide it.
+    expect(getLegacyHttpTransport().kind).toBe('axios');
   });
 });
