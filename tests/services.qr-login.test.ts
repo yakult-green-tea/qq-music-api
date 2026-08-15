@@ -11,6 +11,7 @@ import {
   type QrLoginService,
   QrLoginServiceError,
 } from '../src/services/auth/qrLogin';
+import { AuthCredentialRejectedError } from '../src/util/authError';
 import { logger } from '../src/util/logger';
 
 interface TestQrEvent {
@@ -76,6 +77,11 @@ interface HarnessOptions {
   wechatStatuses?: string[];
   wechatQrPage?: string;
   wechatImage?: Buffer;
+  /**
+   * 让登录之后的鉴权调用带上这个上游码。用来分别验证「凭证被明确拒绝」与「上游因为别的原因失败」
+   * 走的是两条不同的路。QQ 通道的登录流程本身不打 GetLoginUserInfo，所以只影响登录后的调用。
+   */
+  postLoginUpstreamCode?: number;
 }
 
 /**
@@ -202,12 +208,23 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
           req_0: { code: 0, data: { musicid: 123, musickey: 'credential-key', loginType: 6 } },
         } as T);
       }
+      // 只覆盖登录之后才会打的两个方法，登录流程本身（GetSession / QIMEI / Login）不受影响。
+      if (
+        options.postLoginUpstreamCode !== undefined &&
+        (method === 'GetLoginUserInfo' || method === 'GetPlaylistByUin')
+      )
+        return response({
+          code: 0,
+          req_0: { code: options.postLoginUpstreamCode, data: {} },
+        } as T);
       if (method === 'GetLoginUserInfo' && options.failCredential) {
         return response({ code: 0, req_0: { code: 50006, data: {} } } as T);
       }
       if (method === 'GetLoginUserInfo') {
         const comm = dictionaryOf(dictionaryOf(payload).comm);
-        if (options.wechatNeedsRefresh && comm.tmeLoginType === 1)
+        // 只拒绝那把还没换过的 key。刷新之后上游会认新的 key，这正是刷新的意义；如果连刷新后的凭证
+        // 也一直回 1000，那就不是「需要刷新」而是「这个账号登不上」，不该由这个夹具来模拟。
+        if (options.wechatNeedsRefresh && comm.authst === 'wechat-credential-key')
           return response({ code: 0, req_0: { code: 1000, data: {} } } as T);
         if (options.nestedProfileOnly)
           return response({
@@ -667,6 +684,48 @@ describe('QQ native QR login service', () => {
     expect(authSessionRepository.load()).toEqual([]);
   });
 
+  it('should surface an explicit rejection when the upstream refuses the credential', async () => {
+    for (const upstreamCode of [1000, 104401, 104400]) {
+      const harness = createProtocolHarness({ postLoginUpstreamCode: upstreamCode });
+      const { result } = await login(harness.service, harness.emit);
+      const token = result.cookie?.split('=')[1];
+
+      // 之前这里抛的是 QqProtocolError，控制器把它变成 500，客户端只能判成网络错误。
+      await expect(harness.service.getUserDetail(token)).rejects.toBeInstanceOf(
+        AuthCredentialRejectedError,
+      );
+      await expect(harness.service.getUserPlaylists(token)).rejects.toBeInstanceOf(
+        AuthCredentialRejectedError,
+      );
+      await expect(harness.service.getUserDetail(token)).rejects.toMatchObject({
+        httpStatus: 401,
+        upstreamCode,
+      });
+    }
+  });
+
+  it('should report a rejected credential as signed out on the status route', async () => {
+    const harness = createProtocolHarness({ postLoginUpstreamCode: 1000 });
+    const { result } = await login(harness.service, harness.emit);
+    const token = result.cookie?.split('=')[1];
+
+    // `/login/status` 回 200 加空载荷，因此这里必须是 null 而不是抛错，也不能是那份凭证推导出来的
+    // 假 profile——后者会让用户看起来还登录着，而其余路由全部失败。
+    await expect(harness.service.getLoginStatus(token)).resolves.toBeNull();
+  });
+
+  it('should keep a non-rejection upstream failure as a server error', async () => {
+    const harness = createProtocolHarness({ postLoginUpstreamCode: 50006 });
+    const { result } = await login(harness.service, harness.emit);
+    const token = result.cookie?.split('=')[1];
+
+    // 只有那三个安全码算「凭证被拒」；其余上游失败保持原样，一次抖动不该把用户登出。
+    await expect(harness.service.getUserDetail(token)).rejects.not.toBeInstanceOf(
+      AuthCredentialRejectedError,
+    );
+    await expect(harness.service.getLoginStatus(token)).rejects.toBeTruthy();
+  });
+
   it('should reject malformed persisted credentials before they reach an upstream request', async () => {
     const save = jest.fn();
     const authSessionRepository: AuthSessionRepository = {
@@ -1028,9 +1087,11 @@ describe('QQ login channel routing', () => {
     await waitFor(() => harness.service.checkQr(key).code === 803);
     const token = harness.service.checkQr(key).cookie?.split('=')[1];
 
+    // 刷新过的凭证是可用的，因此这里走的是 GetLoginUserInfo 成功那条路，`musicid` 由上游的数字覆盖
+    // 掉凭证推导出来的字符串——与其余成功用例一致。
     const profile = await harness.service.getLoginStatus(token);
     expect(profile).toMatchObject({
-      musicid: '456',
+      musicid: 456,
       nickname: '我的微信账号',
     });
     for (const secret of [

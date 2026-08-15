@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
 import {
   type AndroidDevice,
@@ -1245,6 +1246,27 @@ const exchangeWechatCredential = async (
 // channel-specific credential refresh. They remain opaque safety codes here.
 const CREDENTIAL_REFRESH_SAFETY_CODES = new Set([1000, 104401, 104400]);
 
+/** 上游用这几个安全码明确表示「这份凭证我不认」，与超时、限流、协议变动等失败区分开。 */
+const isCredentialRejection = (error: unknown): error is QqProtocolError =>
+  error instanceof QqProtocolError &&
+  error.upstreamCode !== undefined &&
+  CREDENTIAL_REFRESH_SAFETY_CODES.has(error.upstreamCode);
+
+/**
+ * 在服务边界把「上游拒绝凭证」翻译成控制器层会回 401 的那一个错误。
+ *
+ * 只映射这三个已知安全码；其余上游失败保持原样，因此一次上游抖动不会把用户登出。上游的码是不透明
+ * 数字，将来发现漏掉的码时在 `CREDENTIAL_REFRESH_SAFETY_CODES` 里补，映射逻辑不必改。
+ */
+const withCredentialRejectionMapped = async <T>(operation: () => Promise<T>): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error) {
+    if (isCredentialRejection(error)) throw new AuthCredentialRejectedError(error.upstreamCode);
+    throw error;
+  }
+};
+
 const getLoginUserWithCredential = async (
   http: AuthHttpClient,
   device: AndroidDevice,
@@ -1293,22 +1315,15 @@ const publicProfileFromCredential = (credential: QqCredential): Dictionary => {
  * The credential-derived profile is therefore layered underneath as a default instead of only
  * standing in when the call fails. The two key sets are disjoint, so a successful reply still
  * wins on every field it does answer with.
+ *
+ * 这里曾经还有一条 WeChat 专用的兜底：上游用安全码拒绝凭证时改回传凭证里的字段。那让 `/login/status`
+ * 报告「已登录」，而同一份凭证在其余 `/user/*` 上全部失败，用户卡在一个自己清不掉的状态里。拒绝现在
+ * 直接往外抛，由服务边界映射成 401。
  */
-const getLoginProfile = async (http: AuthHttpClient, auth: AuthSession): Promise<Dictionary> => {
-  const credentialProfile = publicProfileFromCredential(auth.credential);
-  try {
-    return { ...credentialProfile, ...(await getLoginUser(http, auth)) };
-  } catch (error) {
-    if (
-      auth.credential.loginType !== WECHAT_LOGIN_TYPE ||
-      !(error instanceof QqProtocolError) ||
-      error.upstreamCode === undefined ||
-      !CREDENTIAL_REFRESH_SAFETY_CODES.has(error.upstreamCode)
-    )
-      throw error;
-    return credentialProfile;
-  }
-};
+const getLoginProfile = async (http: AuthHttpClient, auth: AuthSession): Promise<Dictionary> => ({
+  ...publicProfileFromCredential(auth.credential),
+  ...(await getLoginUser(http, auth)),
+});
 
 /** Refreshes a WeChat credential with the complete field set returned by its QR exchange. */
 const refreshWechatCredential = async (
@@ -1870,19 +1885,30 @@ class QrLoginServiceImpl implements QrLoginService {
     };
   }
 
+  /**
+   * `/login/status` 在没有可用会话时回 200 加一个空载荷，客户端靠 `data.profile` 在不在判断登录态。
+   * 因此凭证被上游拒绝时这里回报「未登录」而不是抛错，让它和「根本没带 token」走同一条路；其余需要
+   * 登录的路由仍然回 401。
+   */
   public async getLoginStatus(token?: string): Promise<Dictionary | null> {
     const auth = this.authFor(token);
-    return auth ? getLoginProfile(this.http, auth) : null;
+    if (!auth) return null;
+    try {
+      return await withCredentialRejectionMapped(() => getLoginProfile(this.http, auth));
+    } catch (error) {
+      if (error instanceof AuthCredentialRejectedError) return null;
+      throw error;
+    }
   }
 
   public async getUserDetail(token?: string): Promise<Dictionary | null> {
     const auth = this.authFor(token);
-    return auth ? getLoginProfile(this.http, auth) : null;
+    return auth ? withCredentialRejectionMapped(() => getLoginProfile(this.http, auth)) : null;
   }
 
   public async getUserPlaylists(token?: string, uin?: string): Promise<Dictionary | null> {
     const auth = this.authFor(token);
-    return auth ? getPlaylists(this.http, auth, uin) : null;
+    return auth ? withCredentialRejectionMapped(() => getPlaylists(this.http, auth, uin)) : null;
   }
 
   public async getUserAlbums(
@@ -1891,7 +1917,9 @@ class QrLoginServiceImpl implements QrLoginService {
     limit?: number,
   ): Promise<Dictionary | null> {
     const auth = this.authFor(token);
-    return auth ? getFavoriteAlbums(this.http, auth, offset, limit) : null;
+    return auth
+      ? withCredentialRejectionMapped(() => getFavoriteAlbums(this.http, auth, offset, limit))
+      : null;
   }
 
   public async getUserLikedSongs(
@@ -1900,7 +1928,9 @@ class QrLoginServiceImpl implements QrLoginService {
     limit?: number,
   ): Promise<Dictionary | null> {
     const auth = this.authFor(token);
-    return auth ? getLikedSongs(this.http, auth, offset, limit) : null;
+    return auth
+      ? withCredentialRejectionMapped(() => getLikedSongs(this.http, auth, offset, limit))
+      : null;
   }
 
   public async getMusicPlay(
@@ -1910,7 +1940,11 @@ class QrLoginServiceImpl implements QrLoginService {
     mediaId?: string,
   ): Promise<Dictionary | null> {
     const auth = this.authFor(token);
-    return auth ? getAuthenticatedPlayUrls(this.http, auth, songmid, quality, mediaId) : null;
+    return auth
+      ? withCredentialRejectionMapped(() =>
+          getAuthenticatedPlayUrls(this.http, auth, songmid, quality, mediaId),
+        )
+      : null;
   }
 
   public configureAuthSessionRepository(repository: AuthSessionRepository): void {

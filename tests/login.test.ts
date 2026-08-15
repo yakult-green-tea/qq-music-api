@@ -24,6 +24,7 @@ jest.mock('../src/services/auth/qrLogin', () => {
 import request from 'supertest';
 import app from '../src/app';
 import { QrLoginServiceError } from '../src/services/auth/qrLogin';
+import { AuthCredentialRejectedError } from '../src/util/authError';
 import { logger } from '../src/util/logger';
 
 const server = app.callback();
@@ -186,6 +187,53 @@ describe('QQ login controllers', () => {
     expect(playlistResponse.status).toBe(401);
     expect(likedResponse.status).toBe(401);
     expect(albumResponse.status).toBe(401);
+  });
+
+  it('should answer 401 when the upstream rejects the credential instead of a server error', async () => {
+    // 之前这里是 500：客户端只能判成网络故障，于是失效的会话永远清不掉。
+    for (const method of [
+      'getUserDetail',
+      'getUserPlaylists',
+      'getUserLikedSongs',
+      'getUserAlbums',
+    ] as const)
+      mockQrLoginService[method].mockRejectedValue(new AuthCredentialRejectedError(1000));
+
+    const cookie = { cookie: 'qqmusic_session=stale-token' };
+    const detail = await request(server).get('/user/detail').query(cookie);
+    const playlist = await request(server).get('/user/playlist').query(cookie);
+    const liked = await request(server).get('/user/liked-songs').query(cookie);
+    const albums = await request(server).get('/user/albums').query(cookie);
+
+    for (const response of [detail, playlist, liked, albums]) {
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ code: 401, message: 'Login required' });
+    }
+  });
+
+  it('should keep answering 500 for upstream failures that are not credential rejections', async () => {
+    // 只有那三个安全码算「凭证被拒」。一次上游抖动不该把用户登出。
+    mockQrLoginService.getUserDetail.mockRejectedValue(new Error('upstream exploded'));
+
+    const response = await request(server)
+      .get('/user/detail')
+      .query({ cookie: 'qqmusic_session=opaque-token' });
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: 'upstream exploded' });
+  });
+
+  it('should keep /login/status at 200 with an empty payload when the credential was rejected', async () => {
+    // Folia 靠 `data.profile` 在不在判断登录态，因此这条路由永远是 200；服务层已经把被拒的凭证
+    // 收敛成 null，控制器不需要知道原因。
+    mockQrLoginService.getLoginStatus.mockResolvedValue(null);
+
+    const response = await request(server)
+      .get('/login/status')
+      .query({ cookie: 'qqmusic_session=stale-token' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ code: 200, data: {} });
   });
 
   it('should return authenticated playlists and clear the session on logout', async () => {

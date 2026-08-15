@@ -1,4 +1,5 @@
 import type { Context, Next } from 'koa';
+import { AuthCredentialRejectedError } from './authError';
 import { logger } from './logger';
 
 type SummaryValue = Record<string, unknown>;
@@ -148,14 +149,24 @@ const handleControllerError = (
 ): void => {
   const normalizedError =
     error instanceof Error ? error : new Error(typeof error === 'string' ? error : 'Unknown error');
-  logger.error('request.failed', {
+  // 上游明确拒绝凭证是客户端可以自己处理的情况（清掉会话重新登录），不是服务端故障。之前它和其余
+  // 异常一样落到 500，客户端只能判成网络错误，于是失效的会话永远清不掉。其余异常行为不变。
+  const rejected = normalizedError instanceof AuthCredentialRejectedError;
+  const status = rejected ? normalizedError.httpStatus : 500;
+  const meta = {
     ...baseMeta,
-    status: 500,
+    status,
     durationMs: Date.now() - startedAt,
     error: summarizeValue(normalizedError),
-  });
-  ctx.status = 500;
-  if (ctx.body === undefined) ctx.body = { error: normalizedError.message };
+  };
+  // 与 logControllerCompletion 的分级一致：4xx 是警告，5xx 才是错误。
+  if (rejected) logger.warn('request.validation_failed', meta);
+  else logger.error('request.failed', meta);
+  ctx.status = status;
+  if (ctx.body === undefined)
+    ctx.body = rejected
+      ? { code: status, message: normalizedError.message }
+      : { error: normalizedError.message };
 };
 
 export const withControllerLogging =
