@@ -82,6 +82,8 @@ interface HarnessOptions {
    * 走的是两条不同的路。QQ 通道的登录流程本身不打 GetLoginUserInfo，所以只影响登录后的调用。
    */
   postLoginUpstreamCode?: number;
+  /** 上游交代的 musickey 寿命，用来验证会话到期时间是跟着它走而不是硬编 24 小时。 */
+  credentialLifetime?: { musickeyCreateTime: number; keyExpiresIn: number };
 }
 
 /**
@@ -205,7 +207,15 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
           } as T);
         return response({
           code: 0,
-          req_0: { code: 0, data: { musicid: 123, musickey: 'credential-key', loginType: 6 } },
+          req_0: {
+            code: 0,
+            data: {
+              musicid: 123,
+              musickey: 'credential-key',
+              loginType: 6,
+              ...(options.credentialLifetime ?? {}),
+            },
+          },
         } as T);
       }
       // 只覆盖登录之后才会打的两个方法，登录流程本身（GetSession / QIMEI / Login）不受影响。
@@ -724,6 +734,59 @@ describe('QQ native QR login service', () => {
       AuthCredentialRejectedError,
     );
     await expect(harness.service.getLoginStatus(token)).rejects.toBeTruthy();
+  });
+
+  it('should derive the session deadline from the upstream musickey lifetime', async () => {
+    let current = 1_000_000_000_000;
+    const now = () => current;
+    const harness = createProtocolHarness({
+      now,
+      // 实测值：keyExpiresIn = 259200 秒 = 整三天。
+      credentialLifetime: {
+        musickeyCreateTime: Math.floor(current / 1000),
+        keyExpiresIn: 259200,
+      },
+    });
+    const { result } = await login(harness.service, harness.emit);
+    const token = result.cookie?.split('=')[1];
+
+    // 硬编的 24 小时早就到期了，跟着上游走的会话还活着——这正是用户不必每天重新扫码的原因。
+    current += 24 * 60 * 60 * 1000 + 1;
+    await expect(harness.service.getLoginStatus(token)).resolves.toMatchObject({ musicid: 123 });
+
+    current += 2 * 24 * 60 * 60 * 1000;
+    await expect(harness.service.getLoginStatus(token)).resolves.toBeNull();
+  });
+
+  it('should fall back to the previous fixed lifetime when the upstream omits the key timings', async () => {
+    let current = 1_000_000_000_000;
+    const now = () => current;
+    const harness = createProtocolHarness({ now });
+    const { result } = await login(harness.service, harness.emit);
+    const token = result.cookie?.split('=')[1];
+
+    current += 24 * 60 * 60 * 1000 - 1;
+    await expect(harness.service.getLoginStatus(token)).resolves.toMatchObject({ musicid: 123 });
+
+    current += 2;
+    await expect(harness.service.getLoginStatus(token)).resolves.toBeNull();
+  });
+
+  it('should clamp an absurd upstream lifetime instead of minting an unbounded session', async () => {
+    let current = 1_000_000_000_000;
+    const now = () => current;
+    const harness = createProtocolHarness({
+      now,
+      credentialLifetime: {
+        musickeyCreateTime: Math.floor(current / 1000),
+        keyExpiresIn: 365 * 24 * 60 * 60,
+      },
+    });
+    const { result } = await login(harness.service, harness.emit);
+    const token = result.cookie?.split('=')[1];
+
+    current += 7 * 24 * 60 * 60 * 1000 + 1;
+    await expect(harness.service.getLoginStatus(token)).resolves.toBeNull();
   });
 
   it('should reject malformed persisted credentials before they reach an upstream request', async () => {

@@ -33,7 +33,11 @@ const PACKAGE_ID = 'com.tencent.qqmusic';
 const MQTT_HOST = 'mu.y.qq.com';
 const MQTT_INITIAL_PATH = '/ws/handshake';
 const QR_TTL_MS = 3 * 60 * 1000;
+/** 上游没有交代 musickey 寿命时的兜底会话时长，也是这个常量原本的唯一用途。 */
 const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
+/** 推导出来的会话时长夹在这个区间内，挡住上游给出畸形时间时的两个极端。 */
+const AUTH_TTL_MIN_MS = 60 * 60 * 1000;
+const AUTH_TTL_MAX_MS = 7 * 24 * 60 * 60 * 1000;
 const QIMEI_TTL_MS = 24 * 60 * 60 * 1000;
 const BACKOFF_BASE_MS = 30 * 1000;
 const BACKOFF_MAX_MS = 15 * 60 * 1000;
@@ -1381,6 +1385,28 @@ const validateWechatCredential = async (
   return refreshed;
 };
 
+/**
+ * 会话到期时间跟着 musickey 自己的寿命走。
+ *
+ * 上游的凭证带着 `musickeyCreateTime`（epoch 秒）与 `keyExpiresIn`（秒，实测 259200 = 整三天）。
+ * 之前这里硬编 24 小时，比上游短，于是用户每天都得重新扫码——而那并不是 QQ 要求的。缺字段或者值不
+ * 合理时退回原来的 24 小时，结果再夹进 `[1 小时, 7 天]`，因此一份畸形的上游回应既不会立刻作废会话，
+ * 也不会签发一个远超凭证寿命的会话。
+ *
+ * 凭证已经过期时算出来的时长是负的，会被夹到 1 小时；那一小时里任何一次上游调用都会被拒绝并映射成
+ * 401，客户端照样能干净地登出。
+ */
+const authSessionExpiryAt = (credential: QqCredential, now: number): number => {
+  const createdAtSeconds = numberOf(credential.musickeyCreateTime);
+  const lifetimeSeconds = numberOf(credential.keyExpiresIn);
+  if (!createdAtSeconds || !lifetimeSeconds || createdAtSeconds <= 0 || lifetimeSeconds <= 0)
+    return now + AUTH_TTL_MS;
+  const ttl = (createdAtSeconds + lifetimeSeconds) * 1000 - now;
+  if (ttl < AUTH_TTL_MIN_MS) return now + AUTH_TTL_MIN_MS;
+  if (ttl > AUTH_TTL_MAX_MS) return now + AUTH_TTL_MAX_MS;
+  return now + ttl;
+};
+
 const getPlaylists = async (
   http: AuthHttpClient,
   auth: AuthSession,
@@ -1721,7 +1747,7 @@ class QrLoginServiceImpl implements QrLoginService {
       token,
       credential,
       device: this.deviceStore.get(),
-      expiresAt: this.now() + AUTH_TTL_MS,
+      expiresAt: authSessionExpiryAt(credential, this.now()),
     });
     session.authToken = token;
     session.state = 'confirmed';
