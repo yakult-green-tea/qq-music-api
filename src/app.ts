@@ -14,6 +14,7 @@ import {
 } from './config/apiExplorer';
 import cors from './middlewares/koa-cors';
 import router from './routes/router';
+import { configureAuthSessionPersistence } from './services/auth/fileAuthSessionRepository';
 import cookie from './util/cookie';
 import { logger, loggerState } from './util/logger';
 import { sanitizeRequestUrl } from './util/observability';
@@ -70,6 +71,10 @@ if (shouldCheckLatestVersion()) {
 
   versionCheckProcess.unref();
 }
+
+// Composition-root wiring: pick the session repository from the environment before the server
+// can answer anything. Not set means the packaged in-memory default, exactly as before.
+configureAuthSessionPersistence();
 
 app.use(bodyParser());
 app.use(cookie());

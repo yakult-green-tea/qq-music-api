@@ -1,8 +1,12 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
   createMemoryDeviceContextRepository,
   type DeviceContextRepository,
 } from '../src/services/auth/deviceContext';
+import { createFileAuthSessionRepository } from '../src/services/auth/fileAuthSessionRepository';
 import createAuthHttpClient, { type AuthHttpClient } from '../src/services/auth/httpClient';
 import {
   type AuthSessionRepository,
@@ -678,6 +682,63 @@ describe('QQ native QR login service', () => {
       authst: 'credential-key',
       tmeLoginType: 6,
     });
+  });
+
+  it('should restore an authenticated session from an encrypted file after a restart', async () => {
+    // The Docker case: a brand new process, nothing shared but the file on the volume. Without a
+    // repository this deployment loses every login on restart, which is the whole point of S3.
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'qq-auth-restart-'));
+    try {
+      const filePath = path.join(directory, 'sessions.json');
+      const secret = 'a-deployment-secret';
+      const first = createProtocolHarness({
+        authSessionRepository: createFileAuthSessionRepository(filePath, secret),
+      });
+      const { result } = await login(first.service, first.emit);
+      const token = result.cookie?.split('=')[1];
+
+      const restarted = createProtocolHarness({
+        authSessionRepository: createFileAuthSessionRepository(filePath, secret),
+      });
+
+      await expect(restarted.service.getLoginStatus(token)).resolves.toMatchObject({
+        musicid: 123,
+      });
+      expect(fs.readFileSync(filePath, 'utf8')).not.toContain('credential-key');
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('should keep login working when the session repository cannot be read or written', async () => {
+    // PR #2 behaviour 5: a locked keychain, a read-only volume or a rotated secret degrades to
+    // in-process behaviour. It must never be able to stop someone logging in.
+    const spies = (['info', 'warn'] as const).map((level) =>
+      jest.spyOn(logger, level).mockImplementation(() => undefined),
+    );
+    try {
+      const harness = createProtocolHarness({
+        authSessionRepository: {
+          kind: 'file',
+          load: () => {
+            throw new Error('SessionCryptoError');
+          },
+          save: () => {
+            throw new Error('EACCES');
+          },
+        },
+      });
+
+      const { result } = await login(harness.service, harness.emit);
+      const token = result.cookie?.split('=')[1];
+
+      await expect(harness.service.getLoginStatus(token)).resolves.toMatchObject({ musicid: 123 });
+      const logged = JSON.stringify(spies.map((spy) => spy.mock.calls));
+      expect(logged).toContain('qq-auth.auth-session.load-failed');
+      expect(logged).toContain('qq-auth.auth-session.save-failed');
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
   });
 
   it('should discard an expired persisted session during restart', async () => {
