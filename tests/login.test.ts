@@ -56,19 +56,35 @@ describe('QQ login controllers', () => {
 
   it('should pass an explicit login channel through and default to the App channel', async () => {
     const wechatResponse = await request(server).get('/login/qr/key').query({ channel: 'wechat' });
+    const qqResponse = await request(server).get('/login/qr/key').query({ channel: 'qq' });
     const defaultResponse = await request(server).get('/login/qr/key');
 
     expect(wechatResponse.status).toBe(200);
+    expect(qqResponse.status).toBe(200);
     expect(defaultResponse.status).toBe(200);
     expect(mockQrLoginService.createSession).toHaveBeenNthCalledWith(1, 'wechat');
-    expect(mockQrLoginService.createSession).toHaveBeenNthCalledWith(2, 'mobile');
+    expect(mockQrLoginService.createSession).toHaveBeenNthCalledWith(2, 'qq');
+    expect(mockQrLoginService.createSession).toHaveBeenNthCalledWith(3, 'qq');
+  });
+
+  it('should accept the legacy `mobile` channel and normalize it to `qq`', async () => {
+    const response = await request(server).get('/login/qr/key').query({ channel: 'mobile' });
+
+    // 老的 Folia、外部 `VITE_QQ_API_BASE` 部署和 Docker gateway 都还可能送 `mobile`，改名不该把
+    // 它们打断；但归一在入口完成，服务层收到的只有 canonical 值。
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ code: 200, data: { unikey: 'qr-key' } });
+    expect(mockQrLoginService.createSession).toHaveBeenCalledWith('qq');
   });
 
   it('should reject a login channel that is not routable', async () => {
     const response = await request(server).get('/login/qr/key').query({ channel: 'telepathy' });
 
     expect(response.status).toBe(400);
-    expect(response.body).toMatchObject({ code: 400 });
+    expect(response.body).toMatchObject({
+      code: 400,
+      message: 'channel must be one of qq, wechat',
+    });
     expect(mockQrLoginService.createSession).not.toHaveBeenCalled();
   });
 

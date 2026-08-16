@@ -44,16 +44,31 @@ const BACKOFF_MAX_MS = 15 * 60 * 1000;
 
 type Dictionary = Record<string, unknown>;
 /**
- * Login channels. `mobile` is the QQ Music App QR (MQTT over WSS, `tmeLoginType: 6`) and stays
- * the default so the public contract is unchanged for callers that do not ask for a channel.
- * `qq` is declared but not routable yet; `SUPPORTED_LOGIN_CHANNELS` is the authority.
+ * Login channels. `qq` is the QQ Music App QR (MQTT over WSS, `tmeLoginType: 6`) and stays the
+ * default so the public contract is unchanged for callers that do not ask for a channel; `wechat`
+ * is the WeChat QR. These two are the whole product surface, and `SUPPORTED_LOGIN_CHANNELS` is the
+ * authority on it.
  */
-export type QrLoginChannel = 'mobile' | 'wechat' | 'qq';
-export const DEFAULT_LOGIN_CHANNEL: QrLoginChannel = 'mobile';
-export const SUPPORTED_LOGIN_CHANNELS: readonly QrLoginChannel[] = ['mobile', 'wechat'];
+export type QrLoginChannel = 'qq' | 'wechat';
+/**
+ * `mobile` is the former name of `qq`. It is still accepted at the entry points and normalized to
+ * the canonical value right there, so nothing downstream ever sees it, and it is deliberately kept
+ * out of `SUPPORTED_LOGIN_CHANNELS`: an alias must not become a third channel in a client's UI.
+ */
+export type LegacyQrLoginChannel = 'mobile';
+export const DEFAULT_LOGIN_CHANNEL: QrLoginChannel = 'qq';
+export const SUPPORTED_LOGIN_CHANNELS: readonly QrLoginChannel[] = ['qq', 'wechat'];
+
+const LEGACY_LOGIN_CHANNEL_ALIASES = new Map<string, QrLoginChannel>([['mobile', 'qq']]);
 
 export const isSupportedLoginChannel = (value: unknown): value is QrLoginChannel =>
   SUPPORTED_LOGIN_CHANNELS.includes(value as QrLoginChannel);
+
+/** Accepts a canonical channel or a legacy alias and answers with the canonical value. */
+export const normalizeLoginChannel = (value: unknown): QrLoginChannel | undefined => {
+  if (isSupportedLoginChannel(value)) return value;
+  return typeof value === 'string' ? LEGACY_LOGIN_CHANNEL_ALIASES.get(value) : undefined;
+};
 
 type QrState =
   | 'created'
@@ -159,7 +174,7 @@ export interface QrCheckResult {
 }
 
 export interface QrLoginService {
-  createSession(channel?: QrLoginChannel): Promise<string>;
+  createSession(channel?: QrLoginChannel | LegacyQrLoginChannel): Promise<string>;
   createQr(key: string): Promise<string>;
   checkQr(key: string): QrCheckResult;
   cancelSession(key: string): void;
@@ -1696,8 +1711,8 @@ class QrLoginServiceImpl implements QrLoginService {
     });
   }
 
-  /** App channel: the MQTT payload carries an exchange token, never the final credential. */
-  private async exchangeMobileLogin(session: QrSession, payload: unknown): Promise<QqCredential> {
+  /** QQ App channel: the MQTT payload carries an exchange token, never the final credential. */
+  private async exchangeQqLogin(session: QrSession, payload: unknown): Promise<QqCredential> {
     const cookies = dictionaryOf(dictionaryOf(payload).cookies);
     const musicid = stringOf(dictionaryOf(cookies.qqmusic_uin).value);
     const mqttToken = stringOf(dictionaryOf(cookies.qqmusic_key).value);
@@ -1739,7 +1754,7 @@ class QrLoginServiceImpl implements QrLoginService {
     let credential =
       session.channel === 'wechat'
         ? await this.exchangeWechatLogin(session, payload)
-        : await this.exchangeMobileLogin(session, payload);
+        : await this.exchangeQqLogin(session, payload);
     if (session.channel === 'wechat')
       credential = await validateWechatCredential(this.http, this.deviceStore.get(), credential);
     const token = this.random(32).toString('hex');
@@ -1776,8 +1791,13 @@ class QrLoginServiceImpl implements QrLoginService {
     }
   }
 
-  public async createSession(channel: QrLoginChannel = DEFAULT_LOGIN_CHANNEL): Promise<string> {
-    if (!isSupportedLoginChannel(channel))
+  public async createSession(
+    channel: QrLoginChannel | LegacyQrLoginChannel = DEFAULT_LOGIN_CHANNEL,
+  ): Promise<string> {
+    // Normalizing here rather than deeper in is what keeps the legacy alias a boundary concern:
+    // every field, log and comparison below this line only ever sees a canonical channel.
+    const loginChannel = normalizeLoginChannel(channel);
+    if (!loginChannel)
       throw new QrLoginServiceError(`Unsupported QR login channel: ${channel}`, 400);
     this.cleanup();
     const retryAfterMs = Math.max(0, this.nextQrAllowedAt - this.now());
@@ -1796,12 +1816,12 @@ class QrLoginServiceImpl implements QrLoginService {
       const key = this.random(24).toString('hex');
       this.qrSessions.set(key, {
         key,
-        channel,
+        channel: loginChannel,
         state: 'created',
         createdAt: this.now(),
         expiresAt: this.now() + QR_TTL_MS,
       });
-      logger.info('qq-auth.qr-session-created', { loginChannel: channel });
+      logger.info('qq-auth.qr-session-created', { loginChannel });
       return key;
     } catch (error) {
       throw this.failBootstrap(error);
@@ -1863,7 +1883,7 @@ class QrLoginServiceImpl implements QrLoginService {
     try {
       const qr = await this.createChannelQr(session);
       session.identifier = qr.identifier;
-      if (session.channel === 'mobile') session.qrcodeId = qr.identifier;
+      if (session.channel === 'qq') session.qrcodeId = qr.identifier;
       session.imageUrl = qr.imageUrl;
       if (qr.expiresIn && qr.expiresIn > 0) {
         session.expiresAt = Math.min(session.expiresAt, this.now() + qr.expiresIn * 1000);

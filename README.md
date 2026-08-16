@@ -265,7 +265,7 @@ docker pull qq-music-api
 
 服务提供与网易云接口形状兼容的扫码流程：
 
-1. `GET /login/qr/key?channel=mobile|wechat` 取得 `data.unikey`；未指定时仍走 QQ 音乐 App 通道。
+1. `GET /login/qr/key?channel=qq|wechat` 取得 `data.unikey`；未指定时仍走 QQ 音乐 App 通道。旧名 `channel=mobile` 继续受理，入口处会归一成 `qq`。
 2. `GET /login/qr/create?key=<unikey>` 取得 `data.qrimg`（App 通道为 PNG，微信通道依上游实际图片型别返回，目前为 JPEG）。
 3. 轮询 `GET /login/qr/check?key=<unikey>`；状态码为 `801` 等待、`802` 已扫码、`803` 成功、`800` 过期或失败。
 4. 成功后调用 `GET /login/status`、`GET /user/detail`、`GET /user/playlist`；内建「我喜欢」歌曲以 `GET /user/liked-songs?offset=0&limit=100` 分页读取，收藏的专辑以 `GET /user/albums?offset=0&limit=20` 分页读取。

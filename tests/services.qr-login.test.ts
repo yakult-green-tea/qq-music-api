@@ -8,6 +8,7 @@ import {
   type AuthSessionRepository,
   createMemoryAuthSessionRepository,
   createQrLoginService,
+  type QrLoginChannel,
   type QrLoginService,
   QrLoginServiceError,
 } from '../src/services/auth/qrLogin';
@@ -949,10 +950,40 @@ describe('QQ login channel routing', () => {
     expect(harness.wechatRequests).toHaveLength(0);
   });
 
-  it('should reject a channel that is not routable yet', async () => {
+  it('should route the canonical `qq` channel through the QQ Music App flow', async () => {
+    const harness = createProtocolHarness();
+    const key = await harness.service.createSession('qq');
+    await harness.service.createQr(key);
+
+    expect(harness.calls).toContain('CreateQRCode');
+    expect(harness.wechatRequests).toHaveLength(0);
+  });
+
+  it('should accept the legacy `mobile` alias and normalize it to `qq`', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    try {
+      const harness = createProtocolHarness();
+      const key = await harness.service.createSession('mobile');
+      await harness.service.createQr(key);
+
+      // 别名只活在入口：会话建立之后，日志与路由都只应该见到 canonical 值，`mobile` 不该再出现。
+      const channels = info.mock.calls
+        .filter(([event]) => String(event).startsWith('qq-auth.qr-'))
+        .map(([, fields]) => dictionaryOf(fields).loginChannel);
+      expect(channels).toEqual(['qq', 'qq']);
+      expect(harness.calls).toContain('CreateQRCode');
+      expect(harness.wechatRequests).toHaveLength(0);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
+  it('should reject a channel that is neither canonical nor a legacy alias', async () => {
     const harness = createProtocolHarness();
 
-    const error = await harness.service.createSession('qq').catch((reason: unknown) => reason);
+    const error = await harness.service
+      .createSession('telepathy' as QrLoginChannel)
+      .catch((reason: unknown) => reason);
 
     expect(error).toBeInstanceOf(QrLoginServiceError);
     expect(error).toEqual(expect.objectContaining({ httpStatus: 400 }));

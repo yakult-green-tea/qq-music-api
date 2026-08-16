@@ -1268,7 +1268,7 @@ songs: [
 
 | 接口 | 参数 | 返回 |
 | --- | --- | --- |
-| `/login/qr/key` | 可选 `channel=mobile\|wechat` | `data.unikey`，短期 QR 工作阶段 key |
+| `/login/qr/key` | 可选 `channel=qq\|wechat`（旧名 `mobile` 仍受理，归一成 `qq`） | `data.unikey`，短期 QR 工作阶段 key |
 | `/login/qr/create` | `key` | `data.qrimg`，MIME type 依上游图片嗅探 |
 | `/login/qr/check` | `key` | `800` 过期/失败、`801` 等待、`802` 已扫描、`803` 已确认 |
 | `/login/status` | cookie（浏览器自动携带） | `data.profile`；未登录时 `data` 为空 |

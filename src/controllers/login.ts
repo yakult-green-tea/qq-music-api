@@ -1,7 +1,7 @@
 import type { Context } from 'koa';
 import qrLoginService, {
   DEFAULT_LOGIN_CHANNEL,
-  isSupportedLoginChannel,
+  normalizeLoginChannel,
   QrLoginServiceError,
   SUPPORTED_LOGIN_CHANNELS,
 } from '../services/auth/qrLogin';
@@ -48,9 +48,12 @@ const setServiceError = (ctx: Context, error: unknown): void => {
 
 export const qrKey = async (ctx: Context): Promise<void> => {
   // Optional and backward compatible: no `channel` means the QQ Music App QR, which is what
-  // every existing caller gets today. The response shape is unchanged either way.
+  // every existing caller gets today. The response shape is unchanged either way. The legacy
+  // alias `mobile` is normalized to `qq` here so callers that predate the rename keep working,
+  // while the advertised set stays the two canonical channels.
   const { channel = DEFAULT_LOGIN_CHANNEL } = getTypedQuery<LoginQuery>(ctx);
-  if (!isSupportedLoginChannel(channel)) {
+  const loginChannel = normalizeLoginChannel(channel);
+  if (!loginChannel) {
     ctx.status = 400;
     ctx.body = {
       code: 400,
@@ -59,7 +62,7 @@ export const qrKey = async (ctx: Context): Promise<void> => {
     return;
   }
   try {
-    const key = await qrLoginService.createSession(channel);
+    const key = await qrLoginService.createSession(loginChannel);
     ctx.status = 200;
     ctx.body = { code: 200, data: { unikey: key } };
   } catch (error) {
