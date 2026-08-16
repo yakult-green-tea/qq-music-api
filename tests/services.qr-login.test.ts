@@ -711,8 +711,8 @@ describe('QQ native QR login service', () => {
   });
 
   it('should keep login working when the session repository cannot be read or written', async () => {
-    // PR #2 behaviour 5: a locked keychain, a read-only volume or a rotated secret degrades to
-    // in-process behaviour. It must never be able to stop someone logging in.
+    // PR #2 behaviour 5: a locked keychain or a read-only volume degrades to in-process
+    // behaviour. It must never be able to stop someone logging in.
     const spies = (['info', 'warn'] as const).map((level) =>
       jest.spyOn(logger, level).mockImplementation(() => undefined),
     );
@@ -738,6 +738,33 @@ describe('QQ native QR login service', () => {
       expect(logged).toContain('qq-auth.auth-session.save-failed');
     } finally {
       for (const spy of spies) spy.mockRestore();
+    }
+  });
+
+  it('should persist the next login after an unreadable one, so a rotated secret costs one scan', async () => {
+    // Rotating `QQ_SESSION_SECRET` makes the existing file undecryptable. That must cost exactly
+    // one re-scan, not leave persistence broken until someone deletes the volume by hand.
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    try {
+      const saved: (readonly unknown[])[] = [];
+      const harness = createProtocolHarness({
+        authSessionRepository: {
+          kind: 'file',
+          load: () => {
+            throw new Error('SessionCryptoError');
+          },
+          save: (sessions) => {
+            saved.push(sessions);
+          },
+        },
+      });
+
+      const { result } = await login(harness.service, harness.emit);
+      const token = result.cookie?.split('=')[1];
+
+      expect(saved.at(-1)).toEqual([expect.objectContaining({ token })]);
+    } finally {
+      warn.mockRestore();
     }
   });
 
