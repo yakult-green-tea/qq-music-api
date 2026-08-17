@@ -20,3 +20,8 @@ test-results/
 # 本地 AI 工具配置，与项目源码无关，不进仓库
 .claude/
 .skills/
+
+# §8.4 wrangler dev / vercel dev 人工验收用的一次性 harness，不是 S5 的真实部署配置，不进仓库
+.gate-probe/
+.vercel/
+.wrangler/
