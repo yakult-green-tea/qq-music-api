@@ -13,8 +13,8 @@ import { DERIVED_DEVICE_PURPOSE, deriveBits } from './sealedSession';
  * is a future direction; `SealedTokenV1` carries a version field so it can arrive without breaking
  * tokens already issued.
  *
- * The type is imported type-only on purpose: the Node device module reaches `node:crypto` for its
- * random generator, and nothing from it should end up in the serverless bundle.
+ * The type is imported type-only on purpose: `AndroidDevice` is a plain interface, and a type-only
+ * import is erased before bundling regardless of what the module that declares it pulls in.
  */
 
 const DERIVED_BYTES = 64;

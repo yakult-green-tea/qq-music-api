@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
 import {
@@ -523,6 +522,19 @@ const unavailableListen = (): QrEventListener => {
   throw new Error(MISSING_LISTEN_MESSAGE);
 };
 
+/**
+ * Unlike `http`/`listen` above, `randomBytes` has no "this runtime doesn't need it" case — every
+ * runtime mints QR session keys and (under `stored`) auth tokens — so its default has to actually
+ * work rather than throw. `globalThis.crypto.getRandomValues` is the Web Crypto primitive Node
+ * ≥20, Electron, Cloudflare Workers and the Vercel Edge Runtime all implement identically, unlike
+ * `node:crypto`'s `randomBytes`, which the last of those refuses to deploy a bundle importing at
+ * all. `qrLogin.node.ts` overrides this with the real `node:crypto` generator for Node, Electron
+ * and Docker, exactly as it does for `http` and `listen`; every other caller — including every
+ * `createQrLoginService()` call in `src/serverless/index.ts` — gets this one.
+ */
+const randomBytesNeutral = (size: number): Buffer =>
+  Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(size)));
+
 export const createStoredSessionResolver = (options: {
   repository: AuthSessionRepository;
   now: () => number;
@@ -742,7 +754,10 @@ const getAuthenticatedPlayUrls = async (
     .filter(Boolean);
   const qualityKey = String(quality) as keyof typeof MUSIC_FILE_TYPES;
   const fileType = MUSIC_FILE_TYPES[qualityKey] ?? MUSIC_FILE_TYPES[128];
-  const guid = crypto.randomUUID().replaceAll('-', '');
+  // `globalThis.crypto` is the Web Crypto API global: identical on Node ≥20, Electron, Cloudflare
+  // Workers and the Vercel Edge Runtime, unlike `node:crypto`, which the last of those refuses to
+  // deploy a bundle importing at all.
+  const guid = globalThis.crypto.randomUUID().replaceAll('-', '');
   const normalizedMediaId = stringOf(mediaId).trim();
   const data = await callMusicu(
     http,
@@ -1129,10 +1144,10 @@ export const createMqttListen =
     return { ready, done, close: () => activeSocket?.close() };
   };
 
-const buildQimeiHeadersAndBody = (
+const buildQimeiHeadersAndBody = async (
   device: AndroidDevice,
-): { headers: Record<string, string>; body: Dictionary } => {
-  const request = buildQimeiRequest(device);
+): Promise<{ headers: Record<string, string>; body: Dictionary }> => {
+  const request = await buildQimeiRequest(device);
   const rawHeaders = dictionaryOf(request.headers);
   const headers = Object.fromEntries(
     Object.entries(rawHeaders).filter(
@@ -1161,7 +1176,7 @@ const ensureQimei = async (
     logger.info('qq-auth.qimei-result', { source: 'cache' });
     return false;
   }
-  const request = buildQimeiHeadersAndBody(device);
+  const request = await buildQimeiHeadersAndBody(device);
   const response = await http.post<unknown>(QIMEI_URL, request.body, { headers: request.headers });
   const outer = parseDictionary(response.data);
   const inner = parseDictionary(outer.data);
@@ -1803,7 +1818,7 @@ class QrLoginServiceImpl implements QrLoginService {
     this.http = dependencies.http ?? unavailableHttpClient();
     this.createSessionHttp = dependencies.createSessionHttp ?? unavailableHttpClient;
     this.now = dependencies.now ?? Date.now;
-    this.random = dependencies.randomBytes ?? crypto.randomBytes;
+    this.random = dependencies.randomBytes ?? randomBytesNeutral;
     this.capabilities = dependencies.capabilities ?? NODE_RUNTIME_CAPABILITIES;
     this.checkBudgetMs = dependencies.checkBudgetMs ?? WECHAT_DEFAULT_POLL_BUDGET_MS;
     this.deviceStore = createDeviceContextStore(
