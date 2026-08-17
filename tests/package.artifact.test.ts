@@ -123,7 +123,6 @@ describe('published artifact', () => {
       const before = process.getActiveResourcesInfo?.() ?? [];
       const mod = await import('@yakult-green-tea/qq-music-api/serverless');
       const after = process.getActiveResourcesInfo?.() ?? [];
-      const loaded = Object.keys(await import('node:module').then((m) => m).catch(() => ({})));
       console.log(JSON.stringify({
         handler: typeof mod.handleRequest,
         // Nothing may be left running: no listening socket, no timer, no websocket.
