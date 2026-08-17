@@ -1,4 +1,4 @@
-import qrLoginService from '../auth/qrLogin';
+import qrLoginService from '../auth/qrLogin.node';
 
 // src/services/user/getUserAlbums.ts
 

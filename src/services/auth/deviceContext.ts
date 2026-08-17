@@ -1,12 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { logger } from '../../util/logger';
+import { isAndroidDevice } from './androidDevice';
 import {
-  type AndroidDevice,
-  createAndroidDevice,
-  describeDeviceContext,
-  isAndroidDevice,
-} from './androidDevice';
+  createMemoryDeviceContextRepository,
+  type DeviceContextRepository,
+} from './deviceContextStore';
 
 // Persistence for the Android device context used by the native QR login protocol.
 // The QIMEI bootstrap and every musicu.fcg call must run on ONE stable identity, so the
@@ -22,41 +21,20 @@ export {
   describeDeviceContext,
   isAndroidDevice,
 } from './androidDevice';
+// The runtime-neutral half now lives in `./deviceContextStore`; re-exported so every existing
+// importer of this module keeps working unchanged.
+export {
+  createDeviceContextStore,
+  createMemoryDeviceContextRepository,
+  type DeviceContextRepository,
+  type DeviceContextStore,
+} from './deviceContextStore';
 
 export const DEVICE_STATE_ENV = 'QQ_AUTH_STATE_PATH';
 export const MEMORY_STATE_PATH = 'memory';
 const DEFAULT_STATE_PATH = path.join('.auth-state', 'qq-device.json');
 const STATE_FILE_MODE = 0o600;
 const STATE_VERSION = 1;
-
-export interface DeviceContextRepository {
-  readonly kind: 'file' | 'memory';
-  load(): AndroidDevice | null;
-  save(device: AndroidDevice): void;
-  clear(): void;
-}
-
-export interface DeviceContextStore {
-  get(): AndroidDevice;
-  persist(): void;
-  reset(): AndroidDevice;
-}
-
-export const createMemoryDeviceContextRepository = (
-  seed: AndroidDevice | null = null,
-): DeviceContextRepository => {
-  let stored = seed ? ({ ...seed } as AndroidDevice) : null;
-  return {
-    kind: 'memory',
-    load: () => (stored ? ({ ...stored } as AndroidDevice) : null),
-    save: (device) => {
-      stored = { ...device };
-    },
-    clear: () => {
-      stored = null;
-    },
-  };
-};
 
 /**
  * Persists the device context as owner-only JSON. Every filesystem failure degrades to an
@@ -127,44 +105,4 @@ export const createDefaultDeviceContextRepository = (
     : createMemoryDeviceContextRepository();
 };
 
-/**
- * Loads the persisted context lazily on first use, so importing the auth service never
- * touches the filesystem, and writes back after each protocol step that mutates it.
- */
-export const createDeviceContextStore = (
-  repository: DeviceContextRepository,
-): DeviceContextStore => {
-  let device: AndroidDevice | null = null;
-
-  const load = (): AndroidDevice => {
-    if (device) return device;
-    const restored = repository.load();
-    device = restored ?? createAndroidDevice();
-    logger.info('qq-auth.device-context.ready', {
-      kind: repository.kind,
-      source: restored ? 'restored' : 'created',
-      ...describeDeviceContext(device),
-    });
-    if (!restored) repository.save(device);
-    return device;
-  };
-
-  return {
-    get: load,
-    persist: () => {
-      if (device) repository.save(device);
-    },
-    reset: () => {
-      device = createAndroidDevice();
-      repository.save(device);
-      logger.info('qq-auth.device-context.ready', {
-        kind: repository.kind,
-        source: 'reset',
-        ...describeDeviceContext(device),
-      });
-      return device;
-    },
-  };
-};
-
-export default createDeviceContextStore;
+export { default } from './deviceContextStore';

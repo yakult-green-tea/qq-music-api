@@ -11,12 +11,12 @@ import {
   randomDigits,
 } from './androidDevice';
 import {
-  createDefaultDeviceContextRepository,
   createDeviceContextStore,
+  createMemoryDeviceContextRepository,
   type DeviceContextRepository,
   type DeviceContextStore,
-} from './deviceContext';
-import createAuthHttpClient, { type AuthHttpClient } from './httpClient';
+} from './deviceContextStore';
+import type { AuthHttpClient } from './httpClient';
 import {
   type Dictionary,
   dictionaryOf,
@@ -37,8 +37,6 @@ import {
   WECHAT_LOGIN_TYPE,
   WechatQrError,
 } from './wechatLogin';
-
-const WebSocketRuntime = require('ws') as WebSocketConstructor;
 
 // The QIMEI bootstrap request construction and the synthetic device material now live in
 // `androidDevice.ts`; both are re-exported so existing importers keep their entry point.
@@ -487,6 +485,43 @@ const createAuthSessionStore = (
  * port hands `issue()` a session without one precisely so a sealed backend can derive the token
  * from the credential instead of generating an unrelated identifier.
  */
+/**
+ * Neutral fallbacks for the three dependencies that used to default to a Node implementation.
+ *
+ * They exist so this module can be imported by any runtime without dragging `axios`, `ws` or
+ * `node:fs` into the dependency closure, which is what made a serverless bundle impossible. Each
+ * one fails on use rather than on construction, so a runtime that never touches the QQ App channel
+ * — every serverless deployment, which is WeChat-only — is not forced to supply a listener it has
+ * no implementation for.
+ *
+ * 🔴 Node, Electron and Docker never see these: `qrLogin.node.ts` supplies exactly the defaults
+ * this module used to apply, so the packaged behaviour is unchanged.
+ */
+// Written as one string each on purpose. `tests/runtime.dependencies.test.ts` scans this directory
+// for import specifiers with a regex, and splitting a literal right after an import keyword makes
+// the remainder look like a package name to it.
+const MISSING_HTTP_MESSAGE =
+  'No AuthHttpClient was provided. Node, Electron and Docker take one from the wrapper at `services/auth/qrLogin.node.ts`; a serverless runtime injects its fetch client.';
+
+const MISSING_LISTEN_MESSAGE =
+  'The QQ App channel needs an MQTT listener and this runtime has none. Node supplies one via the wrapper at `services/auth/qrLogin.node.ts`; a serverless runtime should declare `wechat` only.';
+
+const unavailableHttpClient = (): AuthHttpClient => ({
+  getCookieHeader: () => {
+    throw new Error(MISSING_HTTP_MESSAGE);
+  },
+  request: () => {
+    throw new Error(MISSING_HTTP_MESSAGE);
+  },
+  post: () => {
+    throw new Error(MISSING_HTTP_MESSAGE);
+  },
+});
+
+const unavailableListen = (): QrEventListener => {
+  throw new Error(MISSING_LISTEN_MESSAGE);
+};
+
 export const createStoredSessionResolver = (options: {
   repository: AuthSessionRepository;
   now: () => number;
@@ -626,7 +661,7 @@ interface WebSocketLike {
   close(): void;
 }
 
-interface WebSocketConstructor {
+export interface WebSocketConstructor {
   new (url: string, protocol: string): WebSocketLike;
 }
 
@@ -969,9 +1004,9 @@ const createPacketQueue = (socket: WebSocketLike): PacketQueue => {
   };
 };
 
-const openWebSocket = (path: string): Promise<WebSocketLike> =>
+const openWebSocket = (webSocket: WebSocketConstructor, path: string): Promise<WebSocketLike> =>
   new Promise((resolve, reject) => {
-    const socket = new WebSocketRuntime(`wss://${MQTT_HOST}${path}`, 'mqtt');
+    const socket = new webSocket(`wss://${MQTT_HOST}${path}`, 'mqtt');
     const timer = setTimeout(() => {
       socket.close();
       reject(new Error('MQTT handshake timeout'));
@@ -997,10 +1032,10 @@ const redirectPath = (path: string, reference: string): string => {
   return parts.join('/');
 };
 
-const connectMqtt = async (qrcodeId: string) => {
+const connectMqtt = async (webSocket: WebSocketConstructor, qrcodeId: string) => {
   let path = MQTT_INITIAL_PATH;
   for (let redirects = 0; redirects <= 3; redirects += 1) {
-    const socket = await openWebSocket(path);
+    const socket = await openWebSocket(webSocket, path);
     const queue = createPacketQueue(socket);
     socket.send(buildConnectPacket(`${Date.now()}${randomDigits(4)}`, qrcodeId));
     const connack = parseConnack(await queue.next(20000));
@@ -1050,42 +1085,48 @@ const consumeQrEvents = async (
   onEvent({ type: 'timeout', payload: null });
 };
 
-const defaultListen = (
-  qrcodeId: string,
-  onEvent: (event: QrEvent) => void,
-  timeoutMs: number,
-): QrEventListener => {
-  let activeSocket: WebSocketLike | null = null;
-  let readySettled = false;
-  let resolveReady: () => void = () => undefined;
-  let rejectReady: (error: Error) => void = () => undefined;
-  const ready = new Promise<void>((resolve, reject) => {
-    resolveReady = resolve;
-    rejectReady = reject;
-  });
-  const done = (async (): Promise<void> => {
-    const { socket, queue } = await connectMqtt(qrcodeId);
-    activeSocket = socket;
-    const ping = setInterval(() => {
-      if (socket.readyState === 1) socket.send(Buffer.from([0xc0, 0x00]));
-    }, 30000);
-    try {
-      await subscribeToQrEvents(socket, queue, qrcodeId, onEvent);
-      onEvent({ type: 'waiting', payload: null });
-      readySettled = true;
-      resolveReady();
-      await consumeQrEvents(queue, onEvent, timeoutMs);
-    } catch (error) {
-      if (!readySettled) rejectReady(error instanceof Error ? error : new Error(String(error)));
-      throw error;
-    } finally {
-      clearInterval(ping);
-      socket.close();
-    }
-  })();
-  void done.catch(() => undefined);
-  return { ready, done, close: () => activeSocket?.close() };
-};
+/**
+ * The MQTT listener for the QQ App channel, as a factory over its WebSocket implementation.
+ *
+ * The constructor is a parameter rather than a module-level `require('ws')` so that importing this
+ * module does not put `ws` in the dependency closure. Node supplies it in `qrLogin.node.ts`; a
+ * serverless runtime never reaches this channel and must not carry a WebSocket library it cannot
+ * use. Behaviour is otherwise byte-for-byte what it was.
+ */
+export const createMqttListen =
+  (webSocket: WebSocketConstructor) =>
+  (qrcodeId: string, onEvent: (event: QrEvent) => void, timeoutMs: number): QrEventListener => {
+    let activeSocket: WebSocketLike | null = null;
+    let readySettled = false;
+    let resolveReady: () => void = () => undefined;
+    let rejectReady: (error: Error) => void = () => undefined;
+    const ready = new Promise<void>((resolve, reject) => {
+      resolveReady = resolve;
+      rejectReady = reject;
+    });
+    const done = (async (): Promise<void> => {
+      const { socket, queue } = await connectMqtt(webSocket, qrcodeId);
+      activeSocket = socket;
+      const ping = setInterval(() => {
+        if (socket.readyState === 1) socket.send(Buffer.from([0xc0, 0x00]));
+      }, 30000);
+      try {
+        await subscribeToQrEvents(socket, queue, qrcodeId, onEvent);
+        onEvent({ type: 'waiting', payload: null });
+        readySettled = true;
+        resolveReady();
+        await consumeQrEvents(queue, onEvent, timeoutMs);
+      } catch (error) {
+        if (!readySettled) rejectReady(error instanceof Error ? error : new Error(String(error)));
+        throw error;
+      } finally {
+        clearInterval(ping);
+        socket.close();
+      }
+    })();
+    void done.catch(() => undefined);
+    return { ready, done, close: () => activeSocket?.close() };
+  };
 
 const buildQimeiHeadersAndBody = (
   device: AndroidDevice,
@@ -1747,14 +1788,14 @@ class QrLoginServiceImpl implements QrLoginService {
   private nextQrAllowedAt = 0;
 
   public constructor(dependencies: QrLoginDependencies) {
-    this.http = dependencies.http ?? createAuthHttpClient();
-    this.createSessionHttp = dependencies.createSessionHttp ?? createAuthHttpClient;
+    this.http = dependencies.http ?? unavailableHttpClient();
+    this.createSessionHttp = dependencies.createSessionHttp ?? unavailableHttpClient;
     this.now = dependencies.now ?? Date.now;
     this.random = dependencies.randomBytes ?? crypto.randomBytes;
     this.capabilities = dependencies.capabilities ?? NODE_RUNTIME_CAPABILITIES;
     this.checkBudgetMs = dependencies.checkBudgetMs ?? WECHAT_DEFAULT_POLL_BUDGET_MS;
     this.deviceStore = createDeviceContextStore(
-      dependencies.deviceRepository ?? createDefaultDeviceContextRepository(),
+      dependencies.deviceRepository ?? createMemoryDeviceContextRepository(),
     );
     this.sessionResolver =
       dependencies.sessionResolver ??
@@ -1770,7 +1811,7 @@ class QrLoginServiceImpl implements QrLoginService {
       qq: createQqQrDriver({
         http: this.http,
         device: () => this.deviceStore.get(),
-        listen: dependencies.listen ?? defaultListen,
+        listen: dependencies.listen ?? unavailableListen,
       }),
       wechat: createWechatQrDriver({ http: (session) => this.sessionHttp(session) }),
       ...dependencies.drivers,
@@ -2211,15 +2252,6 @@ class QrLoginServiceImpl implements QrLoginService {
 export const createQrLoginService = (dependencies: QrLoginDependencies = {}): QrLoginService =>
   new QrLoginServiceImpl(dependencies);
 
-export const qrLoginService = createQrLoginService();
-
-/**
- * Runtime hook for embedding hosts. Folia calls this immediately after loading the npm package,
- * before the event loop can accept a request, so the singleton used by every controller sees the
- * restored encrypted sessions without exposing credentials through the HTTP surface.
- */
-export const configureAuthSessionRepository = (repository: AuthSessionRepository): void => {
-  qrLoginService.configureAuthSessionRepository(repository);
-};
-
-export default qrLoginService;
+// The process-wide singleton and the `configureAuthSessionRepository` hook live in
+// `./qrLogin.node.ts`. They need the Node defaults, and holding them here is what made this
+// module un-bundleable for a serverless runtime.

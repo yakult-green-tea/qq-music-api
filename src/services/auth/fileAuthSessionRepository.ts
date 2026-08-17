@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { logger } from '../../util/logger';
-import { type AuthSessionRepository, configureAuthSessionRepository } from './qrLogin';
+import type { AuthSessionRepository } from './qrLogin';
+import { configureAuthSessionRepository } from './qrLogin.node';
 import { AUTH_SESSION_STORE_PURPOSE, openJson, sealJson } from './sessionCrypto';
 
 // Encrypted at-rest persistence for the server-side login state. Without it a Docker or bare

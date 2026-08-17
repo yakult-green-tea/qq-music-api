@@ -1,10 +1,11 @@
 import type { Context } from 'koa';
-import qrLoginService, {
+import {
   DEFAULT_LOGIN_CHANNEL,
   normalizeLoginChannel,
   QrLoginServiceError,
   SUPPORTED_LOGIN_CHANNELS,
 } from '../services/auth/qrLogin';
+import qrLoginService from '../services/auth/qrLogin.node';
 import { getTypedQuery } from '../types/core/request';
 
 export const AUTH_COOKIE_NAME = 'qqmusic_session';

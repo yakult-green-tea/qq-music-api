@@ -9,8 +9,10 @@ jest.mock('../src/services', () => {
   };
 });
 
-jest.mock('../src/services/auth/qrLogin', () => {
-  const actual = jest.requireActual('../src/services/auth/qrLogin');
+// The singleton moved to the Node wrapper when `qrLogin.ts` became runtime-neutral; the mock
+// follows it. What is mocked and what is asserted are unchanged.
+jest.mock('../src/services/auth/qrLogin.node', () => {
+  const actual = jest.requireActual('../src/services/auth/qrLogin.node');
   return {
     ...actual,
     __esModule: true,

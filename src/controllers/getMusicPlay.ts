@@ -7,7 +7,7 @@ const { UCommon } = services;
 import { Context } from 'koa';
 import get from 'lodash.get';
 import { _guid, userInfo } from '../config';
-import qrLoginService from '../services/auth/qrLogin';
+import qrLoginService from '../services/auth/qrLogin.node';
 import { getTypedParams, getTypedQuery } from '../types/core/request';
 import { getAuthToken } from './login';
 

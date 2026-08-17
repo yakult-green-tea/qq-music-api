@@ -1,4 +1,4 @@
-import qrLoginService from '../auth/qrLogin';
+import qrLoginService from '../auth/qrLogin.node';
 
 export interface UserPlaylistParams {
   token?: string;
