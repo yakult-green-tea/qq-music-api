@@ -1,59 +1,23 @@
-import axios, {
-  type AxiosInstance,
-  type AxiosRequestConfig,
-  type AxiosResponse,
-  type Method,
-} from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import {
+  cookieHeader,
+  JSON_CONTENT_TYPE,
+  MAX_REDIRECTS,
+  mergeCookieHeaders,
+  normalizeSetCookies,
+  REDIRECT_STATUSES,
+  redirectedMethod,
+  updateCookieJar,
+} from './cookieJar';
 
-const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-const MAX_REDIRECTS = 3;
-const JSON_CONTENT_TYPE = 'application/json';
+// The jar, the redirect rules and their constants moved to `./cookieJar` unchanged, so the
+// serverless fetch client can share them without importing axios. Behaviour here is untouched.
 
 export interface AuthHttpClient {
   getCookieHeader(): string;
   request<T>(config: AxiosRequestConfig): Promise<AxiosResponse<T>>;
   post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>>;
 }
-
-const normalizeSetCookies = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
-  return typeof value === 'string' ? [value] : [];
-};
-
-const updateCookieJar = (jar: Map<string, string>, setCookies: string[]): void => {
-  for (const setCookie of setCookies) {
-    const pair = setCookie.split(';', 1)[0];
-    const separator = pair.indexOf('=');
-    if (separator <= 0) continue;
-    const name = pair.slice(0, separator).trim();
-    const value = pair.slice(separator + 1).trim();
-    if (value) jar.set(name, value);
-    else jar.delete(name);
-  }
-};
-
-const cookieHeader = (jar: Map<string, string>): string =>
-  Array.from(jar, ([name, value]) => `${name}=${value}`).join('; ');
-
-const mergeCookieHeaders = (...headers: string[]): string => {
-  const merged = new Map<string, string>();
-  for (const header of headers) {
-    for (const item of header.split(';')) {
-      const separator = item.indexOf('=');
-      if (separator <= 0) continue;
-      const name = item.slice(0, separator).trim();
-      const value = item.slice(separator + 1).trim();
-      if (name) merged.set(name, value);
-    }
-  }
-  return cookieHeader(merged);
-};
-
-const redirectedMethod = (status: number, method: string | undefined): Method => {
-  if (status === 303) return 'GET';
-  if ([301, 302].includes(status) && String(method).toUpperCase() === 'POST') return 'GET';
-  return (method ?? 'GET') as Method;
-};
 
 export const createAuthHttpClient = (
   transport: AxiosInstance = axios.create({ timeout: 25000, maxRedirects: 0 }),
