@@ -66,7 +66,10 @@ export const createFetchLegacyTransport = (
       url: string,
       method: string,
       config: AxiosRequestConfig = {},
-      target = 'y',
+      // Matches `request()` in `util/request.ts`: an omitted target is the catalog default,
+      // `c.y.qq.com`. `y_common` (despite its name) never passes a target at all, so getting this
+      // wrong sends every one of its calls to the wrong host — see the regression test below.
+      target = 'c',
     ): Promise<AxiosResponse<T>> => {
       const resolved = new URL(resolveUrl(url, target));
       for (const [name, value] of Object.entries(config.params ?? {})) {

@@ -195,6 +195,34 @@ describe('createFetchLegacyTransport', () => {
     expect(calls[1].url).toBe('https://y.qq.com/cgi-bin/y');
   });
 
+  it('should default an omitted target to c.y.qq.com, matching the Node transport', async () => {
+    // H1 §8.4: `y_common` (despite its name) never passes a 4th argument — its own headers
+    // already point at `c.y.qq.com` — and relies entirely on this default, exactly like
+    // `request()` in `util/request.ts` does. This transport used to default to `y` instead,
+    // which silently sent every `y_common` call (e.g. `/getSongListDetail/:disstid`) to the
+    // wrong host and 404'd on a real Cloudflare deployment.
+    responses.push(respond('{}'));
+
+    await createFetchLegacyTransport().request(
+      '/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg',
+      'get',
+    );
+
+    expect(calls[0].url).toBe('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg');
+    expect(calls[0].headers.referer).toBe('https://c.y.qq.com/');
+  });
+
+  it('should still honour an explicit y or u target over the default', async () => {
+    responses.push(respond('{}'));
+    responses.push(respond('{}'));
+
+    await createFetchLegacyTransport().request('/cgi-bin/x', 'get', {}, 'y');
+    await createFetchLegacyTransport().request('', 'get', {}, 'u');
+
+    expect(calls[0].url).toBe('https://y.qq.com/cgi-bin/x');
+    expect(calls[1].url).toBe('https://u.y.qq.com/cgi-bin/musicu.fcg');
+  });
+
   it('should treat the u target as an absolute musicu endpoint', async () => {
     responses.push(respond('{}'));
 
