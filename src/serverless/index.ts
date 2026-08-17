@@ -1,9 +1,13 @@
 import getAlbumInfoService from '../services/album/getAlbumInfo';
+import type { AndroidDevice } from '../services/auth/androidDevice';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
+import type { AuthHttpClient } from '../services/auth/httpClient';
 import {
   createQrLoginService,
   type QrLoginService,
   QrLoginServiceError,
+  type QrSessionRecord,
+  type QrSessionRepository,
 } from '../services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../services/httpTransport';
 import songListDetailService from '../services/songLists/songListDetail';
@@ -13,6 +17,7 @@ import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
 import { createRouter } from './router';
+import { openQrState, type SealedQrDeviceStateV1, sealQrState } from './sealedQrState';
 import { createSealedSessionResolver } from './sealedResolver';
 
 /**
@@ -78,6 +83,12 @@ interface RouteContext {
    */
   service: () => Promise<QrLoginService>;
   token: string | undefined;
+  /**
+   * The QR routes below build their own per-call `QrLoginService` (§ sealed QR state) instead of
+   * using `service()`, because each of the three calls needs different wiring — `/key` captures
+   * what it creates, `/create` and `/check` replay a session reconstructed from the `unikey`.
+   */
+  env: ServerlessEnv;
 }
 
 type RouteHandler = (context: RouteContext) => Promise<Response>;
@@ -103,34 +114,203 @@ const serviceErrorResponse = (error: unknown): Response => {
 
 const LOGIN_REQUIRED = { code: 401, message: 'Login required' };
 
+const secretsOf = (env: ServerlessEnv) => ({
+  current: env.QQ_SESSION_SECRET ?? '',
+  previous: env.QQ_SESSION_SECRET_PREVIOUS,
+});
+
+const QR_CAPABILITIES = { channels: ['wechat'] as const, sessionMode: 'sealed' as const };
+
+/**
+ * A `QrSessionRepository` that answers `load()` with exactly the record a sealed `unikey` was
+ * opened into, and never actually persists anything `/login/qr/create` or `/login/qr/check`
+ * mutate — there is nowhere to write it back to, and nothing past this one call needs it.
+ */
+const replayQrSessionRepository = (records: QrSessionRecord[]): QrSessionRepository => ({
+  kind: 'sealed-replay',
+  load: () => records,
+  save: () => undefined,
+});
+
+/**
+ * A `QrSessionRepository` that starts empty and remembers the last thing saved into it, so
+ * `/login/qr/key` can read back the record `createSession` + `createQr` just built — the state
+ * that has to be sealed into the `unikey` — without `QrLoginService` exposing it directly.
+ */
+const capturingQrSessionRepository = (): {
+  repository: QrSessionRepository;
+  latest: () => QrSessionRecord[];
+} => {
+  let saved: QrSessionRecord[] = [];
+  return {
+    repository: {
+      kind: 'sealed-capture',
+      load: () => [],
+      save: (sessions) => {
+        saved = sessions.slice();
+      },
+    },
+    latest: () => saved,
+  };
+};
+
+/** Layers the live fields a fresh isolate cannot re-derive onto the deterministic base device. */
+const withQrDeviceState = (base: AndroidDevice, saved?: SealedQrDeviceStateV1): AndroidDevice =>
+  saved
+    ? {
+        ...base,
+        ...(saved.qimei === undefined ? {} : { qimei: saved.qimei }),
+        ...(saved.qimei36 === undefined ? {} : { qimei36: saved.qimei36 }),
+        ...(saved.qimeiSavedAt === undefined ? {} : { qimeiSavedAt: saved.qimeiSavedAt }),
+        ...(saved.sessionUid === undefined ? {} : { sessionUid: saved.sessionUid }),
+        ...(saved.sessionSid === undefined ? {} : { sessionSid: saved.sessionSid }),
+        ...(saved.sessionVkey === undefined ? {} : { sessionVkey: saved.sessionVkey }),
+      }
+    : base;
+
+const qrDeviceRepositoryFor = async (
+  secrets: { current: string; previous?: string },
+  saved?: SealedQrDeviceStateV1,
+) =>
+  createMemoryDeviceContextRepository(
+    withQrDeviceState(await deriveAndroidDevice(secrets.current), saved),
+  );
+
 const routes: Record<string, RouteHandler> = {
   // ---- QR login ---------------------------------------------------------------------------
-  '/login/qr/key': async ({ url, service: getService }) => {
+  /**
+   * D1′: the whole upstream QR round trip — `createSession` (QIMEI + Android session bootstrap)
+   * and `createQr` (the WeChat web QR itself) — happens right here, inside the one invocation
+   * that gets to return a `unikey`. That is what lets everything a later `/create` or `/check`
+   * needs be sealed into that same token: there is no second invocation in which to discover the
+   * WeChat `identifier` and then hand out a *different* key carrying it.
+   */
+  '/login/qr/key': async ({ url, env }) => {
     // WeChat is the only channel this runtime declares, so an explicit `channel` is validated
     // against the capabilities rather than against the Node channel list.
     const channel = url.searchParams.get('channel') ?? 'wechat';
+    const secrets = secretsOf(env);
+    const deviceRepository = await qrDeviceRepositoryFor(secrets);
+    const qrSessions = capturingQrSessionRepository();
+    let qrSessionHttp: AuthHttpClient | undefined;
+    const service = createQrLoginService({
+      http: createFetchAuthHttpClient(),
+      createSessionHttp: () => (qrSessionHttp = createFetchAuthHttpClient()),
+      deviceRepository,
+      sessionResolver: createSealedSessionResolver({ secrets }),
+      qrSessionRepository: qrSessions.repository,
+      capabilities: QR_CAPABILITIES,
+      checkBudgetMs: CHECK_BUDGET_MS,
+    });
     try {
-      const key = await (await getService()).createSession(channel as 'qq' | 'wechat');
-      return json({ code: 200, data: { unikey: key } });
+      const key = await service.createSession(channel as 'qq' | 'wechat');
+      await service.createQr(key);
+      const record = qrSessions.latest().find((session) => session.key === key);
+      // `createQr` either finished with `identifier`/`imageUrl` on this exact record or threw —
+      // reaching here without both would be a bug in this function, not a caller error.
+      if (!record?.identifier || !record.imageUrl) {
+        throw new Error('QR session has no upstream QR after createQr()');
+      }
+      const device = deviceRepository.load() ?? (await deriveAndroidDevice(secrets.current));
+      const unikey = await sealQrState(
+        {
+          channel: record.channel,
+          createdAt: record.createdAt,
+          expiresAt: record.expiresAt,
+          identifier: record.identifier,
+          imageUrl: record.imageUrl,
+          // The WeChat web flow's cookie jar at the moment the QR was created — see the module
+          // doc on `sealedQrState.ts` for why a fresh isolate cannot rebuild this on its own.
+          cookies: qrSessionHttp?.getCookieHeader() ?? '',
+          device: {
+            qimei: device.qimei,
+            qimei36: device.qimei36,
+            qimeiSavedAt: device.qimeiSavedAt,
+            sessionUid: device.sessionUid,
+            sessionSid: device.sessionSid,
+            sessionVkey: device.sessionVkey,
+          },
+        },
+        secrets.current,
+      );
+      return json({ code: 200, data: { unikey } });
     } catch (error) {
       return serviceErrorResponse(error);
     }
   },
 
-  '/login/qr/create': async ({ url, service: getService }) => {
+  /**
+   * Never calls upstream. The sealed `unikey` already carries the `imageUrl` `/login/qr/key`
+   * fetched; `createQr()` is idempotent on an already-imaged session and simply hands it back —
+   * the same short-circuit that makes a duplicate call from the Koa controller a no-op.
+   */
+  '/login/qr/create': async ({ url, env }) => {
     const key = url.searchParams.get('key');
     if (!key) return json({ code: 400, message: 'key is required' }, 400);
+    const secrets = secretsOf(env);
+    const payload = await openQrState(key, secrets, Date.now());
+    if (!payload) {
+      return serviceErrorResponse(new QrLoginServiceError('QR session not found or expired', 404));
+    }
+    const service = createQrLoginService({
+      http: createFetchAuthHttpClient(),
+      createSessionHttp: () => createFetchAuthHttpClient({ initialCookies: payload.cookies }),
+      deviceRepository: await qrDeviceRepositoryFor(secrets, payload.device),
+      sessionResolver: createSealedSessionResolver({ secrets }),
+      qrSessionRepository: replayQrSessionRepository([
+        {
+          key,
+          channel: payload.channel,
+          state: 'waiting',
+          createdAt: payload.createdAt,
+          expiresAt: payload.expiresAt,
+          identifier: payload.identifier,
+          imageUrl: payload.imageUrl,
+        },
+      ]),
+      capabilities: QR_CAPABILITIES,
+      checkBudgetMs: CHECK_BUDGET_MS,
+    });
     try {
-      return json({ code: 200, data: { qrimg: await (await getService()).createQr(key) } });
+      return json({ code: 200, data: { qrimg: await service.createQr(key) } });
     } catch (error) {
       return serviceErrorResponse(error);
     }
   },
 
-  '/login/qr/check': async ({ url, service: getService }) => {
+  '/login/qr/check': async ({ url, env }) => {
     const key = url.searchParams.get('key');
     if (!key) return json({ code: 400, message: 'key is required' }, 400);
-    const result = await (await getService()).checkQr(key, CHECK_BUDGET_MS);
+    const secrets = secretsOf(env);
+    const payload = await openQrState(key, secrets, Date.now());
+    // A missing, tampered or expired `unikey` leaves the replay repository empty. `checkQr`'s own
+    // catch-all then answers `{code:800}` for "session not found" exactly as it does for the
+    // in-memory store it replaces — no special case needed here.
+    const service = createQrLoginService({
+      http: createFetchAuthHttpClient(),
+      createSessionHttp: () =>
+        createFetchAuthHttpClient({ initialCookies: payload?.cookies ?? '' }),
+      deviceRepository: await qrDeviceRepositoryFor(secrets, payload?.device),
+      sessionResolver: createSealedSessionResolver({ secrets }),
+      qrSessionRepository: replayQrSessionRepository(
+        payload
+          ? [
+              {
+                key,
+                channel: payload.channel,
+                state: 'waiting',
+                createdAt: payload.createdAt,
+                expiresAt: payload.expiresAt,
+                identifier: payload.identifier,
+                imageUrl: payload.imageUrl,
+              },
+            ]
+          : [],
+      ),
+      capabilities: QR_CAPABILITIES,
+      checkBudgetMs: CHECK_BUDGET_MS,
+    });
+    const result = await service.checkQr(key, CHECK_BUDGET_MS);
     // §5.3 #1: the body keeps `{ code, message, cookie }`. The Set-Cookie mirrors what the Koa
     // route does, but the client reads `body.cookie` — it has never parsed the token.
     const token =
@@ -353,11 +533,6 @@ const LOGIN_ROUTES = new Set([
 
 const match = createRouter(routes);
 
-const secretsOf = (env: ServerlessEnv) => ({
-  current: env.QQ_SESSION_SECRET ?? '',
-  previous: env.QQ_SESSION_SECRET_PREVIOUS,
-});
-
 /**
  * Built per invocation. A Worker may reuse an isolate across requests, and a service holding a
  * cookie jar and QR state from someone else's request is a cross-request leak, not a cache.
@@ -433,6 +608,7 @@ export const handleRequest = async (
       params: matched.params,
       service,
       token: authTokenOf(request, url),
+      env,
     });
   } catch (error) {
     // Same split the Koa error middleware applies: an upstream credential rejection is a 401 the

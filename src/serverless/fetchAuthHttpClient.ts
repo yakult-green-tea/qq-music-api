@@ -7,6 +7,7 @@ import {
   normalizeSetCookies,
   REDIRECT_STATUSES,
   redirectedMethod,
+  seedCookieJar,
   updateCookieJar,
 } from '../services/auth/cookieJar';
 import type { AuthHttpClient } from '../services/auth/httpClient';
@@ -56,8 +57,11 @@ const readBody = async (response: Response, responseType: string): Promise<unkno
   }
 };
 
-export const createFetchAuthHttpClient = (options: { budgetMs?: number } = {}): AuthHttpClient => {
+export const createFetchAuthHttpClient = (
+  options: { budgetMs?: number; initialCookies?: string } = {},
+): AuthHttpClient => {
   const jar = new Map<string, string>();
+  if (options.initialCookies) seedCookieJar(jar, options.initialCookies);
   const defaultBudgetMs = options.budgetMs ?? 10_000;
 
   const request = async <T>(initial: AxiosRequestConfig): Promise<AxiosResponse<T>> => {

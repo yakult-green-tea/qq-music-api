@@ -201,3 +201,180 @@ describe('handleRequest', () => {
     expect(response.headers.get('content-type')).toContain('application/json');
   });
 });
+
+// D1′: `/login/qr/key`, `/login/qr/create` and `/login/qr/check` used to share a QR session only
+// through a module-global, in-process `QrLoginService` — which `handleRequest` never has, by
+// design (see "Built per invocation" above `createServiceFor`). Every one of these three routes
+// therefore has to be able to resume the flow armed with nothing but the `unikey` the previous
+// call returned. These tests drive all three as fully separate `handleRequest` calls — the same
+// shape a real deployment has across Worker isolates — with `global.fetch` standing in for every
+// upstream QQ/WeChat endpoint the flow touches.
+describe('QR login sealed state (D1′)', () => {
+  const QIMEI_URL = 'https://api.tencentmusic.com/tme/trpc/proxy';
+  const MUSICU_URL = 'https://u.y.qq.com/cgi-bin/musicu.fcg';
+  const WECHAT_CONNECT_PATH = '/connect/qrconnect';
+  const WECHAT_IMAGE_PATH_PREFIX = '/connect/qrcode/';
+  const WECHAT_POLL_PATH = '/connect/l/qrconnect';
+  const WX_UUID = 'wx-uuid-fixture';
+  const WX_CODE = 'wx-oauth-code';
+  const WX_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+  const QIMEI_16 = 'q'.repeat(36);
+  const QIMEI_36 = 'r'.repeat(36);
+  const MUSIC_ID = '10000';
+  const MUSIC_KEY = 'musickey-value';
+  const QR_FLOW_ENV: ServerlessEnv = { QQ_SESSION_SECRET: 'qr-flow-secret' };
+
+  const wxStatusBody = (errcode: number, code = ''): string =>
+    `window.wx_errcode=${errcode};window.wx_code='${code}';`;
+
+  let wechatPollBody: string;
+  let pollCookies: string[];
+  let musicuComms: Record<string, any>[];
+  let originalFetch: typeof fetch;
+
+  beforeEach(() => {
+    wechatPollBody = wxStatusBody(408);
+    pollCookies = [];
+    musicuComms = [];
+    originalFetch = global.fetch;
+    global.fetch = jest.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      const key = `${url.origin}${url.pathname}`;
+
+      if (key === QIMEI_URL) {
+        return new Response(
+          JSON.stringify({
+            data: JSON.stringify({ code: 0, data: { q16: QIMEI_16, q36: QIMEI_36 } }),
+          }),
+        );
+      }
+
+      if (key === MUSICU_URL) {
+        const payload = JSON.parse(String(init?.body ?? '{}'));
+        musicuComms.push(payload.comm ?? {});
+        const method = payload?.req_0?.method;
+        if (method === 'GetSession') {
+          return new Response(
+            JSON.stringify({
+              code: 0,
+              req_0: { code: 0, data: { session: { uid: 1234567890, sid: 'session-sid' } } },
+            }),
+          );
+        }
+        if (method === 'Login') {
+          return new Response(
+            JSON.stringify({
+              code: 0,
+              req_0: {
+                code: 0,
+                data: {
+                  musicid: MUSIC_ID,
+                  str_musicid: MUSIC_ID,
+                  musickey: MUSIC_KEY,
+                  encryptUin: 'encrypted-uin',
+                  musickeyCreateTime: Math.floor(Date.now() / 1000),
+                  keyExpiresIn: 259200,
+                },
+              },
+            }),
+          );
+        }
+        if (method === 'GetLoginUserInfo') {
+          return new Response(
+            JSON.stringify({ code: 0, req_0: { code: 0, data: { nick: 'Nickname' } } }),
+          );
+        }
+        throw new Error(`Unexpected musicu method: ${method}`);
+      }
+
+      if (url.pathname === WECHAT_CONNECT_PATH) {
+        const headers = new Headers();
+        headers.append('set-cookie', 'wx_session=abc123; Path=/');
+        return new Response(
+          `<img class="qrcode" src="/connect/qrcode/${WX_UUID}">` +
+            `<a href="https://open.weixin.qq.com/connect/confirm?uuid=${WX_UUID}">open</a>`,
+          { headers },
+        );
+      }
+
+      if (url.pathname === `${WECHAT_IMAGE_PATH_PREFIX}${WX_UUID}`) {
+        return new Response(WX_PNG);
+      }
+
+      if (url.pathname === WECHAT_POLL_PATH) {
+        pollCookies.push(request.headers.get('cookie') ?? '');
+        return new Response(wechatPollBody);
+      }
+
+      throw new Error(`Unexpected fetch in QR flow test: ${request.url}`);
+    }) as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('should carry a WeChat QR session across three independent handleRequest invocations', async () => {
+    const keyResponse = await call('/login/qr/key?channel=wechat', {}, QR_FLOW_ENV);
+    const keyBody = await bodyOf(keyResponse);
+    expect(keyResponse.status).toBe(200);
+    const unikey = keyBody.data.unikey as string;
+    // Sealed for the QR purpose (`.q.`), not the auth purpose (`.a.`) `/login/status` uses.
+    expect(unikey.split('.')[1]).toBe('q');
+
+    // A brand-new `handleRequest` call: nothing from the call above survives in memory, per
+    // `createServiceFor`'s own "built per invocation" contract.
+    const callsBeforeCreate = (global.fetch as jest.Mock).mock.calls.length;
+    const createResponse = await call(
+      `/login/qr/create?key=${encodeURIComponent(unikey)}`,
+      {},
+      QR_FLOW_ENV,
+    );
+    const createBody = await bodyOf(createResponse);
+    expect(createResponse.status).toBe(200);
+    expect(createBody.data.qrimg).toContain('data:image/png;base64,');
+    // The image was already sealed into the `unikey` at `/key` time; `/create` must not mint a
+    // second, different WeChat QR by calling upstream again.
+    expect((global.fetch as jest.Mock).mock.calls.length).toBe(callsBeforeCreate);
+
+    wechatPollBody = wxStatusBody(405, WX_CODE);
+    const checkResponse = await call(
+      `/login/qr/check?key=${encodeURIComponent(unikey)}`,
+      {},
+      QR_FLOW_ENV,
+    );
+    const checkBody = await bodyOf(checkResponse);
+    expect(checkResponse.status).toBe(200);
+    expect(checkBody.code).toBe(803);
+    expect(checkBody.cookie).toMatch(/^qqmusic_session=qq1\.a\./);
+
+    // The WeChat cookie `/key` collected must have reached the poll `/check` issued — on a client
+    // built from scratch in a third, independent invocation.
+    expect(pollCookies.some((cookie) => cookie.includes('wx_session=abc123'))).toBe(true);
+    // The QIMEI `/key` fetched from upstream must have reached the credential-exchange call
+    // `/check` made — the device identity is not just re-derived, it is carried forward.
+    const exchangeComm = musicuComms.find((comm) => comm.QIMEI === QIMEI_16);
+    expect(exchangeComm).toBeDefined();
+  });
+
+  it('should answer 404 on /create for a unikey sealed with a different deployment secret', async () => {
+    const keyResponse = await call('/login/qr/key?channel=wechat', {}, QR_FLOW_ENV);
+    const unikey = (await bodyOf(keyResponse)).data.unikey as string;
+
+    const response = await call(
+      `/login/qr/create?key=${encodeURIComponent(unikey)}`,
+      {},
+      { QQ_SESSION_SECRET: 'a-different-deployment-secret' },
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it('should answer {code:800} on /check for a key that was never issued, not throw', async () => {
+    const response = await call('/login/qr/check?key=not-a-real-unikey', {}, QR_FLOW_ENV);
+
+    expect(response.status).toBe(200);
+    expect(await bodyOf(response)).toEqual({ code: 800, message: 'QR code expired' });
+  });
+});

@@ -36,6 +36,22 @@ export const updateCookieJar = (jar: Map<string, string>, setCookies: string[]):
 export const cookieHeader = (jar: Map<string, string>): string =>
   Array.from(jar, ([name, value]) => `${name}=${value}`).join('; ');
 
+/**
+ * Seeds a jar from `cookieHeader`'s own output — a flat `name=value; name2=value2` string, unlike
+ * `updateCookieJar`'s `Set-Cookie` list. This is how a serverless invocation restores the jar a
+ * previous, already-finished invocation captured: there is no live response to read `Set-Cookie`
+ * headers from, only the header string that was sealed alongside the rest of the session state.
+ */
+export const seedCookieJar = (jar: Map<string, string>, header: string): void => {
+  for (const entry of header.split(';')) {
+    const separator = entry.indexOf('=');
+    if (separator <= 0) continue;
+    const name = entry.slice(0, separator).trim();
+    const value = entry.slice(separator + 1).trim();
+    if (name && value) jar.set(name, value);
+  }
+};
+
 export const mergeCookieHeaders = (...headers: string[]): string => {
   const merged = new Map<string, string>();
   for (const header of headers) {
