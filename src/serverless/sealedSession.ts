@@ -17,6 +17,8 @@
 export const SEALED_AUTH_PURPOSE = 'qq-music-api/v1/sealed-auth';
 export const SEALED_QR_PURPOSE = 'qq-music-api/v1/sealed-qr';
 export const DERIVED_DEVICE_PURPOSE = 'qq-music-api/v1/derived-device';
+/** Its own namespace, not a sub-key of another purpose: the key id is public, the others are not. */
+const KEY_ID_PURPOSE = 'qq-music-api/v1/sealed-kid';
 
 const TOKEN_PREFIX = 'qq1';
 const KEY_BITS = 256;
@@ -112,7 +114,7 @@ const deriveAesKey = async (secret: string, purpose: string): Promise<CryptoKey>
  * it can still open from one it never could.
  */
 export const deriveKeyId = async (secret: string): Promise<string> =>
-  toBase64Url(await deriveBits(secret, `${DERIVED_DEVICE_PURPOSE}/kid`, KID_BYTES));
+  toBase64Url(await deriveBits(secret, KEY_ID_PURPOSE, KID_BYTES));
 
 const purposeTagOf = (purpose: string): string => {
   const tag = PURPOSE_TAGS[purpose];
