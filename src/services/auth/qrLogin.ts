@@ -236,12 +236,37 @@ export interface AuthSessionRepository {
   save(sessions: readonly AuthSession[]): void;
 }
 
+/**
+ * How a login token is turned into an `AuthSession` and back. `stored` keeps the credential on the
+ * server and hands out an opaque lookup key — the permanent default for Node, Electron and Docker.
+ * `sealed` carries the credential inside the token itself, for runtimes that have nowhere to keep
+ * process state.
+ *
+ * 🔴 The two modes differ in one externally visible way: `revoke()` deletes precisely under
+ * `stored`, but a sealed token is only invalidated by the client discarding it, so `revoke()` is a
+ * no-op there and the session remains usable until `expiresAt`. This is why `mode` is on the port.
+ *
+ * `cleanup` and `useRepository` are the two lifecycle hooks the stored backend needs and the sealed
+ * backend has no use for: sealed expiry lives inside the token and is checked on `resolve`, and
+ * there is no repository to swap. They are optional so a resolver can omit both.
+ */
+export interface SessionResolver {
+  readonly mode: 'stored' | 'sealed';
+  issue(session: Omit<AuthSession, 'token'>): Promise<string>;
+  resolve(token: string | undefined): Promise<AuthSession | null>;
+  revoke(token: string): Promise<void>;
+  cleanup?(): void;
+  useRepository?(repository: AuthSessionRepository): void;
+}
+
 interface QrLoginDependencies {
   http?: AuthHttpClient;
   /** Builds the per-QR-session client used by the web login channels. */
   createSessionHttp?: () => AuthHttpClient;
   deviceRepository?: DeviceContextRepository;
   authSessionRepository?: AuthSessionRepository;
+  /** Replaces the whole token strategy. Defaults to the stored resolver over `authSessionRepository`. */
+  sessionResolver?: SessionResolver;
   qrSessionRepository?: QrSessionRepository;
   listen?: (
     qrcodeId: string,
@@ -448,6 +473,42 @@ const createAuthSessionStore = (
         if (session.expiresAt > now()) sessions.set(session.token, session);
       }
       if (currentSessions.length > 0) persist();
+    },
+  };
+};
+
+/**
+ * The `stored` backend: a thin adapter over the existing `AuthSessionStore`, which is left exactly
+ * as it was. Nothing here re-implements lookup, persistence, expiry or repository swapping — the
+ * store still owns all of it, so the six PR #2 behaviour guarantees continue to be enforced by the
+ * same code that has always enforced them.
+ *
+ * The only logic that moves in is minting the token, which `finalizeLogin` used to do inline: the
+ * port hands `issue()` a session without one precisely so a sealed backend can derive the token
+ * from the credential instead of generating an unrelated identifier.
+ */
+export const createStoredSessionResolver = (options: {
+  repository: AuthSessionRepository;
+  now: () => number;
+  randomBytes: (size: number) => Buffer;
+}): SessionResolver => {
+  const store = createAuthSessionStore(options.repository, options.now);
+  return {
+    mode: 'stored',
+    issue: async (session) => {
+      const token = options.randomBytes(32).toString('hex');
+      store.set({ ...session, token });
+      return token;
+    },
+    resolve: async (token) => (token ? store.get(token) : null),
+    revoke: async (token) => {
+      store.delete(token);
+    },
+    cleanup: () => {
+      store.cleanup();
+    },
+    useRepository: (repository) => {
+      store.useRepository(repository);
     },
   };
 };
@@ -1679,7 +1740,7 @@ class QrLoginServiceImpl implements QrLoginService {
   private readonly drivers: Partial<Record<QrLoginChannel, QrChannelDriver>>;
   private readonly qrSessionStore: QrSessionStore;
   private readonly qrRuntimes = new Map<string, QrSessionRuntime>();
-  private readonly authSessionStore: AuthSessionStore;
+  private readonly sessionResolver: SessionResolver;
   private readonly deviceStore: DeviceContextStore;
   private creatingSession = false;
   private failureCount = 0;
@@ -1695,10 +1756,13 @@ class QrLoginServiceImpl implements QrLoginService {
     this.deviceStore = createDeviceContextStore(
       dependencies.deviceRepository ?? createDefaultDeviceContextRepository(),
     );
-    this.authSessionStore = createAuthSessionStore(
-      dependencies.authSessionRepository ?? createMemoryAuthSessionRepository(),
-      this.now,
-    );
+    this.sessionResolver =
+      dependencies.sessionResolver ??
+      createStoredSessionResolver({
+        repository: dependencies.authSessionRepository ?? createMemoryAuthSessionRepository(),
+        now: this.now,
+        randomBytes: this.random,
+      });
     this.qrSessionStore = createQrSessionStore(
       dependencies.qrSessionRepository ?? createMemoryQrSessionRepository(),
     );
@@ -1747,7 +1811,7 @@ class QrLoginServiceImpl implements QrLoginService {
       if (!terminalState(session.state) && session.imageUrl !== undefined) this.backoff();
       this.dropSession(session);
     }
-    this.authSessionStore.cleanup();
+    this.sessionResolver.cleanup?.();
   }
 
   private backoff(): number {
@@ -1782,9 +1846,9 @@ class QrLoginServiceImpl implements QrLoginService {
     return session;
   }
 
-  private authFor(token?: string): AuthSession | null {
+  private async authFor(token?: string): Promise<AuthSession | null> {
     this.cleanup();
-    return token ? this.authSessionStore.get(token) : null;
+    return this.sessionResolver.resolve(token);
   }
 
   /**
@@ -1823,10 +1887,7 @@ class QrLoginServiceImpl implements QrLoginService {
   }
 
   /** QQ App channel: the MQTT payload carries an exchange token, never the final credential. */
-  private async exchangeQqLogin(
-    session: QrSessionRecord,
-    payload: unknown,
-  ): Promise<QqCredential> {
+  private async exchangeQqLogin(session: QrSessionRecord, payload: unknown): Promise<QqCredential> {
     const cookies = dictionaryOf(dictionaryOf(payload).cookies);
     const musicid = stringOf(dictionaryOf(cookies.qqmusic_uin).value);
     const mqttToken = stringOf(dictionaryOf(cookies.qqmusic_key).value);
@@ -1874,9 +1935,7 @@ class QrLoginServiceImpl implements QrLoginService {
         : await this.exchangeQqLogin(session, payload);
     if (session.channel === 'wechat')
       credential = await validateWechatCredential(this.http, this.deviceStore.get(), credential);
-    const token = this.random(32).toString('hex');
-    this.authSessionStore.set({
-      token,
+    const token = await this.sessionResolver.issue({
       credential,
       device: this.deviceStore.get(),
       expiresAt: authSessionExpiryAt(credential, this.now()),
@@ -2078,7 +2137,7 @@ class QrLoginServiceImpl implements QrLoginService {
    * 登录的路由仍然回 401。
    */
   public async getLoginStatus(token?: string): Promise<Dictionary | null> {
-    const auth = this.authFor(token);
+    const auth = await this.authFor(token);
     if (!auth) return null;
     try {
       return await withCredentialRejectionMapped(() => getLoginProfile(this.http, auth));
@@ -2089,12 +2148,12 @@ class QrLoginServiceImpl implements QrLoginService {
   }
 
   public async getUserDetail(token?: string): Promise<Dictionary | null> {
-    const auth = this.authFor(token);
+    const auth = await this.authFor(token);
     return auth ? withCredentialRejectionMapped(() => getLoginProfile(this.http, auth)) : null;
   }
 
   public async getUserPlaylists(token?: string, uin?: string): Promise<Dictionary | null> {
-    const auth = this.authFor(token);
+    const auth = await this.authFor(token);
     return auth ? withCredentialRejectionMapped(() => getPlaylists(this.http, auth, uin)) : null;
   }
 
@@ -2103,7 +2162,7 @@ class QrLoginServiceImpl implements QrLoginService {
     offset?: number,
     limit?: number,
   ): Promise<Dictionary | null> {
-    const auth = this.authFor(token);
+    const auth = await this.authFor(token);
     return auth
       ? withCredentialRejectionMapped(() => getFavoriteAlbums(this.http, auth, offset, limit))
       : null;
@@ -2114,7 +2173,7 @@ class QrLoginServiceImpl implements QrLoginService {
     offset?: number,
     limit?: number,
   ): Promise<Dictionary | null> {
-    const auth = this.authFor(token);
+    const auth = await this.authFor(token);
     return auth
       ? withCredentialRejectionMapped(() => getLikedSongs(this.http, auth, offset, limit))
       : null;
@@ -2126,7 +2185,7 @@ class QrLoginServiceImpl implements QrLoginService {
     quality?: string | number,
     mediaId?: string,
   ): Promise<Dictionary | null> {
-    const auth = this.authFor(token);
+    const auth = await this.authFor(token);
     return auth
       ? withCredentialRejectionMapped(() =>
           getAuthenticatedPlayUrls(this.http, auth, songmid, quality, mediaId),
@@ -2134,12 +2193,17 @@ class QrLoginServiceImpl implements QrLoginService {
       : null;
   }
 
+  /**
+   * Electron's lifeline, unchanged in shape. A sealed resolver has no repository to swap, so the
+   * call is a no-op there rather than an error: the hook exists for hosts that keep credentials on
+   * the server, and a runtime that does not is not misconfigured for ignoring it.
+   */
   public configureAuthSessionRepository(repository: AuthSessionRepository): void {
-    this.authSessionStore.useRepository(repository);
+    this.sessionResolver.useRepository?.(repository);
   }
 
   public async logout(token?: string): Promise<void> {
-    if (token) this.authSessionStore.delete(token);
+    if (token) await this.sessionResolver.revoke(token);
     for (const session of this.qrSessionStore.values()) this.dropSession(session);
   }
 }
