@@ -51,7 +51,7 @@ describe('md5', () => {
 
 describe('rsaesPkcs1Encrypt', () => {
   it('should produce a ciphertext node:crypto can decrypt, round-tripped through a fresh keypair', () => {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 1024 });
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
     const jwk = publicKey.export({ format: 'jwk' }) as { n: string; e: string };
     const modulusHex = b64UrlToHex(jwk.n);
     const exponent = BigInt(`0x${b64UrlToHex(jwk.e)}`);
@@ -61,15 +61,22 @@ describe('rsaesPkcs1Encrypt', () => {
     const ciphertext = rsaesPkcs1Encrypt(message, modulusHex, exponent);
 
     expect(ciphertext.length).toBe(modulusHex.length / 2);
-    const decrypted = crypto.privateDecrypt(
-      { key: privateKey, padding: crypto.constants.RSA_PKCS1_PADDING },
+    // Patched Node 20 builds reject RSA_PKCS1_PADDING private decryption after CVE-2023-46809.
+    // Raw RSA lets the test verify the same encoded block without asking OpenSSL to unpad it.
+    const encoded = crypto.privateDecrypt(
+      { key: privateKey, padding: crypto.constants.RSA_NO_PADDING },
       ciphertext,
     );
-    expect(decrypted.equals(message)).toBe(true);
+    expect(encoded[0]).toBe(0);
+    expect(encoded[1]).toBe(2);
+    const separator = encoded.indexOf(0, 2);
+    expect(separator).toBeGreaterThanOrEqual(10);
+    expect(encoded.subarray(2, separator).every((byte) => byte !== 0)).toBe(true);
+    expect(encoded.subarray(separator + 1).equals(message)).toBe(true);
   });
 
   it('should randomise padding so the same message never encrypts to the same ciphertext', () => {
-    const { publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 1024 });
+    const { publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
     const jwk = publicKey.export({ format: 'jwk' }) as { n: string; e: string };
     const modulusHex = b64UrlToHex(jwk.n);
     const exponent = BigInt(`0x${b64UrlToHex(jwk.e)}`);
