@@ -170,6 +170,35 @@ describe('QQ login controllers', () => {
     expect(mockQrLoginService.getUserDetail).toHaveBeenCalledWith('query-token');
   });
 
+  it('should prefer the X-QQ-Session header over the query and the cookie', async () => {
+    // Priority is header > query > cookie. Sending all three at once is the only way to pin the
+    // order rather than merely proving each source works on its own.
+    mockQrLoginService.getUserDetail.mockResolvedValue({ musicid: 123 });
+
+    const response = await request(server)
+      .get('/user/detail')
+      .set('X-QQ-Session', 'header-token')
+      .set('Cookie', 'qqmusic_session=cookie-token')
+      .query({ cookie: 'qqmusic_session=query-token' });
+
+    expect(response.status).toBe(200);
+    expect(mockQrLoginService.getUserDetail).toHaveBeenCalledWith('header-token');
+  });
+
+  it('should fall back to the existing sources when the header is absent or blank', async () => {
+    // The addition must not change what a caller that does not send the header gets, including
+    // the degenerate case of a header that is present but empty.
+    mockQrLoginService.getUserDetail.mockResolvedValue({ musicid: 123 });
+
+    const blank = await request(server)
+      .get('/user/detail')
+      .set('X-QQ-Session', '   ')
+      .query({ cookie: 'qqmusic_session=query-token' });
+
+    expect(blank.status).toBe(200);
+    expect(mockQrLoginService.getUserDetail).toHaveBeenLastCalledWith('query-token');
+  });
+
   it('should redact QR keys and opaque cookies from all request logs', async () => {
     const loggerSpy = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
     mockQrLoginService.checkQr.mockReturnValue({
