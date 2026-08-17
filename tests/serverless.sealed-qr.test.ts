@@ -15,7 +15,6 @@ const payloadFixture = (overrides: Partial<Omit<SealedQrPayloadV1, 'v'>> = {}) =
   createdAt: Date.now(),
   expiresAt: Date.now() + 60_000,
   identifier: 'wx-uuid-fixture',
-  imageUrl: 'data:image/png;base64,AAAA',
   cookies: 'a=1; b=2',
   device: {
     qimei: 'q16',
@@ -105,6 +104,16 @@ describe('sealQrState / openQrState', () => {
       sessionUid: 'uid',
       sessionSid: 'sid',
     });
+  });
+
+  it('should never carry the QR image: the token must stay short', async () => {
+    // H1 §8.4: the first version of this payload sealed `imageUrl` (tens of KB of base64 PNG) and
+    // produced an 83671-character `unikey` — long enough that PowerShell's `EscapeDataString`
+    // refused it before `/login/qr/create` could even be sent. The image is refetched from
+    // `identifier` instead; see the module doc above and `fetchWechatQrImage`.
+    const token = await sealQrState(payloadFixture(), SECRET);
+
+    expect(token.length).toBeLessThan(2000);
   });
 
   it('should reject a payload missing the fields the QR flow needs to resume', async () => {

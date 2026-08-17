@@ -30,6 +30,7 @@ import {
 import {
   createWechatQr,
   eventForWechatStatus,
+  fetchWechatQrImage,
   MAX_CONSECUTIVE_POLL_ERRORS,
   pollWechatQr,
   WECHAT_APP_ID,
@@ -1329,6 +1330,17 @@ const createWechatQrDriver = (options: {
 }): QrChannelDriver => ({
   mode: 'pull',
   createQr: async (session, signal) => {
+    // A session reconstructed from a sealed `unikey` already carries the `uuid` a previous
+    // invocation obtained — sealing the image itself would have meant sealing tens of KB of
+    // base64 PNG into every `unikey`. Reusing it here, rather than calling `createWechatQr`
+    // again, is what keeps this call from minting a second, different WeChat QR under the same
+    // `unikey`; only the image is re-fetched.
+    if (session.identifier) {
+      return {
+        identifier: session.identifier,
+        imageUrl: await fetchWechatQrImage(options.http(session), session.identifier, { signal }),
+      };
+    }
     const qr = await createWechatQr(options.http(session), { signal });
     return { identifier: qr.identifier, imageUrl: qr.imageUrl };
   },

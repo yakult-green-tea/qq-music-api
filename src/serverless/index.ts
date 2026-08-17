@@ -206,9 +206,9 @@ const routes: Record<string, RouteHandler> = {
       const key = await service.createSession(channel as 'qq' | 'wechat');
       await service.createQr(key);
       const record = qrSessions.latest().find((session) => session.key === key);
-      // `createQr` either finished with `identifier`/`imageUrl` on this exact record or threw —
-      // reaching here without both would be a bug in this function, not a caller error.
-      if (!record?.identifier || !record.imageUrl) {
+      // `createQr` either finished with an `identifier` on this exact record or threw —
+      // reaching here without one would be a bug in this function, not a caller error.
+      if (!record?.identifier) {
         throw new Error('QR session has no upstream QR after createQr()');
       }
       const device = deviceRepository.load() ?? (await deriveAndroidDevice(secrets.current));
@@ -218,9 +218,9 @@ const routes: Record<string, RouteHandler> = {
           createdAt: record.createdAt,
           expiresAt: record.expiresAt,
           identifier: record.identifier,
-          imageUrl: record.imageUrl,
           // The WeChat web flow's cookie jar at the moment the QR was created — see the module
           // doc on `sealedQrState.ts` for why a fresh isolate cannot rebuild this on its own.
+          // 🔴 The image itself is deliberately not sealed here; see the same module doc.
           cookies: qrSessionHttp?.getCookieHeader() ?? '',
           device: {
             qimei: device.qimei,
@@ -240,9 +240,12 @@ const routes: Record<string, RouteHandler> = {
   },
 
   /**
-   * Never calls upstream. The sealed `unikey` already carries the `imageUrl` `/login/qr/key`
-   * fetched; `createQr()` is idempotent on an already-imaged session and simply hands it back —
-   * the same short-circuit that makes a duplicate call from the Koa controller a no-op.
+   * Re-fetches the QR image from the `identifier` sealed into the `unikey` — never a fresh
+   * `qrconnect` call, which would mint a second, different WeChat QR under the same `unikey`. The
+   * reconstructed session's `state` is seeded back to `'created'` (not `'waiting'`) specifically so
+   * `QrLoginService.createQr()`'s own guard lets this call through: see its `session.state !==
+   * 'created'` check. `createWechatQrDriver` then sees `session.identifier` already set and fetches
+   * only the image — the same branch documented on that driver.
    */
   '/login/qr/create': async ({ url, env }) => {
     const key = url.searchParams.get('key');
@@ -261,11 +264,10 @@ const routes: Record<string, RouteHandler> = {
         {
           key,
           channel: payload.channel,
-          state: 'waiting',
+          state: 'created',
           createdAt: payload.createdAt,
           expiresAt: payload.expiresAt,
           identifier: payload.identifier,
-          imageUrl: payload.imageUrl,
         },
       ]),
       capabilities: QR_CAPABILITIES,
@@ -302,7 +304,6 @@ const routes: Record<string, RouteHandler> = {
                 createdAt: payload.createdAt,
                 expiresAt: payload.expiresAt,
                 identifier: payload.identifier,
-                imageUrl: payload.imageUrl,
               },
             ]
           : [],

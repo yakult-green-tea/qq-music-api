@@ -7,13 +7,18 @@ import { openToken, SEALED_QR_PURPOSE, SealedSessionError, sealToken } from './s
  * that will answer `/login/qr/create` or `/login/qr/check`. Nothing about the QR flow may live in
  * memory between those calls; it has to travel inside the `unikey` the client already holds.
  *
- * What travels: the upstream QR handle (`identifier`/`imageUrl`, both discovered once at `/key` time
- * and never refetched — refetching would mint a second, different WeChat QR under the same `unikey`),
+ * What travels: the upstream QR `identifier` (WeChat's `uuid`), discovered once at `/key` time and
+ * never reissued — reconnecting would mint a second, different WeChat QR under the same `unikey` —
  * the per-session cookie jar the WeChat web flow deposited getting there, and the device fields
- * `ensureQimei`/`refreshAndroidSession` obtained from a live upstream call. The last two are not
+ * `ensureQimei`/`refreshAndroidSession` obtained from a live upstream call. None of the three is
  * reconstructible: `deriveAndroidDevice` only recreates the *static* device fields deterministically,
  * and `qimei`/`qimei36`/`sessionUid`/`sessionSid` are live values a fresh isolate has no way to ask
  * for again without repeating the bootstrap `/login/qr/key` already paid for.
+ *
+ * 🔴 The QR *image* is deliberately not one of these fields. It is tens of KB of base64 PNG, and
+ * `unikey` travels as a URL query parameter — sealing the image bloated it past what some HTTP
+ * clients (and PowerShell's `EscapeDataString`) will accept. `identifier` is enough to re-fetch it:
+ * see `fetchWechatQrImage` and the `session.identifier` branch in `createWechatQrDriver`.
  */
 
 /** The live device fields a fresh isolate cannot re-derive; see `deriveAndroidDevice`. */
@@ -32,7 +37,6 @@ export interface SealedQrPayloadV1 {
   createdAt: number;
   expiresAt: number;
   identifier: string;
-  imageUrl: string;
   /** The WeChat-session HTTP client's cookie jar at the moment `/login/qr/key` finished. */
   cookies: string;
   device: SealedQrDeviceStateV1;
@@ -62,8 +66,6 @@ const isSealedQrPayload = (value: unknown): value is SealedQrPayloadV1 => {
     Number.isFinite(candidate.expiresAt) &&
     typeof candidate.identifier === 'string' &&
     candidate.identifier.length > 0 &&
-    typeof candidate.imageUrl === 'string' &&
-    candidate.imageUrl.length > 0 &&
     typeof candidate.cookies === 'string' &&
     isDeviceState(candidate.device)
   );

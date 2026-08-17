@@ -230,17 +230,20 @@ describe('QR login sealed state (D1′)', () => {
   let wechatPollBody: string;
   let pollCookies: string[];
   let musicuComms: Record<string, any>[];
+  let fetchedPaths: string[];
   let originalFetch: typeof fetch;
 
   beforeEach(() => {
     wechatPollBody = wxStatusBody(408);
     pollCookies = [];
     musicuComms = [];
+    fetchedPaths = [];
     originalFetch = global.fetch;
     global.fetch = jest.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const request = new Request(input, init);
       const url = new URL(request.url);
       const key = `${url.origin}${url.pathname}`;
+      fetchedPaths.push(url.pathname);
 
       if (key === QIMEI_URL) {
         return new Response(
@@ -322,10 +325,14 @@ describe('QR login sealed state (D1′)', () => {
     const unikey = keyBody.data.unikey as string;
     // Sealed for the QR purpose (`.q.`), not the auth purpose (`.a.`) `/login/status` uses.
     expect(unikey.split('.')[1]).toBe('q');
+    // H1 §8.4: the first version of this token sealed the QR image and hit 83671 characters —
+    // long enough that PowerShell's `EscapeDataString` refused to build the `/create` URL at all.
+    // The image is refetched from the sealed `identifier` instead, so the token stays short.
+    expect(unikey.length).toBeLessThan(2000);
 
     // A brand-new `handleRequest` call: nothing from the call above survives in memory, per
     // `createServiceFor`'s own "built per invocation" contract.
-    const callsBeforeCreate = (global.fetch as jest.Mock).mock.calls.length;
+    fetchedPaths.length = 0;
     const createResponse = await call(
       `/login/qr/create?key=${encodeURIComponent(unikey)}`,
       {},
@@ -334,9 +341,10 @@ describe('QR login sealed state (D1′)', () => {
     const createBody = await bodyOf(createResponse);
     expect(createResponse.status).toBe(200);
     expect(createBody.data.qrimg).toContain('data:image/png;base64,');
-    // The image was already sealed into the `unikey` at `/key` time; `/create` must not mint a
-    // second, different WeChat QR by calling upstream again.
-    expect((global.fetch as jest.Mock).mock.calls.length).toBe(callsBeforeCreate);
+    // `/create` must re-fetch the image from the *same* `uuid` `/key` obtained — one call to the
+    // image endpoint for that exact uuid — and must never call `qrconnect` again, which would
+    // mint a second, different WeChat QR under the same `unikey`.
+    expect(fetchedPaths).toEqual([`${WECHAT_IMAGE_PATH_PREFIX}${WX_UUID}`]);
 
     wechatPollBody = wxStatusBody(405, WX_CODE);
     const checkResponse = await call(

@@ -115,6 +115,35 @@ const budgetSignal = (budgetMs?: number, signal?: AbortSignal): AbortSignal | un
 };
 
 /**
+ * Fetches the QR image for a `uuid` already obtained from `createWechatQr`, as an inline data URL.
+ * Split out so a caller that already knows the `uuid` — a serverless invocation reconstructing a
+ * session from a sealed `unikey`, which never carries the image itself — can re-fetch just the
+ * image without minting a second, different WeChat QR through a new `qrconnect` call.
+ */
+export const fetchWechatQrImage = async (
+  http: AuthHttpClient,
+  uuid: string,
+  options: WechatRequestOptions = {},
+): Promise<string> => {
+  const image = await http.request<unknown>({
+    url: `${IMAGE_URL_PREFIX}${uuid}`,
+    method: 'GET',
+    headers: { Referer: CONNECT_URL },
+    responseType: 'arraybuffer',
+    signal: options.signal,
+  });
+  const bytes = bufferOf(image.data);
+  const mimetype = imageMimetype(bytes);
+  if (!mimetype) throw new WechatQrError('WeChat QR response is not a PNG/JPEG image');
+  logger.info('qq-auth.wechat-qr-image-fetched', {
+    qrIdentifierLength: uuid.length,
+    imageBytes: bytes.length,
+    mimetype,
+  });
+  return `data:${mimetype};base64,${bytes.toString('base64')}`;
+};
+
+/**
  * Requests a WeChat QR and returns its `uuid` plus an inline data URL, so the transport keeps
  * handing the client a self-contained image exactly like the App channel does.
  */
@@ -139,23 +168,7 @@ export const createWechatQr = async (
   const uuid = UUID_PATTERN.exec(textOf(page.data))?.[1] ?? '';
   if (!uuid) throw new WechatQrError('WeChat qrconnect response missing uuid');
 
-  const image = await http.request<unknown>({
-    url: `${IMAGE_URL_PREFIX}${uuid}`,
-    method: 'GET',
-    headers: { Referer: CONNECT_URL },
-    responseType: 'arraybuffer',
-    signal: options.signal,
-  });
-  const bytes = bufferOf(image.data);
-  const mimetype = imageMimetype(bytes);
-  if (!mimetype) throw new WechatQrError('WeChat QR response is not a PNG/JPEG image');
-
-  logger.info('qq-auth.wechat-qr-created', {
-    qrIdentifierLength: uuid.length,
-    imageBytes: bytes.length,
-    mimetype,
-  });
-  return { identifier: uuid, imageUrl: `data:${mimetype};base64,${bytes.toString('base64')}` };
+  return { identifier: uuid, imageUrl: await fetchWechatQrImage(http, uuid, options) };
 };
 
 /**
