@@ -1,0 +1,12 @@
+{
+  "//": "ESM build, consumed only through the `./serverless` subpath. The CJS build in dist/ is untouched and remains what `require()` of the package root resolves to.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "es2022",
+    "moduleResolution": "node",
+    "rootDir": ".",
+    "declaration": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "tests"]
+}

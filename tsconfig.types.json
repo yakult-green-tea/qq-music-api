@@ -1,0 +1,11 @@
+{
+  "//": "Declarations for the `./serverless` subpath only. A whole-src declaration emit fails on pre-existing unexported parameter interfaces in `src/services/index.ts`, which are upstream defects this workstream does not touch; the serverless entry does not import that barrel, so its own graph emits cleanly. The root entry's types are pinned by hand in `types/root.d.ts`.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "."
+  },
+  "include": ["src/serverless/**/*"],
+  "exclude": ["node_modules", "tests"]
+}

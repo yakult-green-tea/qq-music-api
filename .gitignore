@@ -4,6 +4,8 @@ node_modules
 
 # npm run build:js 的 JavaScript 产物（Docker / Electron 运行时用，不提交）
 dist/
+# 同一次构建的 ESM 产物，只经由 ./serverless 子路径消费
+dist-esm/
 
 .idea/
 # package-lock.json
