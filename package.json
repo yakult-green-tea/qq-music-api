@@ -16,6 +16,12 @@
       "require": "./dist/src/serverless/index.js",
       "default": "./dist-esm/src/serverless/index.js"
     },
+    "./mqtt": {
+      "types": "./dist/src/serverless/mqtt.d.ts",
+      "import": "./dist-esm/src/serverless/mqtt.js",
+      "require": "./dist/src/serverless/mqtt.js",
+      "default": "./dist-esm/src/serverless/mqtt.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

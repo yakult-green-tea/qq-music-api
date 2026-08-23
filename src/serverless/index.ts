@@ -2,12 +2,18 @@ import getAlbumInfoService from '../services/album/getAlbumInfo';
 import type { AndroidDevice } from '../services/auth/androidDevice';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import type { AuthHttpClient } from '../services/auth/httpClient';
+import { type DeviceContextRepository } from '../services/auth/deviceContext';
 import {
   createQrLoginService,
+  createRelayQqQrDriver,
+  type QqQrRelay,
+  type QrChannelDriver,
+  type QrLoginChannel,
   type QrLoginService,
   QrLoginServiceError,
   type QrSessionRecord,
   type QrSessionRepository,
+  type RuntimeCapabilities,
 } from '../services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../services/httpTransport';
 import songListDetailService from '../services/songLists/songListDetail';
@@ -29,17 +35,39 @@ import { createSealedSessionResolver } from './sealedResolver';
  * and the config barrel both arrived indirectly (M0 0.2).
  *
  * What this runtime can serve differs from Node, and says so rather than failing later:
- * - `wechat` only. The QQ App channel is MQTT over WebSocket with a long-lived connection, which
- *   is not something a request-scoped invocation can hold. `/login/channels` advertises this.
+ * - `wechat` always; `qq` only when the host injects a `QqQrRelay`. The QQ App channel is MQTT over
+ *   WebSocket with a connection that must outlive one invocation — the CONNECT asks for a clean
+ *   session and the subscription is unicast, so nothing published while disconnected is replayed.
+ *   A host that can hold that connection (a Cloudflare Durable Object) passes a relay in; one that
+ *   cannot (Vercel Functions) passes nothing and the channel is simply not advertised.
+ *   🔴 A missing relay is a capability statement, not an error: `/login/channels` answers `wechat`.
  * - `sealed` sessions only. There is no process to keep a credential in.
  * - Without `QQ_SESSION_SECRET` the login routes answer 501 and the catalog routes still work.
  *   🔴 A secret is never generated: a process-local one would put back exactly the "restart loses
  *   every login" bug this whole workstream exists to remove.
  */
 
+/**
+ * Re-exported so a host can implement the relay without importing the package root, which starts a
+ * Koa server as an import side effect and is therefore unusable from a Worker.
+ */
+export type { QqQrRelay, QrEvent } from '../services/auth/qrLogin';
+
 export interface ServerlessEnv {
   QQ_SESSION_SECRET?: string;
   QQ_SESSION_SECRET_PREVIOUS?: string;
+}
+
+/**
+ * Host capabilities that are not environment strings.
+ *
+ * Kept out of `ServerlessEnv` on purpose: `env` is a plain string map every platform can produce,
+ * and a platform binding is not a string. Passing this separately is also what keeps the two-argument
+ * `handleRequest(request, env)` signature — and therefore the Vercel entry — unchanged.
+ */
+export interface ServerlessOptions {
+  /** Supplied only by a host that can hold an MQTT connection across invocations. */
+  qqRelay?: QqQrRelay;
 }
 
 const AUTH_COOKIE_NAME = 'qqmusic_session';
@@ -89,6 +117,7 @@ interface RouteContext {
    * what it creates, `/create` and `/check` replay a session reconstructed from the `unikey`.
    */
   env: ServerlessEnv;
+  options: ServerlessOptions;
 }
 
 type RouteHandler = (context: RouteContext) => Promise<Response>;
@@ -119,7 +148,35 @@ const secretsOf = (env: ServerlessEnv) => ({
   previous: env.QQ_SESSION_SECRET_PREVIOUS,
 });
 
-const QR_CAPABILITIES = { channels: ['wechat'] as const, sessionMode: 'sealed' as const };
+/**
+ * 🔴 The single place this runtime decides what it can serve. Three call sites used to hard-code
+ * `['wechat']` independently; deriving all of them from the injected relay is what makes "no relay
+ * means no `qq`" impossible to get half-right.
+ */
+const capabilitiesFor = (options: ServerlessOptions): RuntimeCapabilities => ({
+  channels: options.qqRelay ? (['qq', 'wechat'] as const) : (['wechat'] as const),
+  sessionMode: 'sealed',
+});
+
+/** The `qq` driver exists only when a relay does; `wechat` keeps the service's own default. */
+const driversFor = (
+  options: ServerlessOptions,
+  http: AuthHttpClient,
+  deviceRepository: DeviceContextRepository,
+  base: AndroidDevice,
+): Partial<Record<QrLoginChannel, QrChannelDriver>> | undefined =>
+  options.qqRelay
+    ? {
+        qq: createRelayQqQrDriver({
+          http,
+          // Read through the repository rather than captured: `createSession` bootstraps QIMEI and
+          // the Android session and persists them, so the device the QR is created with has to be
+          // the post-bootstrap one, not the deterministic base this repository was seeded with.
+          device: () => deviceRepository.load() ?? base,
+          relay: options.qqRelay,
+        }),
+      }
+    : undefined;
 
 /**
  * A `QrSessionRepository` that answers `load()` with exactly the record a sealed `unikey` was
@@ -130,6 +187,28 @@ const replayQrSessionRepository = (records: QrSessionRecord[]): QrSessionReposit
   kind: 'sealed-replay',
   load: () => records,
   save: () => undefined,
+});
+
+/**
+ * Rebuilds one QR record from a sealed payload.
+ *
+ * 🔴 `qrcodeId` is not a duplicate of `identifier`: `exchangeQqLogin` reads *that* field as the
+ * `qrCodeID` exchange parameter, and a record that carries only `identifier` fails at the very last
+ * step of a successful scan — after the user has already approved on their phone. The App channel
+ * is the only one where the two fields both apply, which is why `createQr` sets both.
+ */
+const replayedRecord = (
+  key: string,
+  payload: { channel: QrLoginChannel; createdAt: number; expiresAt: number; identifier: string },
+  state: QrSessionRecord['state'],
+): QrSessionRecord => ({
+  key,
+  channel: payload.channel,
+  state,
+  createdAt: payload.createdAt,
+  expiresAt: payload.expiresAt,
+  identifier: payload.identifier,
+  ...(payload.channel === 'qq' ? { qrcodeId: payload.identifier } : {}),
 });
 
 /**
@@ -171,10 +250,10 @@ const withQrDeviceState = (base: AndroidDevice, saved?: SealedQrDeviceStateV1): 
 const qrDeviceRepositoryFor = async (
   secrets: { current: string; previous?: string },
   saved?: SealedQrDeviceStateV1,
-) =>
-  createMemoryDeviceContextRepository(
-    withQrDeviceState(await deriveAndroidDevice(secrets.current), saved),
-  );
+): Promise<{ repository: DeviceContextRepository; base: AndroidDevice }> => {
+  const base = withQrDeviceState(await deriveAndroidDevice(secrets.current), saved);
+  return { repository: createMemoryDeviceContextRepository(base), base };
+};
 
 const routes: Record<string, RouteHandler> = {
   // ---- QR login ---------------------------------------------------------------------------
@@ -185,21 +264,23 @@ const routes: Record<string, RouteHandler> = {
    * needs be sealed into that same token: there is no second invocation in which to discover the
    * WeChat `identifier` and then hand out a *different* key carrying it.
    */
-  '/login/qr/key': async ({ url, env }) => {
-    // WeChat is the only channel this runtime declares, so an explicit `channel` is validated
-    // against the capabilities rather than against the Node channel list.
+  '/login/qr/key': async ({ url, env, options }) => {
+    // An explicit `channel` is validated against this runtime's capabilities rather than against
+    // the Node channel list, so `qq` is accepted exactly when a relay was injected.
     const channel = url.searchParams.get('channel') ?? 'wechat';
     const secrets = secretsOf(env);
-    const deviceRepository = await qrDeviceRepositoryFor(secrets);
+    const { repository: deviceRepository, base } = await qrDeviceRepositoryFor(secrets);
     const qrSessions = capturingQrSessionRepository();
     let qrSessionHttp: AuthHttpClient | undefined;
+    const http = createFetchAuthHttpClient();
     const service = createQrLoginService({
-      http: createFetchAuthHttpClient(),
+      http,
       createSessionHttp: () => (qrSessionHttp = createFetchAuthHttpClient()),
       deviceRepository,
       sessionResolver: createSealedSessionResolver({ secrets }),
       qrSessionRepository: qrSessions.repository,
-      capabilities: QR_CAPABILITIES,
+      capabilities: capabilitiesFor(options),
+      drivers: driversFor(options, http, deviceRepository, base),
       checkBudgetMs: CHECK_BUDGET_MS,
     });
     try {
@@ -247,7 +328,7 @@ const routes: Record<string, RouteHandler> = {
    * 'created'` check. `createWechatQrDriver` then sees `session.identifier` already set and fetches
    * only the image — the same branch documented on that driver.
    */
-  '/login/qr/create': async ({ url, env }) => {
+  '/login/qr/create': async ({ url, env, options }) => {
     const key = url.searchParams.get('key');
     if (!key) return json({ code: 400, message: 'key is required' }, 400);
     const secrets = secretsOf(env);
@@ -255,22 +336,19 @@ const routes: Record<string, RouteHandler> = {
     if (!payload) {
       return serviceErrorResponse(new QrLoginServiceError('QR session not found or expired', 404));
     }
+    const { repository: deviceRepository, base } = await qrDeviceRepositoryFor(
+      secrets,
+      payload.device,
+    );
+    const http = createFetchAuthHttpClient();
     const service = createQrLoginService({
-      http: createFetchAuthHttpClient(),
+      http,
       createSessionHttp: () => createFetchAuthHttpClient({ initialCookies: payload.cookies }),
-      deviceRepository: await qrDeviceRepositoryFor(secrets, payload.device),
+      deviceRepository,
       sessionResolver: createSealedSessionResolver({ secrets }),
-      qrSessionRepository: replayQrSessionRepository([
-        {
-          key,
-          channel: payload.channel,
-          state: 'created',
-          createdAt: payload.createdAt,
-          expiresAt: payload.expiresAt,
-          identifier: payload.identifier,
-        },
-      ]),
-      capabilities: QR_CAPABILITIES,
+      qrSessionRepository: replayQrSessionRepository([replayedRecord(key, payload, 'created')]),
+      capabilities: capabilitiesFor(options),
+      drivers: driversFor(options, http, deviceRepository, base),
       checkBudgetMs: CHECK_BUDGET_MS,
     });
     try {
@@ -280,35 +358,34 @@ const routes: Record<string, RouteHandler> = {
     }
   },
 
-  '/login/qr/check': async ({ url, env }) => {
+  '/login/qr/check': async ({ url, env, options }) => {
     const key = url.searchParams.get('key');
     if (!key) return json({ code: 400, message: 'key is required' }, 400);
     const secrets = secretsOf(env);
     const payload = await openQrState(key, secrets, Date.now());
+    const { repository: deviceRepository, base } = await qrDeviceRepositoryFor(
+      secrets,
+      payload?.device,
+    );
+    const http = createFetchAuthHttpClient();
     // A missing, tampered or expired `unikey` leaves the replay repository empty. `checkQr`'s own
     // catch-all then answers `{code:800}` for "session not found" exactly as it does for the
     // in-memory store it replaces — no special case needed here.
     const service = createQrLoginService({
-      http: createFetchAuthHttpClient(),
+      http,
       createSessionHttp: () =>
         createFetchAuthHttpClient({ initialCookies: payload?.cookies ?? '' }),
-      deviceRepository: await qrDeviceRepositoryFor(secrets, payload?.device),
+      deviceRepository,
       sessionResolver: createSealedSessionResolver({ secrets }),
+      // 🔴 Seeded as `waiting` on every invocation, because there is nowhere to remember that a
+      // previous one already saw `scanned`. That is why `QqQrRelay.poll` is specified to answer
+      // with the whole event list rather than a delta: a relay that only reported new events would
+      // leave this record stuck at `waiting`, and `checkQr` would answer 801 for a scanned code.
       qrSessionRepository: replayQrSessionRepository(
-        payload
-          ? [
-              {
-                key,
-                channel: payload.channel,
-                state: 'waiting',
-                createdAt: payload.createdAt,
-                expiresAt: payload.expiresAt,
-                identifier: payload.identifier,
-              },
-            ]
-          : [],
+        payload ? [replayedRecord(key, payload, 'waiting')] : [],
       ),
-      capabilities: QR_CAPABILITIES,
+      capabilities: capabilitiesFor(options),
+      drivers: driversFor(options, http, deviceRepository, base),
       checkBudgetMs: CHECK_BUDGET_MS,
     });
     const result = await service.checkQr(key, CHECK_BUDGET_MS);
@@ -327,9 +404,21 @@ const routes: Record<string, RouteHandler> = {
     );
   },
 
-  '/login/qr/cancel': async ({ url, service: getService }) => {
+  '/login/qr/cancel': async ({ url, env, options, service: getService }) => {
     const key = url.searchParams.get('key');
     if (!key) return json({ code: 400, message: 'key is required' }, 400);
+    // 🔴 The relay is released here rather than through `cancelSession`. That call operates on the
+    // service's QR store, which under `sealed` is empty on a fresh invocation, so it has always
+    // been a no-op on this runtime — harmless for `wechat`, which owns nothing between calls, and
+    // wrong for `qq`, where the relay would otherwise hold an MQTT connection (and be billed for
+    // it) until the code expires. Awaited, not fire-and-forget: an unawaited promise in a Worker
+    // can be cancelled the moment the response is returned.
+    const relay = options.qqRelay;
+    if (relay) {
+      const payload = await openQrState(key, secretsOf(env), Date.now()).catch(() => null);
+      // Best effort by contract: an unknown, tampered or already-released key is still a success.
+      if (payload?.channel === 'qq') await relay.close(payload.identifier).catch(() => undefined);
+    }
     // §5.3 #5: always 200. Callers cancel fire-and-forget on dialog close.
     (await getService()).cancelSession(key);
     return json({ code: 200 });
@@ -538,7 +627,10 @@ const match = createRouter(routes);
  * Built per invocation. A Worker may reuse an isolate across requests, and a service holding a
  * cookie jar and QR state from someone else's request is a cross-request leak, not a cache.
  */
-const createServiceFor = async (env: ServerlessEnv): Promise<QrLoginService> => {
+const createServiceFor = async (
+  env: ServerlessEnv,
+  options: ServerlessOptions,
+): Promise<QrLoginService> => {
   const secrets = secretsOf(env);
   return createQrLoginService({
     http: createFetchAuthHttpClient(),
@@ -547,7 +639,7 @@ const createServiceFor = async (env: ServerlessEnv): Promise<QrLoginService> => 
       await deriveAndroidDevice(secrets.current),
     ),
     sessionResolver: createSealedSessionResolver({ secrets }),
-    capabilities: { channels: ['wechat'], sessionMode: 'sealed' },
+    capabilities: capabilitiesFor(options),
     checkBudgetMs: CHECK_BUDGET_MS,
   });
 };
@@ -555,14 +647,20 @@ const createServiceFor = async (env: ServerlessEnv): Promise<QrLoginService> => 
 export const handleRequest = async (
   request: Request,
   env: ServerlessEnv = {},
+  options: ServerlessOptions = {},
 ): Promise<Response> => {
   const url = new URL(request.url);
   const configured = Boolean(env.QQ_SESSION_SECRET);
 
   if (url.pathname === '/login/channels' || url.pathname === '/login/channels/') {
+    const capabilities = capabilitiesFor(options);
     return json({
       code: 200,
-      data: { channels: ['wechat'], sessionMode: 'sealed', configured },
+      data: {
+        channels: capabilities.channels,
+        sessionMode: capabilities.sessionMode,
+        configured,
+      },
     });
   }
 
@@ -598,7 +696,7 @@ export const handleRequest = async (
   // shared across requests, so the service (with its cookie jar and QR state) must not outlive one.
   let pending: Promise<QrLoginService> | null = null;
   const service = () => {
-    pending ??= createServiceFor(env);
+    pending ??= createServiceFor(env, options);
     return pending;
   };
 
@@ -610,6 +708,7 @@ export const handleRequest = async (
       service,
       token: authTokenOf(request, url),
       env,
+      options,
     });
   } catch (error) {
     // Same split the Koa error middleware applies: an upstream credential rejection is a 401 the

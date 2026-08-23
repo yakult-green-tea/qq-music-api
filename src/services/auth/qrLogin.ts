@@ -678,6 +678,40 @@ export interface WebSocketConstructor {
   new (url: string, protocol: string): WebSocketLike;
 }
 
+/**
+ * One open MQTT-over-WebSocket connection, reduced to the two operations the protocol needs.
+ *
+ * Deliberately not `WebSocketLike`: that shape is `ws`'s EventEmitter surface, and the only other
+ * runtime that can hold this connection — a Cloudflare Durable Object — reaches its socket through
+ * `fetch(url, { headers: { Upgrade: 'websocket' } })`, which is asynchronous and hands back a
+ * browser-style `WebSocket`. Making the *connect* step the injection point rather than the
+ * constructor is what lets both runtimes supply what they actually have.
+ */
+export interface MqttSocket {
+  send(data: Uint8Array): void;
+  close(): void;
+}
+
+/** Where a connection reports everything that arrives after it is open. */
+export interface MqttSocketHandlers {
+  message(data: unknown): void;
+  close(): void;
+  error(error: Error): void;
+}
+
+/**
+ * Opens one MQTT-over-WebSocket connection to `url` under the `protocol` subprotocol.
+ *
+ * 🔴 Resolves only once the socket is open, and rejects if it cannot be opened. The protocol below
+ * starts sending the moment this resolves, so an implementation that resolves early has to queue
+ * those writes itself.
+ */
+export type MqttConnect = (
+  url: string,
+  protocol: string,
+  handlers: MqttSocketHandlers,
+) => Promise<MqttSocket>;
+
 interface PacketQueue {
   next(timeoutMs: number): Promise<Buffer>;
 }
@@ -972,7 +1006,14 @@ const toBuffer = (value: unknown): Buffer => {
   throw new Error('Unsupported MQTT WebSocket payload');
 };
 
-const createPacketQueue = (socket: WebSocketLike): PacketQueue => {
+/**
+ * The packet reassembler, now built *before* the socket exists rather than subscribing to one.
+ *
+ * A `MqttConnect` implementation is handed `handlers` at connect time, because a socket obtained
+ * through `fetch()` can deliver its first frame before the caller ever sees the socket object.
+ * Building the queue first and passing its handlers in is what removes that race.
+ */
+const createPacketQueue = (): { queue: PacketQueue; handlers: MqttSocketHandlers } => {
   let buffered: Buffer<ArrayBufferLike> = Buffer.alloc(0);
   const packets: Buffer[] = [];
   const waiters: Array<{ resolve: (packet: Buffer) => void; reject: (error: Error) => void }> = [];
@@ -981,21 +1022,23 @@ const createPacketQueue = (socket: WebSocketLike): PacketQueue => {
     while (waiters.length && packets.length) waiters.shift()?.resolve(packets.shift() as Buffer);
     while (terminalError && waiters.length) waiters.shift()?.reject(terminalError);
   };
-  socket.on('message', (value) => {
-    const split = splitPackets(Buffer.concat([buffered, toBuffer(value)]));
-    buffered = split.rest;
-    packets.push(...split.packets);
-    settle();
-  });
-  socket.on('error', () => {
-    terminalError = new Error('MQTT WebSocket error');
-    settle();
-  });
-  socket.on('close', () => {
-    terminalError = new Error('MQTT WebSocket closed');
-    settle();
-  });
-  return {
+  const handlers: MqttSocketHandlers = {
+    message: (value) => {
+      const split = splitPackets(Buffer.concat([buffered, toBuffer(value)]));
+      buffered = split.rest;
+      packets.push(...split.packets);
+      settle();
+    },
+    error: () => {
+      terminalError = new Error('MQTT WebSocket error');
+      settle();
+    },
+    close: () => {
+      terminalError = new Error('MQTT WebSocket closed');
+      settle();
+    },
+  };
+  const queue: PacketQueue = {
     next(timeoutMs: number): Promise<Buffer> {
       if (packets.length) return Promise.resolve(packets.shift() as Buffer);
       if (terminalError) return Promise.reject(terminalError);
@@ -1018,28 +1061,42 @@ const createPacketQueue = (socket: WebSocketLike): PacketQueue => {
       });
     },
   };
+  return { queue, handlers };
 };
 
-const openWebSocket = (webSocket: WebSocketConstructor, path: string): Promise<WebSocketLike> =>
-  new Promise((resolve, reject) => {
-    const socket = new webSocket(`wss://${MQTT_HOST}${path}`, 'mqtt');
-    const timer = setTimeout(() => {
-      socket.close();
-      reject(new Error('MQTT handshake timeout'));
-    }, 20000);
-    const onOpen = (): void => {
-      clearTimeout(timer);
-      socket.removeListener('error', onError);
-      resolve(socket);
-    };
-    const onError = (): void => {
-      clearTimeout(timer);
-      socket.removeListener('open', onOpen);
-      reject(new Error('MQTT handshake failed'));
-    };
-    socket.once('open', onOpen);
-    socket.once('error', onError);
-  });
+/**
+ * Adapts a `ws`-shaped constructor to `MqttConnect`. This is the exact promise `openWebSocket`
+ * was, moved behind the port so Node keeps its byte-for-byte behaviour while the protocol below
+ * only ever sees `MqttConnect`.
+ */
+export const webSocketConnect =
+  (webSocket: WebSocketConstructor): MqttConnect =>
+  (url, protocol, handlers) =>
+    new Promise((resolve, reject) => {
+      const socket = new webSocket(url, protocol);
+      const timer = setTimeout(() => {
+        socket.close();
+        reject(new Error('MQTT handshake timeout'));
+      }, 20000);
+      const onOpen = (): void => {
+        clearTimeout(timer);
+        socket.removeListener('error', onError);
+        socket.on('message', (value) => handlers.message(value));
+        socket.on('error', () => handlers.error(new Error('MQTT WebSocket error')));
+        socket.on('close', () => handlers.close());
+        resolve({
+          send: (data) => socket.send(Buffer.from(data.buffer, data.byteOffset, data.byteLength)),
+          close: () => socket.close(),
+        });
+      };
+      const onError = (): void => {
+        clearTimeout(timer);
+        socket.removeListener('open', onOpen);
+        reject(new Error('MQTT handshake failed'));
+      };
+      socket.once('open', onOpen);
+      socket.once('error', onError);
+    });
 
 const redirectPath = (path: string, reference: string): string => {
   const parts = path.replace(/\/$/, '').split('/');
@@ -1048,11 +1105,11 @@ const redirectPath = (path: string, reference: string): string => {
   return parts.join('/');
 };
 
-const connectMqtt = async (webSocket: WebSocketConstructor, qrcodeId: string) => {
+const connectMqtt = async (connect: MqttConnect, qrcodeId: string) => {
   let path = MQTT_INITIAL_PATH;
   for (let redirects = 0; redirects <= 3; redirects += 1) {
-    const socket = await openWebSocket(webSocket, path);
-    const queue = createPacketQueue(socket);
+    const { queue, handlers } = createPacketQueue();
+    const socket = await connect(`wss://${MQTT_HOST}${path}`, 'mqtt', handlers);
     socket.send(buildConnectPacket(`${Date.now()}${randomDigits(4)}`, qrcodeId));
     const connack = parseConnack(await queue.next(20000));
     const reasonCode = numberOf(connack.reasonCode) ?? -1;
@@ -1068,7 +1125,7 @@ const connectMqtt = async (webSocket: WebSocketConstructor, qrcodeId: string) =>
 };
 
 const subscribeToQrEvents = async (
-  socket: WebSocketLike,
+  socket: MqttSocket,
   queue: PacketQueue,
   qrcodeId: string,
   onEvent: (event: QrEvent) => void,
@@ -1102,17 +1159,22 @@ const consumeQrEvents = async (
 };
 
 /**
- * The MQTT listener for the QQ App channel, as a factory over its WebSocket implementation.
+ * The MQTT listener for the QQ App channel, over whatever a runtime can open a socket with.
  *
- * The constructor is a parameter rather than a module-level `require('ws')` so that importing this
+ * The connection is a parameter rather than a module-level `require('ws')` so that importing this
  * module does not put `ws` in the dependency closure. Node supplies it in `qrLogin.node.ts`; a
- * serverless runtime never reaches this channel and must not carry a WebSocket library it cannot
- * use. Behaviour is otherwise byte-for-byte what it was.
+ * Cloudflare Durable Object supplies a `fetch()`-based one. Behaviour is otherwise byte-for-byte
+ * what it was.
+ *
+ * 🔴 `ready` settles on SUBACK, not on connect. Callers must await it before showing the QR code:
+ * the CONNECT packet asks for a clean MQTT session and the subscription is unicast, so the upstream
+ * neither retains nor replays anything published before the subscription exists. A code shown
+ * early is a code whose `scanned`/`cookies` events can be lost outright.
  */
-export const createMqttListen =
-  (webSocket: WebSocketConstructor) =>
+export const createMqttListenOver =
+  (connect: MqttConnect) =>
   (qrcodeId: string, onEvent: (event: QrEvent) => void, timeoutMs: number): QrEventListener => {
-    let activeSocket: WebSocketLike | null = null;
+    let activeSocket: MqttSocket | null = null;
     let readySettled = false;
     let resolveReady: () => void = () => undefined;
     let rejectReady: (error: Error) => void = () => undefined;
@@ -1121,10 +1183,18 @@ export const createMqttListen =
       rejectReady = reject;
     });
     const done = (async (): Promise<void> => {
-      const { socket, queue } = await connectMqtt(webSocket, qrcodeId);
+      const { socket, queue } = await connectMqtt(connect, qrcodeId);
       activeSocket = socket;
+      let closed = false;
       const ping = setInterval(() => {
-        if (socket.readyState === 1) socket.send(Buffer.from([0xc0, 0x00]));
+        // The port has no `readyState`, so a send after close is caught rather than pre-checked;
+        // an already-dead socket must not turn a keepalive tick into an unhandled rejection.
+        if (closed) return;
+        try {
+          socket.send(Buffer.from([0xc0, 0x00]));
+        } catch {
+          closed = true;
+        }
       }, 30000);
       try {
         await subscribeToQrEvents(socket, queue, qrcodeId, onEvent);
@@ -1136,6 +1206,7 @@ export const createMqttListen =
         if (!readySettled) rejectReady(error instanceof Error ? error : new Error(String(error)));
         throw error;
       } finally {
+        closed = true;
         clearInterval(ping);
         socket.close();
       }
@@ -1143,6 +1214,10 @@ export const createMqttListen =
     void done.catch(() => undefined);
     return { ready, done, close: () => activeSocket?.close() };
   };
+
+/** The Node flavour: the same listener over a `ws`-shaped constructor. */
+export const createMqttListen = (webSocket: WebSocketConstructor) =>
+  createMqttListenOver(webSocketConnect(webSocket));
 
 const buildQimeiHeadersAndBody = async (
   device: AndroidDevice,
@@ -1331,6 +1406,71 @@ const createQqQrDriver = (options: {
     close: (session) => {
       listeners.get(session.key)?.close();
       listeners.delete(session.key);
+    },
+  };
+};
+
+/**
+ * The QQ App channel's event source for a runtime whose invocation cannot outlive one request.
+ *
+ * Everything behind this port is *transient login state only*: the upstream `qrcodeID`, the QR
+ * image, and the MQTT events observed so far. 🔴 The credential exchange deliberately stays on the
+ * request side (`exchangeQqLogin` uses the request-scoped HTTP client and device), so a relay never
+ * sees a credential, a musickey or a session token and has nothing worth persisting.
+ *
+ * Two obligations an implementation has to honour, both load-bearing:
+ *
+ * - `open` resolves only once the MQTT subscription is live, and opens **at most one** socket per
+ *   `qrcodeId`. A second socket is a second billed connection for the same login.
+ * - `poll` answers with the **complete ordered event list** for this QR, not a delta. The caller is
+ *   stateless: it rebuilds the session as `waiting` on every request, so re-reading `scanned` is
+ *   how it learns anything happened at all. `onQrEvent` is idempotent for those states.
+ */
+export interface QqQrRelay {
+  open(qrcodeId: string, image: string, ttlMs: number): Promise<void>;
+  image(qrcodeId: string): Promise<string>;
+  poll(qrcodeId: string, budgetMs: number): Promise<QrEvent[]>;
+  close(qrcodeId: string): Promise<void>;
+}
+
+/**
+ * `qq` as a *pull* channel, for serverless runtimes. Same upstream protocol as the push driver
+ * above; the difference is only who holds the socket — a relay does, and each `advance()` drains
+ * what it has collected.
+ */
+export const createRelayQqQrDriver = (options: {
+  http: AuthHttpClient;
+  device: () => AndroidDevice;
+  relay: QqQrRelay;
+  now?: () => number;
+}): QrChannelDriver => {
+  const now = options.now ?? Date.now;
+  return {
+    mode: 'pull',
+    createQr: async (session) => {
+      // A session reconstructed from a sealed key already has its `qrcodeID`. Calling
+      // `CreateQRCode` again would mint a *second, different* code upstream, orphaning both the
+      // relay's subscription and the identifier sealed into the key the client is holding — the
+      // same hazard `createWechatQrDriver` documents, with a worse failure mode: the code on
+      // screen would simply never resolve. Only the image is re-fetched.
+      if (session.identifier) {
+        return {
+          identifier: session.identifier,
+          imageUrl: await options.relay.image(session.identifier),
+        };
+      }
+      const qr = await createNativeQr(options.http, options.device());
+      // Subscribed before the image is returned, never after: see `createMqttListenOver`.
+      await options.relay.open(qr.qrcodeId, qr.imageUrl, Math.max(0, session.expiresAt - now()));
+      return { identifier: qr.qrcodeId, imageUrl: qr.imageUrl, expiresIn: qr.expiresIn };
+    },
+    advance: async (session, budgetMs) =>
+      session.identifier ? options.relay.poll(session.identifier, budgetMs) : [],
+    // `close` is synchronous by contract, so this is the best-effort path only. The route that has
+    // to *guarantee* the socket is released — `/login/qr/cancel`, where the cost of a leak is a
+    // relay billed for the rest of the QR's life — awaits `relay.close` itself.
+    close: (session) => {
+      if (session.identifier) void options.relay.close(session.identifier).catch(() => undefined);
     },
   };
 };
