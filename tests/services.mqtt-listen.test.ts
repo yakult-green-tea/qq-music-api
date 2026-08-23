@@ -4,6 +4,7 @@ import {
   type MqttConnect,
   type MqttSocketHandlers,
   type QrEvent,
+  type QrEventListener,
   type WebSocketConstructor,
 } from '../src/services/auth/qrLogin';
 
@@ -94,18 +95,27 @@ const tick = (): Promise<void> => new Promise((resolve) => setImmediate(resolve)
 
 /**
  * Every listener a test starts owns a socket, a 20 s packet deadline and a keepalive interval, so
- * one left running keeps the worker alive after the assertions pass. Sockets are torn down too, and
- * separately: `QrEventListener.close()` only reaches a socket the handshake already finished with,
- * so a test that stops mid-handshake — a redirect, a refused CONNACK — leaves one behind otherwise.
+ * one left running keeps the worker alive after the assertions pass.
  */
 const started: Array<{ close(): void }> = [];
-const track = <T extends { close(): void }>(listener: T): T => {
+const track = <T extends QrEventListener>(listener: T): T => {
+  // Both promises get a no-op catch: tearing a listener down rejects whichever of them is still
+  // pending, and a test that was not asserting on that one must not fail on an unhandled rejection.
+  // Attaching here does not stop a test's own `await` from seeing the same rejection.
+  void listener.ready.catch(() => undefined);
+  void listener.done.catch(() => undefined);
   started.push(listener);
   return listener;
 };
 
+/** Sockets are tracked apart from listeners: `QrEventListener.close()` only reaches a socket the
+ * handshake already finished with, so a test that stops mid-handshake — a redirect, a refused
+ * CONNACK, a connect that never resolves — would leave one behind otherwise. */
+const sockets: Array<{ close(): void }> = [];
+
 afterEach(async () => {
   for (const listener of started.splice(0)) listener.close();
+  for (const socket of sockets.splice(0)) socket.close();
   await tick();
 });
 
@@ -128,7 +138,7 @@ const createFakeConnect = (): { connect: MqttConnect; connections: FakeConnectio
       connection.closed = true;
       handlers.close();
     };
-    track({ close });
+    sockets.push({ close });
     return {
       send: (data) => connection.sent.push(data),
       close,
@@ -281,6 +291,20 @@ describe('createMqttListenOver', () => {
     expect(connections[0].closed).toBe(true);
   });
 
+  it('should reject ready when the connection itself cannot be made', async () => {
+    // 🔴 `ready` is what `QrLoginService.createQr` awaits before returning the image. When the
+    // connect step lived outside the listener's own try block, an unreachable broker rejected
+    // `done` and left `ready` pending forever, so the request hung instead of answering 502.
+    const connect: MqttConnect = async () => {
+      throw new Error('upgrade refused');
+    };
+
+    const listener = track(createMqttListenOver(connect)('qr-fixture', () => undefined, 5_000));
+
+    await expect(listener.ready).rejects.toThrow('upgrade refused');
+    await expect(listener.done).rejects.toThrow('upgrade refused');
+  });
+
   it('should fail the listener when the socket drops mid-flow', async () => {
     const { connections, listener } = await openListener();
 
@@ -323,7 +347,7 @@ describe('createMqttListen over a ws-shaped constructor', () => {
     const emit = (event: string, ...args: unknown[]): void => {
       for (const listener of [...(listeners.get(event) ?? [])]) listener(...args);
     };
-    track({ close: () => socket.close() });
+    sockets.push({ close: () => socket.close() });
     return { socket, sent, emit };
   };
 

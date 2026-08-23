@@ -1183,32 +1183,38 @@ export const createMqttListenOver =
       rejectReady = reject;
     });
     const done = (async (): Promise<void> => {
-      const { socket, queue } = await connectMqtt(connect, qrcodeId);
-      activeSocket = socket;
+      // 🔴 The connect is inside the `try`. It used to sit above it, so a failed handshake rejected
+      // `done` while leaving `ready` pending forever — and `ready` is what `createQr` awaits, so an
+      // unreachable broker hung the request instead of failing it.
+      let socket: MqttSocket | null = null;
+      let ping: ReturnType<typeof setInterval> | null = null;
       let closed = false;
-      const ping = setInterval(() => {
-        // The port has no `readyState`, so a send after close is caught rather than pre-checked;
-        // an already-dead socket must not turn a keepalive tick into an unhandled rejection.
-        if (closed) return;
-        try {
-          socket.send(Buffer.from([0xc0, 0x00]));
-        } catch {
-          closed = true;
-        }
-      }, 30000);
       try {
-        await subscribeToQrEvents(socket, queue, qrcodeId, onEvent);
+        const connection = await connectMqtt(connect, qrcodeId);
+        socket = connection.socket;
+        activeSocket = socket;
+        ping = setInterval(() => {
+          // The port has no `readyState`, so a send after close is caught rather than pre-checked;
+          // an already-dead socket must not turn a keepalive tick into an unhandled rejection.
+          if (closed || !socket) return;
+          try {
+            socket.send(Buffer.from([0xc0, 0x00]));
+          } catch {
+            closed = true;
+          }
+        }, 30000);
+        await subscribeToQrEvents(socket, connection.queue, qrcodeId, onEvent);
         onEvent({ type: 'waiting', payload: null });
         readySettled = true;
         resolveReady();
-        await consumeQrEvents(queue, onEvent, timeoutMs);
+        await consumeQrEvents(connection.queue, onEvent, timeoutMs);
       } catch (error) {
         if (!readySettled) rejectReady(error instanceof Error ? error : new Error(String(error)));
         throw error;
       } finally {
         closed = true;
-        clearInterval(ping);
-        socket.close();
+        if (ping) clearInterval(ping);
+        socket?.close();
       }
     })();
     void done.catch(() => undefined);
