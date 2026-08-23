@@ -5,19 +5,25 @@ import {
   createStoredSessionResolver,
 } from '../src/services/auth/qrLogin';
 
-// The `stored` half of the `SessionResolver` port. It is deliberately a thin adapter over the
-// existing `AuthSessionStore`, so what is worth asserting here is the adaptation itself — token
-// minting, the async surface, and the two lifecycle hooks — not the storage semantics, which
-// `services.qr-login.test.ts` and `services.file-auth-session-repository.test.ts` already own.
+// The `stored` half of the `SessionResolver` port. The existing AuthSessionStore still owns storage
+// semantics; this suite pins the resolver concerns around it: opaque tokens, lifecycle hooks and
+// the stored-only silent-refresh boundary.
 
-const sessionInput = (expiresAt: number): Omit<AuthSession, 'token'> => ({
-  credential: { musicid: '42', musickey: 'must-not-leak', loginType: 2 },
+const sessionInput = (
+  expiresAt: number,
+  credential: Partial<AuthSession['credential']> = {},
+): Omit<AuthSession, 'token'> => ({
+  credential: { musicid: '42', musickey: 'must-not-leak', loginType: 2, ...credential },
   device: createAndroidDevice(),
   expiresAt,
 });
 
 const createResolver = (
-  options: { repository?: AuthSessionRepository; now?: () => number } = {},
+  options: {
+    repository?: AuthSessionRepository;
+    now?: () => number;
+    refreshCredential?: (session: AuthSession) => Promise<AuthSession['credential']>;
+  } = {},
 ) => {
   let counter = 0;
   return createStoredSessionResolver({
@@ -25,6 +31,7 @@ const createResolver = (
     now: options.now ?? Date.now,
     // Deterministic tokens keep the assertions readable; the shape still matches the real one.
     randomBytes: (size) => Buffer.alloc(size, ++counter),
+    refreshCredential: options.refreshCredential,
   });
 };
 
@@ -114,5 +121,151 @@ describe('createStoredSessionResolver', () => {
     resolver.useRepository?.(createMemoryAuthSessionRepository([restored]));
 
     expect(await resolver.resolve(restored.token)).toMatchObject({ token: restored.token });
+  });
+
+  it('should refresh inside the six-hour window without changing the opaque token', async () => {
+    let current = 1_000_000_000_000;
+    const repository = createMemoryAuthSessionRepository();
+    const refreshCredential = jest.fn(async () => ({
+      musicid: '42',
+      musickey: 'refreshed-key',
+      loginType: 2,
+      refresh_key: 'next-refresh-key',
+      musickeyCreateTime: Math.floor(current / 1000),
+      keyExpiresIn: 259200,
+    }));
+    const resolver = createResolver({ repository, now: () => current, refreshCredential });
+    const token = await resolver.issue(
+      sessionInput(current + 12 * 60 * 60 * 1000, {
+        refresh_key: 'refresh-key',
+        musickeyCreateTime: Math.floor(current / 1000),
+        keyExpiresIn: 12 * 60 * 60,
+      }),
+    );
+
+    expect((await resolver.resolve(token))?.credential.musickey).toBe('must-not-leak');
+    expect(refreshCredential).not.toHaveBeenCalled();
+
+    current += 6 * 60 * 60 * 1000 + 1;
+    const refreshed = await resolver.resolve(token);
+
+    expect(refreshCredential).toHaveBeenCalledTimes(1);
+    expect(refreshed).toMatchObject({
+      token,
+      credential: { musickey: 'refreshed-key' },
+      expiresAt: (Math.floor(current / 1000) + 259200) * 1000,
+    });
+    expect((repository.load() as AuthSession[])[0]).toMatchObject({
+      token,
+      credential: { musickey: 'refreshed-key' },
+    });
+  });
+
+  it('should not refresh credentials that carry no refresh key', async () => {
+    const current = 1_000_000_000_000;
+    const refreshCredential = jest.fn();
+    const resolver = createResolver({ now: () => current, refreshCredential });
+    const token = await resolver.issue(
+      sessionInput(current + 60_000, {
+        musickeyCreateTime: Math.floor(current / 1000) - 259199,
+        keyExpiresIn: 259200,
+      }),
+    );
+
+    await expect(resolver.resolve(token)).resolves.toMatchObject({ token });
+    expect(refreshCredential).not.toHaveBeenCalled();
+  });
+
+  it('should share one in-flight refresh across concurrent resolves', async () => {
+    const current = 1_000_000_000_000;
+    let finishRefresh: ((credential: AuthSession['credential']) => void) | undefined;
+    const refreshCredential = jest.fn(
+      () =>
+        new Promise<AuthSession['credential']>((resolve) => {
+          finishRefresh = resolve;
+        }),
+    );
+    const resolver = createResolver({ now: () => current, refreshCredential });
+    const token = await resolver.issue(
+      sessionInput(current + 60_000, {
+        refresh_key: 'refresh-key',
+        musickeyCreateTime: Math.floor(current / 1000) - 259199,
+        keyExpiresIn: 259200,
+      }),
+    );
+
+    const first = resolver.resolve(token);
+    const second = resolver.resolve(token);
+    expect(refreshCredential).toHaveBeenCalledTimes(1);
+    finishRefresh?.({
+      musicid: '42',
+      musickey: 'refreshed-key',
+      loginType: 2,
+      musickeyCreateTime: Math.floor(current / 1000),
+      keyExpiresIn: 259200,
+    });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      expect.objectContaining({
+        token,
+        credential: expect.objectContaining({ musickey: 'refreshed-key' }),
+      }),
+      expect.objectContaining({
+        token,
+        credential: expect.objectContaining({ musickey: 'refreshed-key' }),
+      }),
+    ]);
+  });
+
+  it('should keep the still-live credential and throttle retries after refresh failure', async () => {
+    let current = 1_000_000_000_000;
+    const refreshCredential = jest.fn(async () => {
+      throw new Error('temporary upstream failure');
+    });
+    const resolver = createResolver({ now: () => current, refreshCredential });
+    const token = await resolver.issue(
+      sessionInput(current + 60_000, {
+        refresh_key: 'refresh-key',
+        musickeyCreateTime: Math.floor(current / 1000) - 259199,
+        keyExpiresIn: 259200,
+      }),
+    );
+
+    await expect(resolver.resolve(token)).resolves.toMatchObject({
+      token,
+      credential: { musickey: 'must-not-leak' },
+    });
+    await resolver.resolve(token);
+    expect(refreshCredential).toHaveBeenCalledTimes(1);
+
+    current += 5 * 60 * 1000 + 1;
+    await resolver.resolve(token);
+    expect(refreshCredential).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not resurrect a token revoked while its refresh is in flight', async () => {
+    const current = 1_000_000_000_000;
+    let finishRefresh: ((credential: AuthSession['credential']) => void) | undefined;
+    const resolver = createResolver({
+      now: () => current,
+      refreshCredential: () =>
+        new Promise<AuthSession['credential']>((resolve) => {
+          finishRefresh = resolve;
+        }),
+    });
+    const token = await resolver.issue(
+      sessionInput(current + 60_000, {
+        refresh_key: 'refresh-key',
+        musickeyCreateTime: Math.floor(current / 1000) - 259199,
+        keyExpiresIn: 259200,
+      }),
+    );
+
+    const resolving = resolver.resolve(token);
+    await resolver.revoke(token);
+    finishRefresh?.({ musicid: '42', musickey: 'refreshed-key', loginType: 2 });
+
+    await expect(resolving).resolves.toBeNull();
+    await expect(resolver.resolve(token)).resolves.toBeNull();
   });
 });

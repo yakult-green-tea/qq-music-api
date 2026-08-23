@@ -1352,7 +1352,7 @@ QIMEI 与 device session 因此跨进程重启复用（重启后日志为 `sourc
 
 `GetSession.data.session.uid` 在真实响应中可能是数字，service 会将数字或字符串正规化为内部字符串；不要恢复为只接受字符串的解析方式。
 
-auth session 默认仍使用进程内仓库，因此普通服务重启、水平扩容或请求落到另一个实例时不会共享登录态。可信嵌入方可在加载 npm 包后立即调用 `configureAuthSessionRepository({ kind, load, save })`：仓库保存的是 opaque token 对应的完整 credential、Android device 与 `expiresAt`，必须由宿主加密，不能进入 renderer、一般 JSON 文件或日志。恢复时会重新校验全部字段并丢弃超过 24 小时 TTL 的记录；仓库读取、解密或写入失败时降级为内存行为，不阻断重新扫码。
+auth session 默认仍使用进程内仓库，因此普通服务重启、水平扩容或请求落到另一个实例时不会共享登录态。可信嵌入方可在加载 npm 包后立即调用 `configureAuthSessionRepository({ kind, load, save })`：仓库保存的是 opaque token 对应的完整 credential、Android device 与 `expiresAt`，必须由宿主加密，不能进入 renderer、一般 JSON 文件或日志。恢复时会重新校验全部字段并丢弃超过凭证推导期限的记录；具备 refresh 材料的 stored session 会在 musickey 到期前 6 小时静默换新，以原 token 写回仓库。临时刷新失败时继续使用仍有效的旧凭证并延迟重试；仓库读取、解密或写入失败时降级为内存行为，不阻断重新扫码。sealed serverless session 不携带长期 refresh 材料，也不走这条刷新路径。
 
 Folia 采用 Electron 主进程 `safeStorage` 加密后写入 `electron-store`；renderer 的 `localStorage` 继续只保存 opaque `qqmusic_session`。Linux 若只能使用 Electron 的 `basic_text` 后端则拒绝写入凭证，以免把 `musickey` 伪装成“已加密”状态。
 

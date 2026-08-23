@@ -51,6 +51,8 @@ const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
 /** 推导出来的会话时长夹在这个区间内，挡住上游给出畸形时间时的两个极端。 */
 const AUTH_TTL_MIN_MS = 60 * 60 * 1000;
 const AUTH_TTL_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+const AUTH_REFRESH_EARLY_MS = 6 * 60 * 60 * 1000;
+const AUTH_REFRESH_RETRY_MS = 5 * 60 * 1000;
 const QIMEI_TTL_MS = 24 * 60 * 60 * 1000;
 const BACKOFF_BASE_MS = 30 * 1000;
 const BACKOFF_MAX_MS = 15 * 60 * 1000;
@@ -374,6 +376,23 @@ export const createMemoryAuthSessionRepository = (
   };
 };
 
+const credentialExpiryAt = (credential: QqCredential): number | null => {
+  const createdAtSeconds = numberOf(credential.musickeyCreateTime);
+  const lifetimeSeconds = numberOf(credential.keyExpiresIn);
+  if (!createdAtSeconds || !lifetimeSeconds || createdAtSeconds <= 0 || lifetimeSeconds <= 0)
+    return null;
+  return (createdAtSeconds + lifetimeSeconds) * 1000;
+};
+
+const shouldRefreshStoredCredential = (credential: QqCredential, now: number): boolean => {
+  const expiresAt = credentialExpiryAt(credential);
+  return (
+    expiresAt !== null &&
+    stringOf(credential.refresh_key).length > 0 &&
+    now > expiresAt - AUTH_REFRESH_EARLY_MS
+  );
+};
+
 /**
  * Keeps repository failures outside the login protocol. A locked keychain or corrupt desktop state
  * must degrade to the previous in-memory behaviour instead of preventing QR login altogether.
@@ -476,14 +495,14 @@ const createAuthSessionStore = (
 };
 
 /**
- * The `stored` backend: a thin adapter over the existing `AuthSessionStore`, which is left exactly
- * as it was. Nothing here re-implements lookup, persistence, expiry or repository swapping — the
- * store still owns all of it, so the six PR #2 behaviour guarantees continue to be enforced by the
- * same code that has always enforced them.
+ * The `stored` backend keeps the existing `AuthSessionStore` as the authority for lookup,
+ * persistence, expiry and repository swapping, so the six PR #2 behaviour guarantees continue to
+ * be enforced by the same code. Its resolver layer owns token lifecycle concerns: minting the
+ * opaque key and, when a host supplies the hook, refreshing a nearly-expired credential in place.
  *
- * The only logic that moves in is minting the token, which `finalizeLogin` used to do inline: the
- * port hands `issue()` a session without one precisely so a sealed backend can derive the token
- * from the credential instead of generating an unrelated identifier.
+ * `issue()` receives a session without a token precisely so a sealed backend can derive its token
+ * from the credential instead of generating an unrelated identifier. Silent refresh is deliberately
+ * absent from sealed mode: its long-lived refresh material never leaves the trusted host.
  */
 /**
  * Neutral fallbacks for the three dependencies that used to default to a Node implementation.
@@ -539,8 +558,66 @@ export const createStoredSessionResolver = (options: {
   repository: AuthSessionRepository;
   now: () => number;
   randomBytes: (size: number) => Buffer;
+  /** Stored-only hook: the credential stays server-side and the opaque token never changes. */
+  refreshCredential?: (session: AuthSession) => Promise<QqCredential>;
 }): SessionResolver => {
   const store = createAuthSessionStore(options.repository, options.now);
+  const refreshes = new Map<string, Promise<AuthSession | null>>();
+  const refreshRetryAt = new Map<string, number>();
+
+  const resolve = async (token: string | undefined): Promise<AuthSession | null> => {
+    if (!token) return null;
+    const session = store.get(token);
+    if (!session) {
+      refreshRetryAt.delete(token);
+      return null;
+    }
+    const current = options.now();
+    if (
+      !options.refreshCredential ||
+      !shouldRefreshStoredCredential(session.credential, current) ||
+      (refreshRetryAt.get(token) ?? 0) > current
+    )
+      return session;
+
+    const existing = refreshes.get(token);
+    if (existing) return existing;
+
+    const pending = (async (): Promise<AuthSession | null> => {
+      try {
+        const credential = await options.refreshCredential?.(cloneAuthSession(session));
+        const live = store.get(token);
+        // Logout may race an in-flight upstream refresh. Never resurrect a revoked token.
+        if (!credential || !live) return null;
+        const refreshed = {
+          ...live,
+          credential,
+          expiresAt: authSessionExpiryAt(credential, options.now()),
+        };
+        store.set(refreshed);
+        refreshRetryAt.delete(token);
+        logger.info('qq-auth.stored-credential-refreshed', {
+          credentialLoginType: credential.loginType,
+        });
+        return refreshed;
+      } catch (error) {
+        // The old musickey is still usable during the early-refresh window. A transient refresh
+        // failure must not turn the final six hours into an outage, nor hammer upstream per call.
+        refreshRetryAt.set(token, options.now() + AUTH_REFRESH_RETRY_MS);
+        logger.warn('qq-auth.stored-credential-refresh-failed', {
+          name: error instanceof Error ? error.name : 'Error',
+        });
+        return store.get(token);
+      }
+    })();
+    refreshes.set(token, pending);
+    try {
+      return await pending;
+    } finally {
+      if (refreshes.get(token) === pending) refreshes.delete(token);
+    }
+  };
+
   return {
     mode: 'stored',
     issue: async (session) => {
@@ -548,15 +625,20 @@ export const createStoredSessionResolver = (options: {
       store.set({ ...session, token });
       return token;
     },
-    resolve: async (token) => (token ? store.get(token) : null),
+    resolve,
     revoke: async (token) => {
       store.delete(token);
+      refreshRetryAt.delete(token);
     },
     cleanup: () => {
       store.cleanup();
+      for (const token of refreshRetryAt.keys()) {
+        if (!store.get(token)) refreshRetryAt.delete(token);
+      }
     },
     useRepository: (repository) => {
       store.useRepository(repository);
+      refreshRetryAt.clear();
     },
   };
 };
@@ -1544,8 +1626,8 @@ const getLoginProfile = async (http: AuthHttpClient, auth: AuthSession): Promise
   ...(await getLoginUser(http, auth)),
 });
 
-/** Refreshes a WeChat credential with the complete field set returned by its QR exchange. */
-const refreshWechatCredential = async (
+/** Refreshes either stored login channel with the long-lived material kept on the host. */
+const refreshLoginCredential = async (
   http: AuthHttpClient,
   device: AndroidDevice,
   credential: QqCredential,
@@ -1567,9 +1649,9 @@ const refreshWechatCredential = async (
         loginMode: 2,
       },
       credential,
-      { tmeLoginType: WECHAT_LOGIN_TYPE },
+      { tmeLoginType: credential.loginType },
     ),
-    WECHAT_LOGIN_TYPE,
+    credential.loginType,
   );
 
 /** Refreshes the exchanged WeChat key once when the reference credential check requests it. */
@@ -1590,7 +1672,7 @@ const validateWechatCredential = async (
       throw error;
   }
 
-  const refreshed = await refreshWechatCredential(http, device, credential);
+  const refreshed = await refreshLoginCredential(http, device, credential);
   logger.info('qq-auth.credential-refreshed', {
     loginChannel: 'wechat',
     credentialLoginType: refreshed.loginType,
@@ -1612,11 +1694,9 @@ const validateWechatCredential = async (
  * 401，客户端照样能干净地登出。
  */
 const authSessionExpiryAt = (credential: QqCredential, now: number): number => {
-  const createdAtSeconds = numberOf(credential.musickeyCreateTime);
-  const lifetimeSeconds = numberOf(credential.keyExpiresIn);
-  if (!createdAtSeconds || !lifetimeSeconds || createdAtSeconds <= 0 || lifetimeSeconds <= 0)
-    return now + AUTH_TTL_MS;
-  const ttl = (createdAtSeconds + lifetimeSeconds) * 1000 - now;
+  const credentialExpiresAt = credentialExpiryAt(credential);
+  if (credentialExpiresAt === null) return now + AUTH_TTL_MS;
+  const ttl = credentialExpiresAt - now;
   if (ttl < AUTH_TTL_MIN_MS) return now + AUTH_TTL_MIN_MS;
   if (ttl > AUTH_TTL_MAX_MS) return now + AUTH_TTL_MAX_MS;
   return now + ttl;
@@ -1830,6 +1910,8 @@ class QrLoginServiceImpl implements QrLoginService {
         repository: dependencies.authSessionRepository ?? createMemoryAuthSessionRepository(),
         now: this.now,
         randomBytes: this.random,
+        refreshCredential: (session) =>
+          refreshLoginCredential(this.http, session.device, session.credential),
       });
     this.qrSessionStore = createQrSessionStore(
       dependencies.qrSessionRepository ?? createMemoryQrSessionRepository(),

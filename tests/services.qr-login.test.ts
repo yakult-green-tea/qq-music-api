@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
+  createAndroidDevice,
   createMemoryDeviceContextRepository,
   type DeviceContextRepository,
 } from '../src/services/auth/deviceContext';
@@ -173,15 +174,16 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
       }
       if (method === 'Login') {
         const param = dictionaryOf(dictionaryOf(dictionaryOf(payload).req_0).param);
-        if (param.loginMode === 2)
+        if (param.loginMode === 2) {
+          const loginType = Number(dictionaryOf(dictionaryOf(payload).comm).tmeLoginType);
           return response({
             code: 0,
             req_0: {
               code: 0,
               data: {
-                musicid: 456,
-                str_musicid: '456',
-                musickey: 'wechat-refreshed-key',
+                musicid: loginType === 1 ? 456 : 123,
+                str_musicid: loginType === 1 ? '456' : '123',
+                musickey: loginType === 1 ? 'wechat-refreshed-key' : 'qq-refreshed-key',
                 openid: 'wechat-openid',
                 refresh_token: 'wechat-refresh-token-2',
                 refresh_key: 'wechat-refresh-key-2',
@@ -191,6 +193,7 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
               },
             },
           } as T);
+        }
         // The WeChat exchange returns no loginType, so the channel default has to fill it in.
         if (param.strAppid)
           return response({
@@ -842,6 +845,63 @@ describe('QQ native QR login service', () => {
 
     current += 2 * 24 * 60 * 60 * 1000;
     await expect(harness.service.getLoginStatus(token)).resolves.toBeNull();
+  });
+
+  it('should silently refresh a stored QQ credential and persist it under the same token', async () => {
+    const current = 1_000_000_000_000;
+    const token = 'stored-token';
+    const authSessionRepository = createMemoryAuthSessionRepository([
+      {
+        token,
+        credential: {
+          musicid: 123,
+          str_musicid: '123',
+          musickey: 'credential-key',
+          loginType: 6,
+          refresh_token: 'refresh-token',
+          refresh_key: 'refresh-key',
+          musickeyCreateTime: Math.floor(current / 1000) - (259200 - 5 * 60 * 60),
+          keyExpiresIn: 259200,
+        },
+        device: createAndroidDevice(),
+        expiresAt: current + 5 * 60 * 60 * 1000,
+      },
+    ]);
+    const harness = createProtocolHarness({
+      authSessionRepository,
+      now: () => current,
+    });
+
+    await expect(harness.service.getLoginStatus(token)).resolves.toMatchObject({
+      musicid: 123,
+      nickname: '我的 QQ 账号',
+    });
+
+    const refreshCall = jest.mocked(harness.httpPost).mock.calls.find(([, payload]) => {
+      const request = dictionaryOf(dictionaryOf(payload).req_0);
+      return request.method === 'Login' && dictionaryOf(request.param).loginMode === 2;
+    });
+    expect(refreshCall).toBeDefined();
+    expect(dictionaryOf(dictionaryOf(refreshCall?.[1]).comm)).toMatchObject({
+      authst: 'credential-key',
+      tmeLoginType: 6,
+    });
+    expect(dictionaryOf(dictionaryOf(dictionaryOf(refreshCall?.[1]).req_0).param)).toMatchObject({
+      str_musicid: '123',
+      musickey: 'credential-key',
+      refresh_token: 'refresh-token',
+      refresh_key: 'refresh-key',
+      loginMode: 2,
+    });
+    expect(authSessionRepository.load()).toEqual([
+      expect.objectContaining({
+        token,
+        credential: expect.objectContaining({
+          musickey: 'qq-refreshed-key',
+          loginType: 6,
+        }),
+      }),
+    ]);
   });
 
   it('should fall back to the previous fixed lifetime when the upstream omits the key timings', async () => {
