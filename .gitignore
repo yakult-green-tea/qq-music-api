@@ -17,7 +17,7 @@ test-results/
 # QQ 原生扫码登录的 Android device context（含 QIMEI 等装置识别值，不得提交）
 .auth-state/
 
-# 本地 AI 工具配置，与项目源码无关，不进仓库
+# 本地开发工具配置，与项目源码无关，不进仓库
 .claude/
 .skills/
 

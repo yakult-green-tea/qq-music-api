@@ -80,7 +80,10 @@ describe('published artifact', () => {
     expect(fs.existsSync(path.join(installed, 'dist/src/app.js'))).toBe(true);
     expect(fs.existsSync(path.join(installed, 'dist/src/serverless/index.js'))).toBe(true);
     expect(fs.existsSync(path.join(installed, 'dist/src/serverless/index.d.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(installed, 'dist/src/serverless/mqtt.js'))).toBe(true);
+    expect(fs.existsSync(path.join(installed, 'dist/src/serverless/mqtt.d.ts'))).toBe(true);
     expect(fs.existsSync(path.join(installed, 'dist-esm/src/serverless/index.js'))).toBe(true);
+    expect(fs.existsSync(path.join(installed, 'dist-esm/src/serverless/mqtt.js'))).toBe(true);
     expect(fs.existsSync(path.join(installed, 'types/root.d.ts'))).toBe(true);
   });
 
@@ -150,6 +153,24 @@ describe('published artifact', () => {
     expect(JSON.parse(result.stdout.trim())).toEqual({
       code: 200,
       data: { channels: ['wechat'], sessionMode: 'sealed', configured: true },
+    });
+  });
+
+  it('should expose ./mqtt without starting the Koa service', () => {
+    const result = runInNode(`
+      const before = process.getActiveResourcesInfo?.() ?? [];
+      const mod = await import('@yakult-green-tea/qq-music-api/mqtt');
+      const after = process.getActiveResourcesInfo?.() ?? [];
+      console.log(JSON.stringify({
+        listenerFactory: typeof mod.createMqttListenOver,
+        leakedResources: after.filter((resource) => !before.includes(resource)),
+      }));
+    `);
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout.trim())).toEqual({
+      listenerFactory: 'function',
+      leakedResources: [],
     });
   });
 

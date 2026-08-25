@@ -9,8 +9,9 @@
  *
  * 🔴 The codec itself stays in this package and is not reimplemented by hosts. What a host supplies
  * is only `MqttConnect` — how *its* runtime opens a WebSocket — because that is the one piece the
- * protocol genuinely cannot express portably: Node constructs a socket synchronously, while a
- * Cloudflare Durable Object gets one back from `fetch(url, { headers: { Upgrade: 'websocket' } })`.
+ * protocol genuinely cannot express portably: Node and Cloudflare both construct a socket, but
+ * their event surfaces and runtime types differ. On Cloudflare, use the standard
+ * `new WebSocket(wssUrl, protocol)` constructor and resolve only after its `open` event.
  *
  * Two things an implementation must get right, both of which have already bitten this codebase:
  *

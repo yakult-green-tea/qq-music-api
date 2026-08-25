@@ -11,15 +11,13 @@
 
 </div>
 
-## Contributors
+## 贡献者
 
-- [chthollyphile](https://github.com/chthollyphile) — Axios request isolation and
-  injectable authentication-session repository
-- The complete contributor record is preserved in the Git history and
-  [ATTRIBUTION.md](./ATTRIBUTION.md).
+- [chthollyphile](https://github.com/chthollyphile) — Axios 请求隔离、可注入的认证会话仓库与 Folia Serverless 集成
+- 完整贡献记录保留在 Git 历史与 [ATTRIBUTION.md](./ATTRIBUTION.md) 中。
 
 > QQ 音乐 API，基于 `Koa2 + TypeScript` 构建，通过 Web 端请求 QQ 音乐接口数据。
-> 有问题请提 [issue](https://github.com/yakult-green-tea/qq-music-api/issues)。欢迎阅读 [参与贡献指南](./CONTRIBUTING.md)；自动化工具参与修改时请同时遵守 [仓库操作指南](./AGENTS.md)。
+> 有问题请提 [issue](https://github.com/yakult-green-tea/qq-music-api/issues)，参与开发前请阅读 [参与贡献指南](./CONTRIBUTING.md)。
 > 当前主干分支已完成 TypeScript 化改造，核心源码、测试与构建链路均已切换到 TypeScript 体系。
 > `main` 是当前维护版本的主分支。
 
@@ -194,34 +192,48 @@ AUTO_OPEN_EXPLORER=false npm run dev
 - 测试方案：`Jest + Supertest`
 - 构建与容器：支持本地运行与 Docker 镜像构建
 
-### ⏭️ Next 更新计划
+### ⏭️ 后续更新计划
 
 - 持续补齐接口层、服务层与工具层测试用例，进一步提升覆盖率与回归稳定性。
 - 完善 TypeScript 类型建模，收敛控制器、服务返回结构与公共工具的类型边界。
 - 优化 Docker 与生产部署链路，确保构建产物、运行方式和发布流程保持一致。
-- 持续更新接口文档、贡献指南和仓库自动化说明，减少文档与实现之间的偏差。
+- 持续更新接口文档、贡献指南和持续集成说明，减少文档与实现之间的偏差。
 - 逐步推进登录态、个性化数据等高复杂度接口能力的调研与实现。
 
 ### 🐳 Docker
 
 ```sh
-# local local build
+# 构建本地镜像
 npm run build:local-images
 
-# local remote build
+# 构建远程镜像
 npm run build:remote-images
 
-# build images
+# 构建全部镜像
 npm run build:images
 
-# local run
+# 本地运行
 npm run run:images
 
-# remote run
+# 拉取远程镜像
 docker pull qq-music-api
 ```
 
 仓库根目录的 `Dockerfile` 是上游原有的单阶段镜像（`ts-node` 直跑源码）。Folia 的 `folia-qq-api` 镜像由 Folia 仓库独立维护，通过 npm 安装固定版本的 `@yakult-green-tea/qq-music-api`，再以非 root 用户运行 `dist/src/app.js`；它不复制本仓库源码。这里的改动只有在发布新版本、并由 Folia 明确更新依赖与 lockfile 后才会进入 Folia。
+
+### Serverless 与运行时导出
+
+本包按宿主能力提供三个入口，Serverless 宿主不得导入会在加载时启动 Koa 服务的包根入口：
+
+| 导出 | 适用环境 | 用途 |
+| --- | --- | --- |
+| `@yakult-green-tea/qq-music-api` | Node.js、Docker、Electron | 完整 Koa 服务与可注入登录态仓库 |
+| `@yakult-green-tea/qq-music-api/serverless` | Vercel Functions、Cloudflare Workers | Web 标准 `handleRequest(request, env, options)`；无中继时仅提供微信扫码 |
+| `@yakult-green-tea/qq-music-api/mqtt` | 能维持 WebSocket 长连接的可信宿主 | QQ App 扫码所需的 MQTT 编解码与监听器；自 3.1.0 起提供 |
+
+QQ App 扫码依赖持续的 MQTT over WSS 连接。Cloudflare 部署应由 Durable Object 持有该连接并向 `handleRequest` 注入 `qqRelay`；Vercel Functions 无法可靠维持这条连接，因此只应公布微信通道。完整的 Folia 部署、环境变量、平台差异与验收步骤见 [QQ 音乐部署指南](https://github.com/chthollyphile/folia-major/blob/main/docs/deployment/qq-music.md)。
+
+`QQ_SESSION_SECRET` 必须由部署者生成并作为平台密钥保存，不得写入源码、公开环境变量或日志。轮换时可暂时提供 `QQ_SESSION_SECRET_PREVIOUS`，确认旧会话自然失效后再删除。
 
 ### 功能特性
 
@@ -260,6 +272,8 @@ docker pull qq-music-api
 - [x] QQ 音乐原生扫码登录、登录状态和用户歌单 **2026-08-04**
 - [x] 扫码登录态歌曲播放链接 **2026-08-05**
 - [x] 微信扫码后的自建／收藏歌单与内建「我喜欢」歌曲 **2026-08-06**
+- [x] Vercel 与 Cloudflare 的 Web 标准 Serverless 入口 **2026-08-18**
+- [x] Cloudflare Durable Object 的 QQ App 扫码中继 **2026-08-24**
 
 ### QQ 音乐原生扫码登录
 
@@ -293,7 +307,7 @@ docker pull qq-music-api
 
 ### 使用文档
 
-通用上游 API 可参考 [Rain120/qq-music-api 文档](https://rain120.github.io/qq-music-api/#/)；本 fork 新增的 npm 嵌入、扫码登录与登录态接口以本 README 为准。
+通用上游 API 可参考 [Rain120/qq-music-api 文档](https://rain120.github.io/qq-music-api/#/)；本 fork 新增的 npm 嵌入、扫码登录与登录态接口以本 README 为准。将本服务接入 Folia 时，请按 [QQ 音乐部署指南](https://github.com/chthollyphile/folia-major/blob/main/docs/deployment/qq-music.md) 操作。
 
 ### 上游 Star History
 
@@ -327,10 +341,6 @@ docker pull qq-music-api
 
 1. 当前已补充基础 `unit test` 与接口测试，但整体覆盖率和复杂场景用例仍有继续提升空间。
 2. 独立服务默认使用进程内登录态；需要跨重启或多实例共享时，部署方必须自行提供受保护的 `AuthSessionRepository`。仓库的加密、并发一致性与密钥管理属于宿主责任。
-
-### 自动化工具说明
-
-本项目没有独立的 AI agent runtime。`AGENTS.md` 仅用于约束 coding agent 与自动化工具在仓库中的修改范围；项目运行时架构仍是标准的 `controller → service → util` 链路。
 
 #### 🤝 参与贡献 ![PR](https://img.shields.io/badge/PRs-Welcome-orange?style=flat-square&logo=appveyor)
 

@@ -682,10 +682,10 @@ export interface WebSocketConstructor {
  * One open MQTT-over-WebSocket connection, reduced to the two operations the protocol needs.
  *
  * Deliberately not `WebSocketLike`: that shape is `ws`'s EventEmitter surface, and the only other
- * runtime that can hold this connection — a Cloudflare Durable Object — reaches its socket through
- * `fetch(url, { headers: { Upgrade: 'websocket' } })`, which is asynchronous and hands back a
- * browser-style `WebSocket`. Making the *connect* step the injection point rather than the
- * constructor is what lets both runtimes supply what they actually have.
+ * runtime that can hold this connection — a Cloudflare Durable Object — uses the platform's
+ * browser-style `WebSocket` constructor and event surface. Making the *connect* step the injection
+ * point rather than the constructor is what lets both runtimes supply what they actually have and
+ * resolve only after the socket opens.
  */
 export interface MqttSocket {
   send(data: Uint8Array): void;
@@ -1163,8 +1163,8 @@ const consumeQrEvents = async (
  *
  * The connection is a parameter rather than a module-level `require('ws')` so that importing this
  * module does not put `ws` in the dependency closure. Node supplies it in `qrLogin.node.ts`; a
- * Cloudflare Durable Object supplies a `fetch()`-based one. Behaviour is otherwise byte-for-byte
- * what it was.
+ * Cloudflare Durable Object supplies one backed by the standard WebSocket constructor. Behaviour
+ * is otherwise byte-for-byte what it was.
  *
  * 🔴 `ready` settles on SUBACK, not on connect. Callers must await it before showing the QR code:
  * the CONNECT packet asks for a clean MQTT session and the subscription is unicast, so the upstream

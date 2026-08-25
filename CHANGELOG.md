@@ -1,11 +1,41 @@
-## Unreleased
+## 未发布
 
-### Repository governance
+暂无。
 
-- Document the protected-branch, verification, security-reporting, and release processes.
-- Clarify that Folia consumes the published npm package through its own dependency update process.
-- Replace misleading runtime-agent documentation with repository automation guidance.
-- Record downstream contributor attribution in package metadata and documentation.
+## [3.1.0](https://github.com/yakult-green-tea/qq-music-api/compare/v3.0.0...v3.1.0) (2026-08-25)
+
+### 新功能
+
+- 新增 `@yakult-green-tea/qq-music-api/mqtt` 子路径导出，让能够维持 WebSocket 长连接的宿主复用同一套 MQTT 编解码和 QR 事件解析逻辑。
+- 为 Serverless 入口增加可注入的 QQ QR 中继；注入中继时 `/login/channels` 同时公布 QQ 与微信通道，未注入时保持仅微信通道。
+
+### 问题修复
+
+- MQTT WebSocket 握手失败或提前关闭时立即结束等待，避免登录请求一直挂起。
+- 明确要求宿主等待 WebSocket `open` 事件后再发送 CONNECT，并正确转发 `Uint8Array` 的有效字节范围。
+
+### 文档
+
+- 补充 Node.js、Vercel Functions 与 Cloudflare Durable Object 的导出入口、能力边界和安全责任说明。
+
+## [3.0.0](https://github.com/yakult-green-tea/qq-music-api/compare/v2.3.0...v3.0.0) (2026-08-18)
+
+### 新功能
+
+- 新增零 Koa、零 `node:*` 依赖闭包的 `./serverless` 导出和 Web 标准 `handleRequest` 入口。
+- 使用密封 QR 与登录会话，使 Vercel Functions 和 Cloudflare Workers 的无状态请求能够延续扫码登录。
+- 增加 Fetch 版认证与旧接口传输层，并提供登录、用户歌单、收藏专辑、我喜欢和登录态播放等必要路由。
+
+### 问题修复
+
+- 从密封 QR 中移除二维码图片，改为根据标识重新获取，避免令牌过大。
+- 移除 Serverless 依赖闭包中的 Node.js 加密模块，解除 Edge 运行时部署阻断。
+
+### 仓库维护
+
+- 记录受保护分支、验证、安全报告与发布流程。
+- 明确 Folia 只会在单独更新 npm 依赖与锁文件后使用新版本。
+- 在包元数据和文档中保留下游贡献者署名。
 
 ## [2.3.0](https://github.com/yakult-green-tea/qq-music-api/compare/v2.2.2...v2.3.0) (2026-08-09)
 

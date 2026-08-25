@@ -161,5 +161,5 @@ type Test2 = IsEqual<string, number>; // false
 ## 最佳实践与设计原则
 
 1. **接口隔离 (ISP)**：通过 `RequireAtLeastOne` 和 `RequireExactlyOne` 等约束类型，精确限制对象所需具备的属性，防止业务层传递不必要的“大而全”的接口。
-2. **错误处理替代方案**：推荐业务逻辑和 Agent 调用时使用 `Result<T, E>` 进行返回值包装，提升代码在异常分支的类型安全性，避免运行时意外抛错导致的进程崩溃。
-3. **不可变数据 (Immutability)**：在 Redux 类似的状态管理、或向 Agent 传递 Context 选项时，推荐使用 `DeepReadonly` 包装以避免数据被意外篡改。
+2. **错误处理替代方案**：推荐业务逻辑和外部调用使用 `Result<T, E>` 进行返回值包装，提升代码在异常分支的类型安全性，避免运行时意外抛错导致的进程崩溃。
+3. **不可变数据 (Immutability)**：在 Redux 类似的状态管理或传递上下文选项时，推荐使用 `DeepReadonly` 包装以避免数据被意外篡改。
