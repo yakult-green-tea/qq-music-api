@@ -19,6 +19,7 @@ router.get('/user/detail', context.userDetail);
 router.get('/user/playlist', context.getUserPlaylist);
 router.get('/user/albums', context.getUserAlbums);
 router.get('/user/liked-songs', context.getUserLikedSongs);
+router.get('/user/playlist-detail', context.getOwnedPlaylistSongs);
 
 // downloadQQMusic
 router.get('/downloadQQMusic', context.getDownloadQQMusic);

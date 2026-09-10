@@ -1,6 +1,8 @@
 import type { ServerlessEnv } from '../src/serverless';
 import { handleRequest } from '../src/serverless';
+import { deriveAndroidDevice } from '../src/serverless/derivedDevice';
 import { createRouter } from '../src/serverless/router';
+import { createSealedSessionResolver } from '../src/serverless/sealedResolver';
 
 // The serverless entry, exercised through its Web-standard signature. Everything asserted here is
 // either a routing rule or one of the §5.3 compatibility invariants — the ones Folia depends on and
@@ -124,7 +126,13 @@ describe('handleRequest', () => {
 
     it('should answer the credentialed routes with 401 when not logged in', async () => {
       // #4
-      for (const path of ['/user/detail', '/user/playlist', '/user/albums', '/user/liked-songs']) {
+      for (const path of [
+        '/user/detail',
+        '/user/playlist',
+        '/user/albums',
+        '/user/liked-songs',
+        '/user/playlist-detail?tid=7',
+      ]) {
         const response = await call(path);
 
         expect(response.status).toBe(401);
@@ -384,5 +392,104 @@ describe('QR login sealed state (D1′)', () => {
 
     expect(response.status).toBe(200);
     expect(await bodyOf(response)).toEqual({ code: 800, message: 'QR code expired' });
+  });
+});
+
+// `/user/playlist-detail` is the credentialed read of a playlist the user owns. It is served by a
+// route table written independently of Koa's, so it gets its own end-to-end pass: a real sealed
+// token, the real service, and `global.fetch` standing in for musicu.
+describe('/user/playlist-detail', () => {
+  const MUSICU_URL = 'https://u.y.qq.com/cgi-bin/musicu.fcg';
+  const SONGS = [{ mid: 'a' }, { mid: 'b' }, { mid: 'c' }];
+
+  let dissParams: Record<string, any>[];
+  let upstreamCode: number;
+  let originalFetch: typeof fetch;
+
+  const sealedToken = async () =>
+    createSealedSessionResolver({ secrets: { current: SECRET } }).issue({
+      credential: {
+        musicid: '10000',
+        musickey: 'musickey-value',
+        loginType: 2,
+        encryptUin: 'encrypted-uin',
+      },
+      device: await deriveAndroidDevice(SECRET),
+      expiresAt: Date.now() + 3_600_000,
+    });
+
+  beforeEach(() => {
+    dissParams = [];
+    upstreamCode = 0;
+    originalFetch = global.fetch;
+    global.fetch = jest.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const url = new URL(new Request(input, init).url);
+      const payload = JSON.parse(String(init?.body ?? '{}'));
+      if (`${url.origin}${url.pathname}` !== MUSICU_URL || payload?.req_0?.method !== 'CgiGetDiss')
+        throw new Error(`Unexpected fetch: ${url}`);
+      const param = payload.req_0.param;
+      dissParams.push(param);
+      const songlist = SONGS.slice(param.song_begin, param.song_begin + param.song_num);
+      return new Response(
+        JSON.stringify({
+          code: 0,
+          req_0: { code: upstreamCode, data: { songlist, total_song_num: SONGS.length } },
+        }),
+      );
+    }) as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('should page through an owned playlist with the credential', async () => {
+    const headers = { 'X-QQ-Session': await sealedToken() };
+
+    const first = await call('/user/playlist-detail?tid=9776806348&dirid=3&limit=2', { headers });
+    const second = await call('/user/playlist-detail?tid=9776806348&dirid=3&offset=2&limit=2', {
+      headers,
+    });
+
+    expect(await first.json()).toEqual({
+      code: 200,
+      songs: [{ mid: 'a' }, { mid: 'b' }],
+      total: 3,
+      more: true,
+    });
+    expect(await second.json()).toEqual({
+      code: 200,
+      songs: [{ mid: 'c' }],
+      total: 3,
+      more: false,
+    });
+    expect(dissParams[0]).toMatchObject({
+      disstid: 9776806348,
+      dirid: 3,
+      song_begin: 0,
+      song_num: 2,
+      enc_host_uin: 'encrypted-uin',
+    });
+  });
+
+  it('should require a tid or dirid', async () => {
+    const response = await call('/user/playlist-detail', {
+      headers: { 'X-QQ-Session': await sealedToken() },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ code: 400, message: 'tid or dirid is required' });
+    expect(dissParams).toEqual([]);
+  });
+
+  it('should answer 401 when upstream rejects the credential', async () => {
+    upstreamCode = 1000;
+
+    const response = await call('/user/playlist-detail?dirid=3', {
+      headers: { 'X-QQ-Session': await sealedToken() },
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ code: 401, message: 'Login required' });
   });
 });

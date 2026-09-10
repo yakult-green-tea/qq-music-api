@@ -1238,6 +1238,40 @@ describe('QQ login channel routing', () => {
     });
   });
 
+  it('should read an owned playlist through the credentialed CgiGetDiss with a bounded page', async () => {
+    const harness = createProtocolHarness();
+    const key = await harness.service.createSession('wechat');
+    await harness.service.createQr(key);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
+    const token = (await harness.service.checkQr(key)).cookie?.split('=')[1];
+
+    await expect(harness.service.getOwnedPlaylistSongs(undefined, { dirid: 3 })).resolves.toBe(
+      null,
+    );
+    await expect(
+      harness.service.getOwnedPlaylistSongs(token, {
+        disstid: '9776806348',
+        dirid: 3,
+        offset: 2.7,
+        limit: 500,
+      }),
+    ).resolves.toMatchObject({ songlist: [{ id: 9 }], total_song_num: 1 });
+
+    const call = jest
+      .mocked(harness.httpPost)
+      .mock.calls.find(([, payload]) => methodOf(payload) === 'CgiGetDiss');
+    expect(dictionaryOf(dictionaryOf(call?.[1]).req_0)).toMatchObject({
+      module: 'music.srfDissInfo.DissInfo',
+      param: {
+        disstid: 9776806348,
+        dirid: 3,
+        song_begin: 2,
+        song_num: 100,
+        enc_host_uin: 'wechat-encrypt-uin',
+      },
+    });
+  });
+
   it('should read favourite albums over the profile-asset CGI with an inclusive range', async () => {
     const harness = createProtocolHarness();
     const { result } = await login(harness.service, harness.emit);

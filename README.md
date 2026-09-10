@@ -92,6 +92,7 @@ qqMusic.configureAuthSessionRepository({
 | `/user/detail` | 查询当前用户信息 |
 | `/user/playlist` | 读取自建和收藏歌单 |
 | `/user/liked-songs?offset=0&limit=100` | 分页读取内建「我喜欢」歌曲 |
+| `/user/playlist-detail?tid=<tid>&dirid=<dirId>&offset=0&limit=100` | 用登录凭证分页读取自己的歌单，包括「不公开」歌单 |
 | `/user/albums?offset=0&limit=20` | 分页读取收藏专辑 |
 | `/getMusicPlay/:songmid?quality=flac&mediaId=<media_mid>` | 使用当前登录态取得播放链接 |
 | `/logout` | 清除当前登录态 |
