@@ -1,5 +1,9 @@
 ## 未发布
 
+暂无。
+
+## [3.1.2](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.1...v3.1.2) (2026-09-12)
+
 ### 新功能
 
 - 新增 `/user/playlist-detail`，用登录凭证分页读取用户自己的歌单（`tid`／`dirid`／`offset`／`limit`），响应形状与 `/user/liked-songs` 相同。设为「不公开」的自建歌单在匿名的 `/getSongListDetail` 上只会返回空列表，现在可以经由这条路由读到；收藏的他人歌单仍应走 `/getSongListDetail`。`/user/liked-songs` 改为走同一实现，行为不变。
