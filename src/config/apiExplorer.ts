@@ -91,6 +91,12 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getUserPlaylist', method: 'GET', routePath: '/user/playlist', category: 'User' },
   { name: 'getUserAlbums', method: 'GET', routePath: '/user/albums', category: 'User' },
   { name: 'getUserLikedSongs', method: 'GET', routePath: '/user/liked-songs', category: 'User' },
+  {
+    name: 'getOwnedPlaylistSongs',
+    method: 'GET',
+    routePath: '/user/playlist-detail',
+    category: 'User',
+  },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
   {
@@ -315,6 +321,25 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getUserLikedSongs: {
     description: "Get the authenticated user's built-in liked songs.",
     queryParams: [
+      { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
+      { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
+    ],
+  },
+  getOwnedPlaylistSongs: {
+    description:
+      "Get songs of the authenticated user's own playlist, including ones set to private.",
+    queryParams: [
+      {
+        key: 'tid',
+        label: 'Playlist ID',
+        description:
+          'The tid listed by /user/playlist. Always pass it; dirid alone only resolves your own folders.',
+      },
+      {
+        key: 'dirid',
+        label: 'Directory ID',
+        description: 'The dirId listed by /user/playlist. 201 is the built-in liked songs.',
+      },
       { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
     ],

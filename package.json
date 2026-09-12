@@ -1,6 +1,6 @@
 {
   "name": "@yakult-green-tea/qq-music-api",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "description": "非官方、社区维护的 QQ 音乐 API 服务，基于 Rain120/qq-music-api，支持原生扫码登录并可内嵌进 Docker 或 Electron 主进程。",
   "main": "dist/src/app.js",
   "types": "./types/root.d.ts",
@@ -68,7 +68,8 @@
   "author": "Rain120",
   "contributors": [
     "yakult-green-tea",
-    "chthollyphile"
+    "chthollyphile",
+    "lantudou"
   ],
   "license": "MIT",
   "bugs": {

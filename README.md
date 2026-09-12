@@ -17,7 +17,7 @@
 
 - **原生扫码登录**：支持 QQ 音乐 App（MQTT over WSS）与微信两条通道。
 - **更完整的登录态能力**：可读取用户信息、自建／收藏歌单、「我喜欢」歌曲和收藏专辑。
-- **登录态播放**：使用扫码取得的服务端凭证请求播放链接；`3.1.1` 起在上游没有返回 CDN 地址时，会先探测已知可用节点，再动态调度其他节点。
+- **登录态播放**：使用扫码取得的服务端凭证请求播放链接。
 - **可嵌入 npm 包**：Docker、Electron 和可信 Node.js 宿主可以直接使用编译产物。
 - **可注入会话仓库**：默认只保存在进程内存；宿主可以接入自己的加密持久化实现。
 - **Serverless 入口**：提供 Web 标准 `handleRequest()`，并额外导出 QQ App 扫码所需的 MQTT 能力。
@@ -100,19 +100,6 @@ qqMusic.configureAuthSessionRepository({
 
 服务同一时间只允许一个 QR 会话。新会话会接管尚未扫码的旧会话；上游要求退避时，响应会提供 `Retry-After`。
 
-### 3.1.1 的播放节点选择
-
-Android `UrlGetVkey` 有时会返回有效 `purl`，却不给 CDN `sip`。如果直接拼接，浏览器会把文件名误当成本服务的相对路径。`3.1.1` 的处理顺序是：
-
-1. 有 `sip` 时沿用上游地址。
-2. 没有 `sip` 时，以 Range 请求探测优先节点 `sjy6.stream.qqmusic.qq.com`。
-3. 优先节点不可用时，请求 `GetCdnDispatch`，并行探测返回的兼容节点和默认回退节点。
-4. 选择有响应且吞吐较好的节点；探测或调度失败时仍回退到 `dl.stream.qqmusic.qq.com`。
-
-节点结果只缓存在当前服务实例中，并且只有在本次候选列表仍包含该节点时才会复用。缓存不会改变 vkey 或 `purl`，也不会让服务同时播放多首歌曲；它只是减少后续请求重复测速的成本。
-
-歌曲详情中的 `file.media_mid` 可能与 `songmid` 不同。调用播放接口时应把它作为 `mediaId` 传入，否则某些文件即使取得 `purl`，CDN 仍可能返回 403。上游也可能返回空 `purl`；此时服务只能说明「上游未提供播放 URL」，不能据此判断为下架、会员或地区限制。
-
 ## API Explorer
 
 Explorer 会根据 `/explorer/metadata` 动态生成接口列表和请求表单，支持方法筛选、搜索、响应预览与当前页面会话的请求日志。
@@ -192,6 +179,7 @@ npm run run:images
 本项目是 [Rain120/qq-music-api](https://github.com/Rain120/qq-music-api) 的社区维护 fork，并以 `@yakult-green-tea/qq-music-api` 发布。感谢原作者 [Rain120](https://github.com/Rain120) 以及所有贡献者。
 
 - [chthollyphile](https://github.com/chthollyphile)：Axios 请求隔离、可注入认证会话仓库、Serverless 集成与登录态播放改进。
+- [lantudou](https://github.com/lantudou)：登录态自建歌单详情与不公开歌单读取支持。
 - 完整贡献记录保留在 Git 历史与 [ATTRIBUTION.md](./ATTRIBUTION.md) 中。
 
 欢迎提交 [Issue](https://github.com/yakult-green-tea/qq-music-api/issues) 或 [Pull Request](https://github.com/yakult-green-tea/qq-music-api/pulls)。

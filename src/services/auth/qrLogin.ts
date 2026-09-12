@@ -306,6 +306,10 @@ export interface QrLoginService {
   getUserPlaylists(token?: string, uin?: string): Promise<Dictionary | null>;
   getUserAlbums(token?: string, offset?: number, limit?: number): Promise<Dictionary | null>;
   getUserLikedSongs(token?: string, offset?: number, limit?: number): Promise<Dictionary | null>;
+  getOwnedPlaylistSongs(
+    token?: string,
+    params?: OwnedPlaylistSongsParams,
+  ): Promise<Dictionary | null>;
   getMusicPlay(
     token: string | undefined,
     songmid: string,
@@ -1946,11 +1950,27 @@ const getFavoriteAlbums = async (
   return dictionaryOf(sanitizePublicValue(dictionaryOf(body.data)));
 };
 
-const getLikedSongs = async (
+export interface OwnedPlaylistSongsParams {
+  /** The playlist's global id — the `tid` that `GetPlaylistByUin` lists. */
+  disstid?: number | string;
+  /** The directory number inside the account. `201` is the built-in 「我喜欢」. */
+  dirid?: number | string;
+  offset?: number;
+  limit?: number;
+}
+
+const LIKED_SONGS_DIRID = 201;
+
+/**
+ * Reads one playlist the logged-in user owns. Unlike the anonymous `fcg_ucc_getcdinfo_byids_cp`
+ * behind `/getSongListDetail`, this call carries the credential, so a playlist the owner set to
+ * 不公开 (`dirShow: 2`) still comes back with its songs instead of an empty `code: 0` shell.
+ */
+const getOwnedPlaylistSongs = async (
   http: AuthHttpClient,
   auth: AuthSession,
-  offset = 0,
-  limit = 100,
+  { disstid = 0, dirid = 0, offset = 0, limit = 100 }: OwnedPlaylistSongsParams = {},
+  phase = 'get-owned-playlist-songs',
 ): Promise<Dictionary> => {
   const encryptedUin = stringOf(auth.credential.encryptUin);
   if (!encryptedUin) throw new Error('Login credential is missing encryptUin');
@@ -1961,12 +1981,12 @@ const getLikedSongs = async (
       await callMusicu(
         http,
         auth.device,
-        'get-user-liked-songs',
+        phase,
         'music.srfDissInfo.DissInfo',
         'CgiGetDiss',
         {
-          disstid: 0,
-          dirid: 201,
+          disstid: Number(disstid) || 0,
+          dirid: Number(dirid) || 0,
           tag: true,
           song_begin: safeOffset,
           song_num: safeLimit,
@@ -1979,6 +1999,20 @@ const getLikedSongs = async (
     ),
   );
 };
+
+/** 「我喜欢」is `dirid: 201` of the same call; the phase name stays so existing log queries hold. */
+const getLikedSongs = (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  offset = 0,
+  limit = 100,
+): Promise<Dictionary> =>
+  getOwnedPlaylistSongs(
+    http,
+    auth,
+    { disstid: 0, dirid: LIKED_SONGS_DIRID, offset, limit },
+    'get-user-liked-songs',
+  );
 
 const terminalState = (state: QrState): boolean =>
   ['confirmed', 'expired', 'failed'].includes(state);
@@ -2455,6 +2489,16 @@ class QrLoginServiceImpl implements QrLoginService {
     const auth = await this.authFor(token);
     return auth
       ? withCredentialRejectionMapped(() => getLikedSongs(this.http, auth, offset, limit))
+      : null;
+  }
+
+  public async getOwnedPlaylistSongs(
+    token?: string,
+    params: OwnedPlaylistSongsParams = {},
+  ): Promise<Dictionary | null> {
+    const auth = await this.authFor(token);
+    return auth
+      ? withCredentialRejectionMapped(() => getOwnedPlaylistSongs(this.http, auth, params))
       : null;
   }
 

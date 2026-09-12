@@ -1275,6 +1275,7 @@ songs: [
 | `/user/detail` | cookie | 当前用户信息 |
 | `/user/playlist` | 可选 `uid`、cookie | 自建和收藏歌单 |
 | `/user/liked-songs` | 可选 `offset`、`limit`（最大 100）、cookie | 内建「我喜欢」歌曲分页 |
+| `/user/playlist-detail` | `tid`（建议必传）、可选 `dirid`，可选 `offset`、`limit`（最大 100）、cookie | 自己歌单的歌曲分页，不受歌单可见性限制 |
 | `/user/albums` | 可选 `offset`、`limit`（最大 100，默认 20）、cookie | 收藏的专辑分页 |
 | `/getMusicPlay/:songmid` | `quality`、cookie | 使用当前扫码登录态取得播放链接 |
 | `/logout` | cookie | 清除当前登录态，并同步删除注入仓库中的记录 |
@@ -1282,6 +1283,10 @@ songs: [
 `qr/check` 成功时会设置 HttpOnly `qqmusic_session`，并在响应的 `cookie` 字段返回同一个 opaque session 值，供跨来源 transport 保存。该值不包含 QQ 音乐凭证；`musickey`、MQTT token 和 Android 装置上下文不会写入一般日志或响应。用户资料中的账号 ID 只会作为 profile 字段返回。
 
 `/user/playlist` 分别读取自建项目与收藏歌单后合并去重。内建「我喜欢」集合的 `dirId: 201` 不是普通歌单 ID，`/user/liked-songs` 会使用登录凭证的 `encryptUin` 调用专用接口；调用方不得把 `201` 或其 `tid` 猜成通用 `disstid`。
+
+`/user/playlist-detail` 是同一支 `music.srfDissInfo.DissInfo/CgiGetDiss` 的通用形式，用来读登录用户自己的歌单：`tid` 映射到 `disstid`，`dirid` 映射到 `dirid`，`offset`／`limit` 映射到 `song_begin`／`song_num`，响应形状与 `/user/liked-songs` 相同（`dirid=201` 即「我喜欢」）。匿名的 `/getSongListDetail` 读不到设为「不公开」（`dirShow: 2`）的歌单：上游仍回 `code: 0`，但 `cdlist[0]` 没有 `dissname`、`songlist` 为空，与真的空歌单无法区分。2026-09-11 实测：同一个自建歌单公开时两条路由都返回 3 首，改为不公开后匿名路由返回 0 首，本路由仍返回 3 首。
+
+应当总是传 `tid`。只传 `dirid` 仅对当前账号自己的目录有效；`/user/playlist` 里收藏的他人歌单同样带 `dirId`，但那是创建者账号里的目录号，单独传给本路由会被上游以 `10004` 拒绝。收藏的他人歌单也不应走本路由：实测一个 37 首的收藏歌单在这里只返回 36 首（缺一首付费曲目，`total_song_num` 同样是 36），匿名路由则完整返回。区分自建与收藏不能看有没有 `dirId`，要看条目形状：自建项目有 `dirName`／`songNum`，且 `uin` 与「我喜欢」相同；收藏项目用 `name`／`songnum`／`orderTime`，`uin` 是创建者的。`tid` 与 `dirid` 至少要给一个，否则回 `400`。
 
 `/user/albums` 不走 `musicu.fcg`，而是 `fav/fcgi-bin/fcg_get_profile_order_asset.fcg`（`reqtype=2`）。2026-08-08 实测：`music.musicasset.AlbumFavRead/CgiGetAlbumFavInfo` 存在但在任何入参与客户端标识下都返回 `80000` 与全零结构，即使账号已收藏专辑也一样，因此该码不能当成「没有数据」。这支 CGI 接受原生扫码凭证，其 `reqtype=3` 返回的收藏歌单与 musicu 完全一致，不带 cookie 时降为 `4000`。响应中的 `albumlist`／`totalalbum`／`has_more` 是上游拼写，控制器会改写成 `albums`／`total`／`more` 后再交给调用方；分页参数 `sin`／`ein` 是闭区间下标。
 

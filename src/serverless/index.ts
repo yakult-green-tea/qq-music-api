@@ -1,8 +1,8 @@
 import getAlbumInfoService from '../services/album/getAlbumInfo';
 import type { AndroidDevice } from '../services/auth/androidDevice';
+import { type DeviceContextRepository } from '../services/auth/deviceContext';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import type { AuthHttpClient } from '../services/auth/httpClient';
-import { type DeviceContextRepository } from '../services/auth/deviceContext';
 import {
   createQrLoginService,
   createRelayQqQrDriver,
@@ -495,6 +495,38 @@ const routes: Record<string, RouteHandler> = {
     });
   },
 
+  // A playlist the user owns, read with their credential. It must stay in this section: the
+  // anonymous `/getSongListDetail` below answers an empty shell for a 不公开 playlist.
+  '/user/playlist-detail': async ({ url, service: getService, token }) => {
+    const idOf = (name: string): number => {
+      const value = url.searchParams.get(name) ?? '';
+      return /^\d+$/.test(value) ? Number(value) : 0;
+    };
+    const disstid = idOf('tid');
+    const dirid = idOf('dirid');
+    if (!disstid && !dirid) return json({ code: 400, message: 'tid or dirid is required' }, 400);
+    const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
+    const limit = Math.min(
+      100,
+      Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100),
+    );
+    const data = await (await getService()).getOwnedPlaylistSongs(token, {
+      disstid,
+      dirid,
+      offset,
+      limit,
+    });
+    if (!data) return json(LOGIN_REQUIRED, 401);
+    const songs = Array.isArray(data.songlist) ? data.songlist : [];
+    const total = typeof data.total_song_num === 'number' ? data.total_song_num : songs.length;
+    return json({
+      code: 200,
+      songs,
+      total,
+      more: data.hasmore === true || Number(data.hasmore) === 1 || offset + songs.length < total,
+    });
+  },
+
   '/getMusicPlay/:songmid?': async ({ url, params, service: getService, token }) => {
     const songmid = (params.songmid ?? url.searchParams.get('songmid') ?? '').trim();
     if (!songmid) return json({ data: { message: 'no songmid' } }, 400);
@@ -618,6 +650,7 @@ const LOGIN_ROUTES = new Set([
   '/user/playlist',
   '/user/albums',
   '/user/liked-songs',
+  '/user/playlist-detail',
   '/getMusicPlay/:songmid?',
 ]);
 

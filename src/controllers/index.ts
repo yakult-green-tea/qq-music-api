@@ -14,6 +14,7 @@ import getMv from './getMv';
 import getMvByTag from './getMvByTag';
 import getMvPlay from './getMvPlay';
 import getNewDisks from './getNewDisks';
+import getOwnedPlaylistSongs from './getOwnedPlaylistSongs';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
 import getRecommend from './getRecommend';
@@ -83,5 +84,6 @@ export default {
   userDetail: withControllerLogging('userDetail', userDetail),
   getUserAlbums: withControllerLogging('getUserAlbums', getUserAlbums),
   getUserLikedSongs: withControllerLogging('getUserLikedSongs', getUserLikedSongs),
+  getOwnedPlaylistSongs: withControllerLogging('getOwnedPlaylistSongs', getOwnedPlaylistSongs),
   getUserPlaylist: withControllerLogging('getUserPlaylist', getUserPlaylist),
 };

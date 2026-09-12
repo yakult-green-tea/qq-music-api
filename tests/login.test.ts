@@ -7,6 +7,7 @@ const mockQrLoginService = {
   getUserDetail: jest.fn(),
   getUserAlbums: jest.fn(),
   getUserLikedSongs: jest.fn(),
+  getOwnedPlaylistSongs: jest.fn(),
   getUserPlaylists: jest.fn(),
   logout: jest.fn(),
 };
@@ -41,6 +42,7 @@ describe('QQ login controllers', () => {
     mockQrLoginService.getUserDetail.mockResolvedValue(null);
     mockQrLoginService.getUserAlbums.mockResolvedValue(null);
     mockQrLoginService.getUserLikedSongs.mockResolvedValue(null);
+    mockQrLoginService.getOwnedPlaylistSongs.mockResolvedValue(null);
     mockQrLoginService.getUserPlaylists.mockResolvedValue(null);
   });
 
@@ -227,12 +229,14 @@ describe('QQ login controllers', () => {
     const detailResponse = await request(server).get('/user/detail');
     const playlistResponse = await request(server).get('/user/playlist');
     const likedResponse = await request(server).get('/user/liked-songs');
+    const ownedResponse = await request(server).get('/user/playlist-detail').query({ tid: '7' });
     const albumResponse = await request(server).get('/user/albums');
 
     expect(statusResponse.body).toEqual({ code: 200, data: {} });
     expect(detailResponse.status).toBe(401);
     expect(playlistResponse.status).toBe(401);
     expect(likedResponse.status).toBe(401);
+    expect(ownedResponse.status).toBe(401);
     expect(albumResponse.status).toBe(401);
   });
 
@@ -242,6 +246,7 @@ describe('QQ login controllers', () => {
       'getUserDetail',
       'getUserPlaylists',
       'getUserLikedSongs',
+      'getOwnedPlaylistSongs',
       'getUserAlbums',
     ] as const)
       mockQrLoginService[method].mockRejectedValue(new AuthCredentialRejectedError(1000));
@@ -250,9 +255,12 @@ describe('QQ login controllers', () => {
     const detail = await request(server).get('/user/detail').query(cookie);
     const playlist = await request(server).get('/user/playlist').query(cookie);
     const liked = await request(server).get('/user/liked-songs').query(cookie);
+    const owned = await request(server)
+      .get('/user/playlist-detail')
+      .query({ ...cookie, tid: '7' });
     const albums = await request(server).get('/user/albums').query(cookie);
 
-    for (const response of [detail, playlist, liked, albums]) {
+    for (const response of [detail, playlist, liked, owned, albums]) {
       expect(response.status).toBe(401);
       expect(response.body).toEqual({ code: 401, message: 'Login required' });
     }
@@ -326,6 +334,64 @@ describe('QQ login controllers', () => {
       more: true,
     });
     expect(mockQrLoginService.getUserLikedSongs).toHaveBeenCalledWith('opaque-token', 100, 100);
+  });
+
+  it('should return a bounded page from an owned playlist in the liked-songs shape', async () => {
+    mockQrLoginService.getOwnedPlaylistSongs.mockResolvedValue({
+      songlist: [{ id: 9, mid: 'owned-song-mid' }],
+      total_song_num: 958,
+      hasmore: 0,
+    });
+
+    const response = await request(server).get('/user/playlist-detail').query({
+      cookie: 'qqmusic_session=opaque-token',
+      tid: '9776806348',
+      dirid: '3',
+      offset: '100',
+      limit: '500',
+    });
+
+    expect(response.body).toEqual({
+      code: 200,
+      songs: [{ id: 9, mid: 'owned-song-mid' }],
+      total: 958,
+      more: true,
+    });
+    expect(mockQrLoginService.getOwnedPlaylistSongs).toHaveBeenCalledWith('opaque-token', {
+      disstid: 9776806348,
+      dirid: 3,
+      offset: 100,
+      limit: 100,
+    });
+  });
+
+  it('should treat an owned playlist that is really empty as a successful empty page', async () => {
+    mockQrLoginService.getOwnedPlaylistSongs.mockResolvedValue({ songlist: [], total_song_num: 0 });
+
+    const response = await request(server)
+      .get('/user/playlist-detail')
+      .query({ cookie: 'qqmusic_session=opaque-token', dirid: '5' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ code: 200, songs: [], total: 0, more: false });
+    expect(mockQrLoginService.getOwnedPlaylistSongs).toHaveBeenCalledWith('opaque-token', {
+      disstid: 0,
+      dirid: 5,
+      offset: 0,
+      limit: 100,
+    });
+  });
+
+  it('should require a tid or dirid before asking upstream for an owned playlist', async () => {
+    for (const query of [{}, { tid: 'abc' }, { tid: '0', dirid: '' }]) {
+      const response = await request(server)
+        .get('/user/playlist-detail')
+        .query({ cookie: 'qqmusic_session=opaque-token', ...query });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ code: 400, message: 'tid or dirid is required' });
+    }
+    expect(mockQrLoginService.getOwnedPlaylistSongs).not.toHaveBeenCalled();
   });
 
   it('should return favourite albums without leaking the upstream field names', async () => {
