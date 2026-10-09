@@ -22,6 +22,7 @@ import getSimilarSinger from './singers/getSimilarSinger';
 import getSingerDesc from './singers/getSingerDesc';
 import getSingerMv from './singers/getSingerMv';
 import getSingerStarNum from './singers/getSingerStarNum';
+import getAuthenticatedSongListDetail from './songLists/getAuthenticatedSongListDetail';
 import songListCategories from './songLists/songListCategories';
 import songListDetail from './songLists/songListDetail';
 // song list
@@ -43,6 +44,7 @@ export default {
   songLists,
   songListCategories,
   songListDetail,
+  getAuthenticatedSongListDetail,
   // MV
   getMvByTag,
   // singer

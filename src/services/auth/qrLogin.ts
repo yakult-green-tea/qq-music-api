@@ -357,6 +357,15 @@ export interface QrLoginService {
     token?: string,
     params?: OwnedPlaylistSongsParams,
   ): Promise<Dictionary | null>;
+  /**
+   * 带凭据读一张歌单。匿名 CGI 读不到的算法歌单（百万收藏、歌手漫游……）靠它；没有会话、或
+   * `disstid` 不是正整数时返回 `null`。
+   */
+  getAuthenticatedSongListDetail(
+    token?: string,
+    disstid?: number | string,
+    options?: AuthenticatedSongListDetailOptions,
+  ): Promise<Dictionary | null>;
   getMusicPlay(
     token: string | undefined,
     songmid: string,
@@ -1942,6 +1951,83 @@ const getPlaylists = async (
   );
 };
 
+/** 只接受正整数 id；`0`、负数、小数和带杂字的字符串一律不认，免得把它们送上游。 */
+const positiveIdOf = (value: unknown): number | undefined => {
+  const text = identifierOf(value).trim();
+  if (!/^\d+$/.test(text)) return undefined;
+  const id = Number(text);
+  return Number.isSafeInteger(id) && id > 0 ? id : undefined;
+};
+
+export interface AuthenticatedSongListDetailOptions {
+  /** 只读这么多首（夹在 1..1000），不续页。不给就按 `hasmore` 读完整张歌单。 */
+  limit?: number;
+}
+
+/** 实测一页 1000 首可以一次读完 761 首的歌单；再多就续页。 */
+const AUTHENTICATED_SONG_LIST_PAGE_SIZE = 1000;
+const AUTHENTICATED_SONG_LIST_MAX_PAGES = 10;
+
+const songsOf = (data: Dictionary): unknown[] =>
+  Array.isArray(data.songlist) ? data.songlist : [];
+
+/**
+ * 带凭据读一张歌单。与 `getOwnedPlaylistSongs` 的 `CgiGetDiss` 不同，这里走 QQ 音乐客户端读算法歌单
+ * 用的 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo`：百万收藏这类按账号生成的歌单，匿名 CGI
+ * 只回 `code: 10`，未登录调用这里回 `80120`，带上凭据才读得到（2026-10-09 实测）。
+ *
+ * 不给 `limit` 时按 `hasmore` 续读，但上游的 `hasmore` 不可全信：空页、读满 `total_song_num`、
+ * 或读到第 10 页都会停。给了 `limit` 只读一页 —— 补封面只要第一首；算法歌单本来就无视 `song_num`，
+ * 每次都回整张 50 首。
+ */
+const getAuthenticatedSongListDetail = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  disstid: number,
+  limit?: number,
+): Promise<Dictionary> => {
+  const readPage = async (songBegin: number, songNum: number): Promise<Dictionary> =>
+    dictionaryOf(
+      sanitizePublicValue(
+        await callMusicu(
+          http,
+          auth.device,
+          'get-song-list-detail',
+          'music.srfDissInfo.aiDissInfo',
+          'uniform_get_Dissinfo',
+          {
+            disstid,
+            userinfo: 1,
+            tag: 1,
+            orderlist: 1,
+            song_begin: songBegin,
+            song_num: songNum,
+            onlysonglist: 0,
+            enc_host_uin: '',
+          },
+          auth.credential,
+        ),
+      ),
+    );
+
+  if (limit !== undefined && Number.isFinite(limit)) {
+    return readPage(0, Math.min(AUTHENTICATED_SONG_LIST_PAGE_SIZE, Math.max(1, Math.floor(limit))));
+  }
+
+  const first = await readPage(0, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
+  const songs = [...songsOf(first)];
+  const total = numberOf(first.total_song_num);
+  let last = first;
+  for (let page = 1; page < AUTHENTICATED_SONG_LIST_MAX_PAGES; page += 1) {
+    const hasMore = last.hasmore === true || numberOf(last.hasmore) === 1;
+    if (!hasMore || songsOf(last).length === 0) break;
+    if (total !== undefined && songs.length >= total) break;
+    last = await readPage(songs.length, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
+    songs.push(...songsOf(last));
+  }
+  return { ...first, songlist: songs, hasmore: last.hasmore };
+};
+
 const FAVORITE_ASSET_URL = 'https://c.y.qq.com/fav/fcgi-bin/fcg_get_profile_order_asset.fcg';
 /** `2` selects favourite albums on this CGI; `3` selects favourite playlists. */
 const FAVORITE_ALBUM_REQUEST_TYPE = 2;
@@ -2715,6 +2801,21 @@ class QrLoginServiceImpl implements QrLoginService {
     const auth = await this.authFor(token);
     return auth
       ? withCredentialRejectionMapped(() => getOwnedPlaylistSongs(this.http, auth, params))
+      : null;
+  }
+
+  public async getAuthenticatedSongListDetail(
+    token?: string,
+    disstid?: number | string,
+    options: AuthenticatedSongListDetailOptions = {},
+  ): Promise<Dictionary | null> {
+    const id = positiveIdOf(disstid);
+    if (!id) return null;
+    const auth = await this.authFor(token);
+    return auth
+      ? withCredentialRejectionMapped(() =>
+          getAuthenticatedSongListDetail(this.http, auth, id, options.limit),
+        )
       : null;
   }
 
