@@ -1,5 +1,6 @@
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
+import { firstSongAlbumCoverUrl, isOfficialPlaylistEntry } from '../songLists/officialPlaylist';
 import {
   type AndroidDevice,
   buildAndroidComm,
@@ -1944,9 +1945,51 @@ const getPlaylists = async (
   return dictionaryOf(
     sanitizePublicValue({
       ...created,
-      v_playlist: playlists,
+      v_playlist: await withOfficialPlaylistCovers(http, auth, playlists),
       total: playlists.length,
       bFinish: true,
+    }),
+  );
+};
+
+/** 一次 `/user/playlist` 最多为这么多张官方歌单补封面；每张多一次上游请求。 */
+const OFFICIAL_PLAYLIST_COVER_LIMIT = 20;
+
+/**
+ * 官方歌单（每日30首、算法歌单）的封面一律换成第一首歌的专辑图，与 QQ 音乐客户端的显示一致。
+ * 写进下游最先读的 `bigpicUrl` 与 `picUrl`（与自建歌单条目同名），`logo` / `albumPicUrl` 保留上游原值。
+ *
+ * 每张只读一首，彼此并行。读不到时条目原样返回：补封面失败不能让整个歌单列表跟着失败。
+ */
+const withOfficialPlaylistCovers = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  playlists: unknown[],
+): Promise<unknown[]> => {
+  let remaining = OFFICIAL_PLAYLIST_COVER_LIMIT;
+  return Promise.all(
+    playlists.map(async (value) => {
+      if (!isOfficialPlaylistEntry(value)) return value;
+      const disstid = positiveIdOf(dictionaryOf(value).tid);
+      // 额度在第一个 await 之前扣，所以按列表顺序分配，与请求完成的先后无关
+      if (!disstid || remaining <= 0) return value;
+      remaining -= 1;
+      try {
+        const data = await withCredentialRejectionMapped(() =>
+          getAuthenticatedSongListDetail(http, auth, disstid, 1),
+        );
+        const cover = firstSongAlbumCoverUrl(data.songlist);
+        return cover ? { ...dictionaryOf(value), bigpicUrl: cover, picUrl: cover } : value;
+      } catch (error) {
+        logger.warn('qq-auth.official-playlist-cover-failed', {
+          name: error instanceof Error ? error.name : 'Error',
+          upstreamCode:
+            error instanceof QqProtocolError || error instanceof AuthCredentialRejectedError
+              ? error.upstreamCode
+              : undefined,
+        });
+        return value;
+      }
     }),
   );
 };
