@@ -1922,7 +1922,7 @@ const getPlaylists = async (
         auth.credential,
       );
       const pageItems = Array.isArray(favoritePage.v_list) ? favoritePage.v_list : [];
-      favoritePlaylists.push(...pageItems);
+      favoritePlaylists.push(...pageItems.map(withOriginalCover));
       offset += pageItems.length;
       if (
         pageItems.length === 0 ||
@@ -1950,6 +1950,24 @@ const getPlaylists = async (
       bFinish: true,
     }),
   );
+};
+
+/** 下游读封面的字段，与 `GetPlaylistByUin` 给自建歌单的同名。 */
+const PLAYLIST_COVER_FIELDS = ['bigpicUrl', 'picUrl', 'picurl', 'coverUrl'] as const;
+
+/**
+ * 收藏的他人歌单沿用歌单原本的封面：收藏者改不了封面，歌单主人设成什么（自定义图、第一首歌的
+ * 专辑……）就显示什么。`CgiGetPlaylistFavInfo` 只给 `logo`（没有时看 `albumPicUrl`），下游读的是
+ * `bigpicUrl` / `picUrl`，所以照自建歌单条目的字段名补上；两个都没有就原样，不编一个封面出来。
+ *
+ * 官方歌单另有规则（第一首歌的专辑图，见 `withOfficialPlaylistCovers`），这里跳过；已经带着
+ * 封面字段的条目也原样。不发任何请求。
+ */
+const withOriginalCover = (value: unknown): unknown => {
+  if (!isDictionary(value) || isOfficialPlaylistEntry(value)) return value;
+  if (PLAYLIST_COVER_FIELDS.some((field) => stringOf(value[field]).trim())) return value;
+  const cover = stringOf(value.logo).trim() || stringOf(value.albumPicUrl).trim();
+  return cover ? { ...value, bigpicUrl: cover, picUrl: cover } : value;
 };
 
 /** 一次 `/user/playlist` 最多为这么多张官方歌单补封面；每张多一次上游请求。 */
