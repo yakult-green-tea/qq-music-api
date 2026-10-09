@@ -1,0 +1,36 @@
+{
+  "v_playlist": [
+    {
+      "tid": 9000000201,
+      "dirId": 201,
+      "dirName": "我喜欢",
+      "songNum": 182,
+      "dirShow": 1,
+      "picUrl": "http://y.gtimg.cn/mediastyle/y/img/cover_love_300.jpg",
+      "bigpicUrl": "http://y.gtimg.cn/mediastyle/y/img/cover_love_300.jpg",
+      "albumPicUrl": "",
+      "layerUrl": "",
+      "createTime": 1791557632,
+      "updateTime": 1789617797,
+      "uin": "0",
+      "nick": "测试用户"
+    },
+    {
+      "tid": 9000000035,
+      "dirId": 35,
+      "dirName": "测试自建歌单",
+      "songNum": 59,
+      "dirShow": 1,
+      "picUrl": "http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum008.jpg?n=1",
+      "bigpicUrl": "http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum008.jpg?n=1",
+      "albumPicUrl": "",
+      "layerUrl": "",
+      "createTime": 1784733648,
+      "updateTime": 1789617458,
+      "uin": "0",
+      "nick": "测试用户"
+    }
+  ],
+  "total": 2,
+  "bFinish": true
+}

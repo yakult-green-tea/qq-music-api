@@ -1,0 +1,81 @@
+{
+  "v_list": [
+    {
+      "tid": 9000000030,
+      "dirId": 202,
+      "dirType": 2,
+      "dirShow": 1,
+      "name": "测试用户的每日30首",
+      "songnum": 30,
+      "logo": "http://y.qq.com/m/resource/calendar/1009_300.jpg",
+      "albumPicUrl": "http://y.gtimg.cn/music/photo_new/T002R300x300M000000FixAlbum007.jpg",
+      "layerUrl": "",
+      "uin": "0",
+      "nickname": "歌单作者",
+      "orderTime": 1791557062,
+      "status": 0
+    },
+    {
+      "tid": 211192,
+      "dirId": 211192,
+      "dirType": 3,
+      "dirShow": 1,
+      "name": "歌手漫游 | 专享歌手Mix",
+      "songnum": 50,
+      "logo": "http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum001.jpg",
+      "albumPicUrl": "http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum001.jpg",
+      "layerUrl": "https://y.qq.com/music/photo_new/T011R213x213M000000FixLayer002.png",
+      "uin": "0",
+      "nickname": "歌单作者",
+      "orderTime": 1791557092,
+      "status": 0
+    },
+    {
+      "tid": 211111,
+      "dirId": 211111,
+      "dirType": 3,
+      "dirShow": 1,
+      "name": "百万收藏",
+      "songnum": 50,
+      "logo": "http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum004.jpg",
+      "albumPicUrl": "http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum004.jpg",
+      "layerUrl": "https://y.qq.com/music/photo_new/T011R426x426M000000FixLayer004.png",
+      "uin": "0",
+      "nickname": "歌单作者",
+      "orderTime": 1791557086,
+      "status": 0
+    },
+    {
+      "tid": 9100000001,
+      "dirId": 11,
+      "dirType": 0,
+      "dirShow": 1,
+      "name": "收藏歌单甲",
+      "songnum": 225,
+      "logo": "https://y.qq.com/fixture/custom-cover-1.jpg",
+      "albumPicUrl": "",
+      "layerUrl": "",
+      "uin": "0",
+      "nickname": "歌单作者",
+      "orderTime": 1791554600,
+      "status": 400
+    },
+    {
+      "tid": 9100000002,
+      "dirId": 301,
+      "dirType": 0,
+      "dirShow": 1,
+      "name": "收藏歌单乙",
+      "songnum": 298,
+      "logo": "https://y.qq.com/fixture/custom-cover-2.jpg",
+      "albumPicUrl": "",
+      "layerUrl": "",
+      "uin": "0",
+      "nickname": "歌单作者",
+      "orderTime": 1773484630,
+      "status": 400
+    }
+  ],
+  "total": 5,
+  "hasmore": 0
+}

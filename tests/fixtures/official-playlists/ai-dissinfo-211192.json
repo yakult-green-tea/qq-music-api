@@ -1,0 +1,105 @@
+{
+  "code": 0,
+  "req_0": {
+    "code": 0,
+    "data": {
+      "code": 0,
+      "subcode": 0,
+      "msg": "",
+      "dirinfo": {
+        "id": 211192,
+        "host_uin": 0,
+        "dirid": 0,
+        "title": "歌手漫游 | 专享歌手Mix",
+        "picurl": "http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum001.jpg",
+        "picurl2": "https://y.qq.com/music/photo_new/T011R500x500M000000FixLayer001.png",
+        "desc": "为你推荐的专属歌手歌单！",
+        "dirtype": 0,
+        "disstype": 3,
+        "host_nick": "歌单作者",
+        "songnum": 50,
+        "dir_show": 1,
+        "layer_url": "https://y.qq.com/music/photo_new/T011R213x213M000000FixLayer002.png"
+      },
+      "songlist": [
+        {
+          "id": 900000001,
+          "mid": "000FixSong0001",
+          "name": "测试曲目一",
+          "title": "测试曲目一",
+          "subtitle": "",
+          "interval": 180,
+          "type": 1,
+          "songtype": 1,
+          "singer": [
+            {
+              "id": 700000001,
+              "mid": "000FixSinger01",
+              "name": "测试歌手一",
+              "title": "测试歌手一"
+            }
+          ],
+          "album": {
+            "id": 800000001,
+            "mid": "000FixAlbum001",
+            "name": "测试曲目一",
+            "title": "测试曲目一",
+            "pmid": "000FixAlbum001_1"
+          }
+        },
+        {
+          "id": 900000002,
+          "mid": "000FixSong0002",
+          "name": "测试曲目二",
+          "title": "测试曲目二",
+          "subtitle": "",
+          "interval": 254,
+          "type": 1,
+          "songtype": 1,
+          "singer": [
+            {
+              "id": 700000002,
+              "mid": "000FixSinger02",
+              "name": "测试歌手二",
+              "title": "测试歌手二"
+            }
+          ],
+          "album": {
+            "id": 800000002,
+            "mid": "000FixAlbum002",
+            "name": "测试曲目二",
+            "title": "测试曲目二",
+            "pmid": "000FixAlbum002_1"
+          }
+        },
+        {
+          "id": 900000003,
+          "mid": "000FixSong0003",
+          "name": "测试曲目三",
+          "title": "测试曲目三",
+          "subtitle": "",
+          "interval": 285,
+          "type": 1,
+          "songtype": 1,
+          "singer": [
+            {
+              "id": 700000003,
+              "mid": "000FixSinger03",
+              "name": "测试歌手三",
+              "title": "测试歌手三"
+            }
+          ],
+          "album": {
+            "id": 800000003,
+            "mid": "000FixAlbum003",
+            "name": "测试专辑三",
+            "title": "测试专辑三",
+            "pmid": "000FixAlbum003_4"
+          }
+        }
+      ],
+      "total_song_num": 50,
+      "hasmore": 0
+    }
+  }
+}
