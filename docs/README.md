@@ -413,9 +413,17 @@ const userInfo = {
 
 	- `disstid`: 歌单`id`
 
+- 可选参数
+
+	- 登录会话（`X-QQ-Session` 请求头、`cookie` 参数或 `qqmusic_session` Cookie）: 只在读取官方歌单时使用，见下文
+
 接口地址: `/getSongListDetail`
 
 调用例子: `/getSongListDetail?disstid=7011264340`
+
+QQ 音乐按账号生成的官方歌单（百万收藏、新歌推荐、歌手漫游等，即 `/user/playlist` 收藏项目中 `dirType: 3` 的歌单）在这条匿名接口上只返回 `code: 10`。请求带着登录会话时，服务会改用登录凭证经 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo` 重新读取，并改写成同样的 `cdlist[0]` 结构，`logo` 为第一首歌的专辑图。
+
+其他歌单仍走匿名接口，响应不变。重新读取失败时返回原来的 `code: 10`，状态码仍为 `200`，不会返回 `401`。Serverless 部署未设置 `QQ_SESSION_SECRET` 时不会重新读取。
 
 示例截图:
 
@@ -1273,7 +1281,7 @@ songs: [
 | `/login/qr/check` | `key` | `800` 过期/失败、`801` 等待、`802` 已扫描、`803` 已确认 |
 | `/login/status` | cookie（浏览器自动携带） | `data.profile`；未登录时 `data` 为空 |
 | `/user/detail` | cookie | 当前用户信息 |
-| `/user/playlist` | 可选 `uid`、cookie | 自建和收藏歌单 |
+| `/user/playlist` | 可选 `uid`、cookie | 自建和收藏歌单，封面字段已统一（见下文） |
 | `/user/liked-songs` | 可选 `offset`、`limit`（最大 100）、cookie | 内建「我喜欢」歌曲分页 |
 | `/user/playlist-detail` | `tid`（建议必传）、可选 `dirid`，可选 `offset`、`limit`（最大 100）、cookie | 自己歌单的歌曲分页，不受歌单可见性限制 |
 | `/user/albums` | 可选 `offset`、`limit`（最大 100，默认 20）、cookie | 收藏的专辑分页 |
@@ -1283,6 +1291,8 @@ songs: [
 `qr/check` 成功时会设置 HttpOnly `qqmusic_session`，并在响应的 `cookie` 字段返回同一个 opaque session 值，供跨来源 transport 保存。该值不包含 QQ 音乐凭证；`musickey`、MQTT token 和 Android 装置上下文不会写入一般日志或响应。用户资料中的账号 ID 只会作为 profile 字段返回。
 
 `/user/playlist` 分别读取自建项目与收藏歌单后合并去重。内建「我喜欢」集合的 `dirId: 201` 不是普通歌单 ID，`/user/liked-songs` 会使用登录凭证的 `encryptUin` 调用专用接口；调用方不得把 `201` 或其 `tid` 猜成通用 `disstid`。
+
+`/user/playlist` 会统一封面字段。自建项目本来就有 `picUrl`／`bigpicUrl`。收藏的他人歌单上游只给 `logo`（为空时看 `albumPicUrl`），服务照自建项目的字段名补上 `bigpicUrl`／`picUrl`，沿用歌单原本的封面；已带封面字段的项目不覆盖。官方歌单（收藏项目中 `dirType: 2` 的每日30首与 `dirType: 3` 的算法歌单）没有自己的封面，服务会为每张多读一首歌，把第一首歌的专辑图写入这两个字段，与 QQ 音乐客户端一致；一次最多处理 20 张，读取失败时该项目不补封面，列表照常返回。`logo`／`albumPicUrl` 一律保留上游原值。
 
 `/user/playlist-detail` 是同一支 `music.srfDissInfo.DissInfo/CgiGetDiss` 的通用形式，用来读登录用户自己的歌单：`tid` 映射到 `disstid`，`dirid` 映射到 `dirid`，`offset`／`limit` 映射到 `song_begin`／`song_num`，响应形状与 `/user/liked-songs` 相同（`dirid=201` 即「我喜欢」）。匿名的 `/getSongListDetail` 读不到设为「不公开」（`dirShow: 2`）的歌单：上游仍回 `code: 0`，但 `cdlist[0]` 没有 `dissname`、`songlist` 为空，与真的空歌单无法区分。2026-09-11 实测：同一个自建歌单公开时两条路由都返回 3 首，改为不公开后匿名路由返回 0 首，本路由仍返回 3 首。
 

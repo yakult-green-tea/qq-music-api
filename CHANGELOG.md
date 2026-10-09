@@ -2,6 +2,13 @@
 
 暂无。
 
+## [3.1.4](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.3...v3.1.4) (2026-10-09)
+
+### 问题修复
+
+- `/getSongListDetail` 读不到 QQ 音乐按账号生成的官方歌单（百万收藏、新歌推荐、歌手漫游等），匿名接口只返回 `code: 10`。请求带着登录会话时改用登录凭证重新读取，响应结构不变；其他歌单不受影响，重新读取失败时保持原响应，不返回 `401`。Node 与 Serverless 入口行为一致。
+- `/user/playlist` 中的官方歌单（每日30首与算法歌单）改用第一首歌的专辑图作为封面；收藏的他人歌单补上歌单原本的封面。两者都写入与自建歌单相同的 `bigpicUrl`／`picUrl` 字段。
+
 ## [3.1.3](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.2...v3.1.3) (2026-10-05)
 
 ### 改进

@@ -545,12 +545,21 @@ const routes: Record<string, RouteHandler> = {
   },
 
   // ---- Catalog (no credential) ------------------------------------------------------------
-  '/getSongListDetail/:disstid': async ({ url, params }) => {
+  // Anonymous by default, so it stays usable without a secret. Only when the anonymous CGI cannot
+  // read the playlist at all (`code: 10`, QQ's own algorithmic playlists) does a session get used,
+  // and only on a deployment that can open one; any failure there keeps the anonymous answer.
+  '/getSongListDetail/:disstid': async ({ url, params, service: getService, token, env }) => {
     const disstid = params.disstid ?? url.searchParams.get('disstid') ?? undefined;
     const { status, body } = await songListDetailService({
       method: 'get',
       params: { disstid },
       option: {},
+      ...(token && env.QQ_SESSION_SECRET
+        ? {
+            readWithCredential: async (id: string) =>
+              (await getService()).getAuthenticatedSongListDetail(token, id),
+          }
+        : {}),
     });
     return json(body, status);
   },

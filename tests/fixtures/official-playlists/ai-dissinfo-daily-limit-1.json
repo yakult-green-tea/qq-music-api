@@ -1,0 +1,55 @@
+{
+  "code": 0,
+  "req_0": {
+    "code": 0,
+    "data": {
+      "code": 0,
+      "subcode": 0,
+      "msg": "",
+      "dirinfo": {
+        "id": 9000000030,
+        "host_uin": 0,
+        "dirid": 202,
+        "title": "测试用户的每日30首",
+        "picurl": "https://y.qq.com/m/resource/calendar/1009_300.jpg",
+        "picurl2": "https://y.qq.com/m/resource/calendar/1009_300.jpg",
+        "desc": "每天按听歌口味生成的推荐",
+        "dirtype": 1,
+        "disstype": 2,
+        "host_nick": "歌单作者",
+        "songnum": 30,
+        "dir_show": 1,
+        "layer_url": ""
+      },
+      "songlist": [
+        {
+          "id": 900000007,
+          "mid": "000FixSong0007",
+          "name": "测试曲目七",
+          "title": "测试曲目七",
+          "subtitle": "",
+          "interval": 296,
+          "type": 1,
+          "songtype": 13,
+          "singer": [
+            {
+              "id": 700000008,
+              "mid": "000FixSinger08",
+              "name": "测试歌手八",
+              "title": "测试歌手八"
+            }
+          ],
+          "album": {
+            "id": 800000007,
+            "mid": "000FixAlbum007",
+            "name": "测试曲目七",
+            "title": "测试曲目七",
+            "pmid": "000FixAlbum007_2"
+          }
+        }
+      ],
+      "total_song_num": 30,
+      "hasmore": 1
+    }
+  }
+}

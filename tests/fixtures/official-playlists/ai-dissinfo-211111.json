@@ -1,0 +1,111 @@
+{
+  "code": 0,
+  "req_0": {
+    "code": 0,
+    "data": {
+      "code": 0,
+      "subcode": 0,
+      "msg": "",
+      "dirinfo": {
+        "id": 211111,
+        "host_uin": 0,
+        "dirid": 0,
+        "title": "百万收藏",
+        "picurl": "http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum004.jpg",
+        "picurl2": "https://y.qq.com/music/photo_new/T011R750x750M000000FixLayer003.jpg",
+        "desc": "QQ音乐用户常听的人气好歌都在这里，歌单中每一首歌都超过百万收藏或者具有百万收藏的潜力。歌单每日更新，点击红心收藏吧！",
+        "dirtype": 0,
+        "disstype": 3,
+        "host_nick": "歌单作者",
+        "songnum": 50,
+        "dir_show": 1,
+        "layer_url": "https://y.qq.com/music/photo_new/T011R426x426M000000FixLayer004.png"
+      },
+      "songlist": [
+        {
+          "id": 900000004,
+          "mid": "000FixSong0004",
+          "name": "测试曲目四",
+          "title": "测试曲目四",
+          "subtitle": "",
+          "interval": 220,
+          "type": 1,
+          "songtype": 1,
+          "singer": [
+            {
+              "id": 700000004,
+              "mid": "000FixSinger04",
+              "name": "测试歌手四",
+              "title": "测试歌手四"
+            },
+            {
+              "id": 700000005,
+              "mid": "000FixSinger05",
+              "name": "测试歌手五",
+              "title": "测试歌手五"
+            }
+          ],
+          "album": {
+            "id": 800000004,
+            "mid": "000FixAlbum004",
+            "name": "测试曲目四",
+            "title": "测试曲目四",
+            "pmid": "000FixAlbum004_1"
+          }
+        },
+        {
+          "id": 900000005,
+          "mid": "000FixSong0005",
+          "name": "测试曲目五",
+          "title": "测试曲目五",
+          "subtitle": "",
+          "interval": 306,
+          "type": 1,
+          "songtype": 1,
+          "singer": [
+            {
+              "id": 700000006,
+              "mid": "000FixSinger06",
+              "name": "测试歌手六",
+              "title": "测试歌手六"
+            }
+          ],
+          "album": {
+            "id": 800000005,
+            "mid": "000FixAlbum005",
+            "name": "测试专辑五",
+            "title": "测试专辑五",
+            "pmid": "000FixAlbum005_3"
+          }
+        },
+        {
+          "id": 900000006,
+          "mid": "000FixSong0006",
+          "name": "测试曲目六",
+          "title": "测试曲目六",
+          "subtitle": "",
+          "interval": 228,
+          "type": 1,
+          "songtype": 1,
+          "singer": [
+            {
+              "id": 700000007,
+              "mid": "000FixSinger07",
+              "name": "测试歌手七",
+              "title": "测试歌手七"
+            }
+          ],
+          "album": {
+            "id": 800000006,
+            "mid": "000FixAlbum006",
+            "name": "测试专辑六",
+            "title": "测试专辑六",
+            "pmid": "000FixAlbum006_2"
+          }
+        }
+      ],
+      "total_song_num": 50,
+      "hasmore": 0
+    }
+  }
+}

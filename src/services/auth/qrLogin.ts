@@ -1,5 +1,6 @@
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
+import { firstSongAlbumCoverUrl, isOfficialPlaylistEntry } from '../songLists/officialPlaylist';
 import {
   type AndroidDevice,
   buildAndroidComm,
@@ -356,6 +357,15 @@ export interface QrLoginService {
   getOwnedPlaylistSongs(
     token?: string,
     params?: OwnedPlaylistSongsParams,
+  ): Promise<Dictionary | null>;
+  /**
+   * 带凭据读一张歌单。匿名 CGI 读不到的算法歌单（百万收藏、歌手漫游……）靠它；没有会话、或
+   * `disstid` 不是正整数时返回 `null`。
+   */
+  getAuthenticatedSongListDetail(
+    token?: string,
+    disstid?: number | string,
+    options?: AuthenticatedSongListDetailOptions,
   ): Promise<Dictionary | null>;
   getMusicPlay(
     token: string | undefined,
@@ -1912,7 +1922,7 @@ const getPlaylists = async (
         auth.credential,
       );
       const pageItems = Array.isArray(favoritePage.v_list) ? favoritePage.v_list : [];
-      favoritePlaylists.push(...pageItems);
+      favoritePlaylists.push(...pageItems.map(withOriginalCover));
       offset += pageItems.length;
       if (
         pageItems.length === 0 ||
@@ -1935,11 +1945,148 @@ const getPlaylists = async (
   return dictionaryOf(
     sanitizePublicValue({
       ...created,
-      v_playlist: playlists,
+      v_playlist: await withOfficialPlaylistCovers(http, auth, playlists),
       total: playlists.length,
       bFinish: true,
     }),
   );
+};
+
+/** 下游读封面的字段，与 `GetPlaylistByUin` 给自建歌单的同名。 */
+const PLAYLIST_COVER_FIELDS = ['bigpicUrl', 'picUrl', 'picurl', 'coverUrl'] as const;
+
+/**
+ * 收藏的他人歌单沿用歌单原本的封面：收藏者改不了封面，歌单主人设成什么（自定义图、第一首歌的
+ * 专辑……）就显示什么。`CgiGetPlaylistFavInfo` 只给 `logo`（没有时看 `albumPicUrl`），下游读的是
+ * `bigpicUrl` / `picUrl`，所以照自建歌单条目的字段名补上；两个都没有就原样，不编一个封面出来。
+ *
+ * 官方歌单另有规则（第一首歌的专辑图，见 `withOfficialPlaylistCovers`），这里跳过；已经带着
+ * 封面字段的条目也原样。不发任何请求。
+ */
+const withOriginalCover = (value: unknown): unknown => {
+  if (!isDictionary(value) || isOfficialPlaylistEntry(value)) return value;
+  if (PLAYLIST_COVER_FIELDS.some((field) => stringOf(value[field]).trim())) return value;
+  const cover = stringOf(value.logo).trim() || stringOf(value.albumPicUrl).trim();
+  return cover ? { ...value, bigpicUrl: cover, picUrl: cover } : value;
+};
+
+/** 一次 `/user/playlist` 最多为这么多张官方歌单补封面；每张多一次上游请求。 */
+const OFFICIAL_PLAYLIST_COVER_LIMIT = 20;
+
+/**
+ * 官方歌单（每日30首、算法歌单）的封面一律换成第一首歌的专辑图，与 QQ 音乐客户端的显示一致。
+ * 写进下游最先读的 `bigpicUrl` 与 `picUrl`（与自建歌单条目同名），`logo` / `albumPicUrl` 保留上游原值。
+ *
+ * 每张只读一首，彼此并行。读不到时条目原样返回：补封面失败不能让整个歌单列表跟着失败。
+ */
+const withOfficialPlaylistCovers = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  playlists: unknown[],
+): Promise<unknown[]> => {
+  let remaining = OFFICIAL_PLAYLIST_COVER_LIMIT;
+  return Promise.all(
+    playlists.map(async (value) => {
+      if (!isOfficialPlaylistEntry(value)) return value;
+      const disstid = positiveIdOf(dictionaryOf(value).tid);
+      // 额度在第一个 await 之前扣，所以按列表顺序分配，与请求完成的先后无关
+      if (!disstid || remaining <= 0) return value;
+      remaining -= 1;
+      try {
+        const data = await withCredentialRejectionMapped(() =>
+          getAuthenticatedSongListDetail(http, auth, disstid, 1),
+        );
+        const cover = firstSongAlbumCoverUrl(data.songlist);
+        return cover ? { ...dictionaryOf(value), bigpicUrl: cover, picUrl: cover } : value;
+      } catch (error) {
+        logger.warn('qq-auth.official-playlist-cover-failed', {
+          name: error instanceof Error ? error.name : 'Error',
+          upstreamCode:
+            error instanceof QqProtocolError || error instanceof AuthCredentialRejectedError
+              ? error.upstreamCode
+              : undefined,
+        });
+        return value;
+      }
+    }),
+  );
+};
+
+/** 只接受正整数 id；`0`、负数、小数和带杂字的字符串一律不认，免得把它们送上游。 */
+const positiveIdOf = (value: unknown): number | undefined => {
+  const text = identifierOf(value).trim();
+  if (!/^\d+$/.test(text)) return undefined;
+  const id = Number(text);
+  return Number.isSafeInteger(id) && id > 0 ? id : undefined;
+};
+
+export interface AuthenticatedSongListDetailOptions {
+  /** 只读这么多首（夹在 1..1000），不续页。不给就按 `hasmore` 读完整张歌单。 */
+  limit?: number;
+}
+
+/** 实测一页 1000 首可以一次读完 761 首的歌单；再多就续页。 */
+const AUTHENTICATED_SONG_LIST_PAGE_SIZE = 1000;
+const AUTHENTICATED_SONG_LIST_MAX_PAGES = 10;
+
+const songsOf = (data: Dictionary): unknown[] =>
+  Array.isArray(data.songlist) ? data.songlist : [];
+
+/**
+ * 带凭据读一张歌单。与 `getOwnedPlaylistSongs` 的 `CgiGetDiss` 不同，这里走 QQ 音乐客户端读算法歌单
+ * 用的 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo`：百万收藏这类按账号生成的歌单，匿名 CGI
+ * 只回 `code: 10`，未登录调用这里回 `80120`，带上凭据才读得到（2026-10-09 实测）。
+ *
+ * 不给 `limit` 时按 `hasmore` 续读，但上游的 `hasmore` 不可全信：空页、读满 `total_song_num`、
+ * 或读到第 10 页都会停。给了 `limit` 只读一页 —— 补封面只要第一首；算法歌单本来就无视 `song_num`，
+ * 每次都回整张 50 首。
+ */
+const getAuthenticatedSongListDetail = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  disstid: number,
+  limit?: number,
+): Promise<Dictionary> => {
+  const readPage = async (songBegin: number, songNum: number): Promise<Dictionary> =>
+    dictionaryOf(
+      sanitizePublicValue(
+        await callMusicu(
+          http,
+          auth.device,
+          'get-song-list-detail',
+          'music.srfDissInfo.aiDissInfo',
+          'uniform_get_Dissinfo',
+          {
+            disstid,
+            userinfo: 1,
+            tag: 1,
+            orderlist: 1,
+            song_begin: songBegin,
+            song_num: songNum,
+            onlysonglist: 0,
+            enc_host_uin: '',
+          },
+          auth.credential,
+        ),
+      ),
+    );
+
+  if (limit !== undefined && Number.isFinite(limit)) {
+    return readPage(0, Math.min(AUTHENTICATED_SONG_LIST_PAGE_SIZE, Math.max(1, Math.floor(limit))));
+  }
+
+  const first = await readPage(0, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
+  const songs = [...songsOf(first)];
+  const total = numberOf(first.total_song_num);
+  let last = first;
+  for (let page = 1; page < AUTHENTICATED_SONG_LIST_MAX_PAGES; page += 1) {
+    const hasMore = last.hasmore === true || numberOf(last.hasmore) === 1;
+    if (!hasMore || songsOf(last).length === 0) break;
+    if (total !== undefined && songs.length >= total) break;
+    last = await readPage(songs.length, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
+    songs.push(...songsOf(last));
+  }
+  return { ...first, songlist: songs, hasmore: last.hasmore };
 };
 
 const FAVORITE_ASSET_URL = 'https://c.y.qq.com/fav/fcgi-bin/fcg_get_profile_order_asset.fcg';
@@ -2715,6 +2862,21 @@ class QrLoginServiceImpl implements QrLoginService {
     const auth = await this.authFor(token);
     return auth
       ? withCredentialRejectionMapped(() => getOwnedPlaylistSongs(this.http, auth, params))
+      : null;
+  }
+
+  public async getAuthenticatedSongListDetail(
+    token?: string,
+    disstid?: number | string,
+    options: AuthenticatedSongListDetailOptions = {},
+  ): Promise<Dictionary | null> {
+    const id = positiveIdOf(disstid);
+    if (!id) return null;
+    const auth = await this.authFor(token);
+    return auth
+      ? withCredentialRejectionMapped(() =>
+          getAuthenticatedSongListDetail(this.http, auth, id, options.limit),
+        )
       : null;
   }
 

@@ -302,7 +302,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description: 'Get the current authenticated QQ Music user detail.',
   },
   getUserPlaylist: {
-    description: 'Get created and collected playlists for the authenticated user.',
+    description:
+      "Get created and collected playlists for the authenticated user. Collected playlists keep their original cover; QQ Music's official playlists use their first song's album cover.",
     queryParams: [
       {
         key: 'uid',
@@ -425,7 +426,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     },
   },
   getSongListDetail: {
-    description: 'Get song list detail by disstid.',
+    description:
+      'Get song list detail by disstid. With a login session, also reads the QQ Music algorithmic playlists the anonymous CGI rejects with code 10.',
   },
   getMv: {
     description: 'Get MV list by area and version.',
