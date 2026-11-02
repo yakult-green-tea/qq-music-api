@@ -56,7 +56,8 @@ const featuresFor = () => ({
     getHistoryDates: false,
     getHistorySongs: false,
     dislikeSong: false,
-    personalFmModes: true,
+    // 取歌路由未实现模式参数；猜你喜欢的动态模式也不等于私人 FM 模式。
+    personalFmModes: false,
     getPlaylistCategories: true,
     getCategoryPlaylists: true,
     getNewSongs: true,

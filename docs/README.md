@@ -753,6 +753,8 @@ GET /recommend/toplist?id=26
 
 推荐列表的 `more` 不一定代表服务提供了连续游标。具体分页方式应按对应接口处理。
 
+`features.recommendations.personalFmModes` 为 `false`：已有取歌接口不代表能处理 mode/submode。猜你喜欢的动态模式是独立能力，不能用此旗标代替；历史和屏蔽的未验能力同样保持关闭。
+
 #### 私人 FM 批次
 
 `GET /user/personal-fm?page=1` 需要可解析的登录会话；Serverless 未配置密钥回 `501`。此路径复用雷达协议，与 `/user/guess-you-like` 的 id 99 分开，不改变原有匿名 `/recommend/radar`。

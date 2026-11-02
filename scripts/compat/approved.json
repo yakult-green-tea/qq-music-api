@@ -1,5 +1,11 @@
 [
   {
+    "path": "/login/channels",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "仅修正features.recommendations.personalFmModes由true为false；取歌路由没有实现mode/submode，保留其他能力、登录通道与会话模式"
+  },
+  {
     "path": "/user/blacklist",
     "baseline": "3.3.5",
     "since": "3.3.6",

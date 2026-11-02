@@ -51,7 +51,7 @@ const expectedFeatures = (node: boolean) => ({
     getHistoryDates: false,
     getHistorySongs: false,
     dislikeSong: false,
-    personalFmModes: true,
+    personalFmModes: false,
     getPlaylistCategories: true,
     getCategoryPlaylists: true,
     getNewSongs: true,
