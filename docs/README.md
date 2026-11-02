@@ -764,6 +764,16 @@ GET /recommend/toplist?id=26
 - 服务不保存跨请求的批次位置。调用方按账号与来源隔离页序，预览、并发提交与晚到应答由自己的控制器处理，不能只为卡片封面消耗批次。
 - 此路由已提供离线契约测试；手机入口对应仍为强候选，当前 Android comm、账号个性化及连续批次仍待真账号验收。
 
+#### 每日30首历史
+
+`GET /user/daily-songs/history/dates` 返回 `{ code: 200, dates: ["2026-11-01", "2026-10-27"] }`，示例日期为虚构数据。列表保留上游顺序，日期可能不连续；不从本地日历生成缺日，不把 `bSet` 解释为收藏状态。
+
+`GET /user/daily-songs/history?date=2026-10-27` 返回 `{ code: 200, date, songs }`。日期必须是真实的 `YYYY-MM-DD` 日历日期；歌曲从上游 `songlist[].track` 读取，不补到30首。
+
+两条路由只读当前会话本人，Serverless 未配置密钥回 `501`；会话缺失或无法解析回 `401`，无日期或无歌曲回 `422`，结构损坏回 `502`。新上游业务码尚未验证时保留 `502` 与安全的 `upstreamCode`，不猜测为登录失效。每次只发一次上游请求，不自动重试。
+
+历史查询不创建或编辑普通歌单，不提供整份历史收藏。日期生成条件、保留期限、跨日更新时间及 API Android comm/session 尚待验证；`features.recommendations.getHistoryDates/getHistorySongs` 保持关闭。
+
 ### 9. 批量歌曲详情
 
 ```http

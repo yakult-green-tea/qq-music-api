@@ -42,6 +42,7 @@ export const UPSTREAM_PHASES = [
   'get-user-liked-songs',
   'get-guess-you-like',
   'get-daily-songs',
+  'get-daily-history',
   'get-user-cloud',
   'get-recommend-playlists',
   'get-radio-list',

@@ -1,6 +1,7 @@
 import { albumSubscribe } from './operations/albumSubscribe';
 import { allPlaylistCategories } from './operations/allPlaylistCategories';
 import { commentList } from './operations/commentList';
+import { dailyHistoryDates, dailyHistorySongs } from './operations/dailyHistory';
 import { getAlbumInfo } from './operations/getAlbumInfo';
 import { getLyricOperation } from './operations/getLyric';
 import { getMusicPlay } from './operations/getMusicPlay';
@@ -102,6 +103,22 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'dailyHistoryDates',
+    method: 'GET',
+    path: '/user/daily-songs/history/dates',
+    category: 'User',
+    handler: dailyHistoryDates,
+    needsSecret: true,
+  },
+  {
+    name: 'dailyHistorySongs',
+    method: 'GET',
+    path: '/user/daily-songs/history',
+    category: 'User',
+    handler: dailyHistorySongs,
+    needsSecret: true,
+  },
   {
     name: 'getPersonalFm',
     method: 'GET',

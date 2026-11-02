@@ -1,5 +1,11 @@
 [
   {
+    "path": "/user/daily-songs/history",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增日推历史日期与指定日歌曲读取，旧版不存在；不改变当日日推与收藏接口"
+  },
+  {
     "path": "/user/personal-fm",
     "baseline": "3.3.5",
     "since": "3.3.6",

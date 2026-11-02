@@ -452,6 +452,22 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  dailyHistoryDates: {
+    description:
+      'Read only the daily recommendation dates returned for this account. Dates can be sparse; real-account API acceptance is pending.',
+  },
+  dailyHistorySongs: {
+    description:
+      'Read the actual songs of one daily recommendation date. Does not create, subscribe to, or edit a playlist. Real-account API acceptance is pending.',
+    queryParams: [
+      {
+        key: 'date',
+        label: 'Date',
+        description: 'Calendar date as YYYY-MM-DD, from the history dates list.',
+        required: true,
+      },
+    ],
+  },
   getRecommendRadar: {
     description:
       'Get one page (about 10 songs) of the radar, the endless personal song stream. Uses the session when present, otherwise reads anonymously.',
