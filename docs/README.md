@@ -372,6 +372,7 @@ POST /login/refresh
 | --- | --- | --- |
 | `/user/guess-you-like` | 猜你喜欢 | 是 |
 | `/user/recommendation-preferences` | 私人FM／每日30首共用的音乐偏好（只读） | 是 |
+| `/user/recommendation-preferences/update` | 修改音乐偏好（实验，默认关闭） | 是 |
 | `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读，待更多账号验收） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
 | `/user/personal-fm` | 私人 FM 批次（待真账号验收） | 是 |
@@ -797,7 +798,13 @@ GET /recommend/toplist?id=26
 - 返回 `{ code:200, scope:"account", profiles:[{ key, name, score }] }`。`key` 是偏好项编号（例如熟悉度、各语种），`score` 是 0 到 100 的当前分值；偏好 key 不能当模式目录编号、radio ID 或风格黑名单编号使用。
 - 数据来自官方偏好页的首屏数据：只发一次请求、不跟随转址、回包限 1 MB；只认唯一一处明确的数据赋值，不执行页面脚本，不返回页面里的歌曲。目标分值、是否可调、更新时间等字段含义未确认，不对外返回。
 - 不接受 `station`、`entry`、`profileKey`、`page`、`cursor`、`id`。没有偏好项回 `422`；页面结构不对回 `502`；转址或其他非 2xx 回 `502`，不清登录态；未知页面码保留 `502` 与 `upstreamCode`。
-- 已有一个经通用QR取得的微信账号读到本人偏好的样本。偏好写入尚未提供；偏好对各入口推荐算法的实际影响未验证。
+- 已有一个经通用QR取得的微信账号读到本人偏好的样本。偏好对各入口推荐算法的实际影响未验证。
+
+`POST /user/recommendation-preferences/update`（实验，默认关闭，与黑名单写入共用可信宿主的 `QQ_UNVERIFIED_WRITES_ENABLED`；请求参数不能打开）：
+
+- 请求 `{ "profiles": [{ "key": "10008", "score": 75 }] }`，1 到 32 项、key 不重复、score 为 0 到 100 的整数，不接受其他字段。
+- 先读现值；key 不在账号偏好里回 `400`，不写。所有指定项已是目标值时不写，回 `writeAttempted:false`。否则按现有顺序把整份偏好写一次（只替换指定项），再读偏好页：全部吻合回 `verified:true`、`verification:"confirmed"`，否则 `verified:false`、`verification:"unconfirmed"`，同时返回读回的 `profiles`。
+- 写入不重试。写入已发出后的任何失败都带 `writeAttempted:true`、`verified:false`、`retryable:false`，请先读回再决定是否重试。
 
 #### 猜你喜欢听歌模式目录（未发布候选）
 

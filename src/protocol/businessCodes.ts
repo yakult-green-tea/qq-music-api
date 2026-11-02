@@ -57,6 +57,7 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.official-radio',
   'recommend.guess-you-like-modes',
   'recommend.preferences',
+  'recommend.preferences-write',
   /** 音乐云盘（`GetMatchAudio`），要登录；非零码除了凭证失效都还是未知。 */
   'cloud.list',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */

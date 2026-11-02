@@ -1,5 +1,11 @@
 [
   {
+    "path": "/user/recommendation-preferences/update",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增默认关闭的音乐偏好写入候选；旧版不存在"
+  },
+  {
     "path": "/user/recommendation-preferences",
     "baseline": "3.3.5",
     "since": "3.3.6",
