@@ -1,5 +1,11 @@
 [
   {
+    "path": "/user/personal-fm",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增需要会话的私人 FM 批次路径，旧版不存在；既有雷达、猜你喜欢和每日30首保持不变"
+  },
+  {
     "path": "/song/fav-count",
     "baseline": "3.3.4",
     "since": "3.3.5",

@@ -41,6 +41,7 @@ import { qrKey } from './operations/qrKey';
 import { radioCategories } from './operations/radioCategories';
 import {
   getGuessYouLike,
+  getPersonalFm,
   getRadioList,
   getRadioTracks,
   getRecommendPlaylists,
@@ -101,6 +102,14 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'getPersonalFm',
+    method: 'GET',
+    path: '/user/personal-fm',
+    category: 'User',
+    handler: getPersonalFm,
+    needsSecret: true,
+  },
   {
     name: 'userMusicGene',
     method: 'GET',

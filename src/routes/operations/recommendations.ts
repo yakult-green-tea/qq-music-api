@@ -1,4 +1,5 @@
 import { guessYouLikeResult } from '../../services/recommend/guessYouLike';
+import { personalFmResult } from '../../services/recommend/personalFm';
 import { radarPageOf, radarResult } from '../../services/recommend/radar';
 import { radioListResult, radioTracksResult } from '../../services/recommend/radio';
 import {
@@ -16,6 +17,9 @@ import type { OperationHandler } from './types';
 
 export const getGuessYouLike: OperationHandler = async (request) =>
   guessYouLikeResult(await requiredSession(request));
+
+export const getPersonalFm: OperationHandler = async (request) =>
+  personalFmResult(await requiredSession(request), rawQuery(request, 'page'));
 
 export const getRecommendPlaylists: OperationHandler = async (request) =>
   recommendPlaylistsResult(

@@ -372,6 +372,7 @@ POST /login/refresh
 | --- | --- | --- |
 | `/user/guess-you-like` | 猜你喜欢 | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
+| `/user/personal-fm` | 私人 FM 批次（待真账号验收） | 是 |
 | `/recommend/playlists` | 推荐歌单 | 可选 |
 | `/recommend/radar` | 刷歌模式 | 可选 |
 | `/recommend/categories` | 热门歌单分类 | 否 |
@@ -730,6 +731,7 @@ GET /user/cloud?offset=0&limit=200
 常用调用：
 
 ```http
+GET /user/personal-fm?page=1
 GET /user/guess-you-like
 GET /user/daily-songs
 GET /recommend/playlists
@@ -750,6 +752,17 @@ GET /recommend/toplist?id=26
 - 新歌、新碟和歌单分类支持各自的地区、分类或分页参数。
 
 推荐列表的 `more` 不一定代表服务提供了连续游标。具体分页方式应按对应接口处理。
+
+#### 私人 FM 批次
+
+`GET /user/personal-fm?page=1` 需要可解析的登录会话；Serverless 未配置密钥回 `501`。此路径复用雷达协议，与 `/user/guess-you-like` 的 id 99 分开，不改变原有匿名 `/recommend/radar`。
+
+- `page` 省略时为 1；只接受 1–100 的十进制整数，不接受空串、小数、前导零或越界值，不把越界页压回第 100 页。
+- 成功回 `{ code: 200, station: "personal-fm", page, songs, more, nextPage? }`。曲目数量由上游决定，不固定为 5 或 10 首。
+- `more: true` 且未到本地上限时给 `nextPage`；第 100 页仍有更多时给 `paginationLimitReached: true`，不提供下一页，也不把它说成上游结束。
+- 空批次回 `422`；条目存在但无法解析回 `502`。失败只请求一次，调用方不能假定超时或取消代表上游未消耗批次。
+- 服务不保存跨请求的批次位置。调用方按账号与来源隔离页序，预览、并发提交与晚到应答由自己的控制器处理，不能只为卡片封面消耗批次。
+- 此路由已提供离线契约测试；手机入口对应仍为强候选，当前 Android comm、账号个性化及连续批次仍待真账号验收。
 
 ### 9. 批量歌曲详情
 

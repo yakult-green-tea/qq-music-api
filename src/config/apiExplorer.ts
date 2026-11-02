@@ -440,6 +440,18 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getPersonalFm: {
+    description:
+      'Read one personal FM batch with a required session. Uses radar songs, independently of guess-you-like. Does not retry a failed batch; real-account acceptance is pending.',
+    queryParams: [
+      {
+        key: 'page',
+        label: 'Page',
+        description:
+          'Integer from 1 to 100; defaults to 1. Follow nextPage; a local page limit is not an upstream end.',
+      },
+    ],
+  },
   getRecommendRadar: {
     description:
       'Get one page (about 10 songs) of the radar, the endless personal song stream. Uses the session when present, otherwise reads anonymously.',
