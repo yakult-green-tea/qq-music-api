@@ -47,6 +47,7 @@ import { qrCheck } from './operations/qrCheck';
 import { qrCreate } from './operations/qrCreate';
 import { qrKey } from './operations/qrKey';
 import { radioCategories } from './operations/radioCategories';
+import { getRecommendationPreferences } from './operations/recommendationPreferences';
 import {
   getGuessYouLike,
   getPersonalFm,
@@ -172,6 +173,14 @@ export const routeManifest = [
     path: '/user/daily-songs/history',
     category: 'User',
     handler: dailyHistorySongs,
+    needsSecret: true,
+  },
+  {
+    name: 'getRecommendationPreferences',
+    method: 'GET',
+    path: '/user/recommendation-preferences',
+    category: 'User',
+    handler: getRecommendationPreferences,
     needsSecret: true,
   },
   {

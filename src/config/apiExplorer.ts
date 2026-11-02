@@ -385,6 +385,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       "Get a few songs from QQ Music's Guess You Like radio for the authenticated user (usually 5 per call). Songs keep the upstream format; reasons, when given, are in extras. Without a session it answers 401; when the upstream returns no songs it answers 422.",
   },
+  getRecommendationPreferences: {
+    description:
+      'Read the account music preferences shared by Personal FM and Daily 30: each item key, name and current score (0-100). Read from the first-page data of the official preference page without running its scripts; songs on that page are not returned. Writing preferences is not offered yet.',
+  },
   getGuessYouLikeModes: {
     description:
       'Read the single-choice listening-mode catalog of Guess You Like (radio 99): primary modes, scenes, suggestions and the current selection. Read only; no mode switch is offered. Mode ids and pool ids are not radio IDs or preference keys.',

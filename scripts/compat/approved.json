@@ -1,5 +1,11 @@
 [
   {
+    "path": "/user/recommendation-preferences",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增私人FM与每日30首共用的音乐偏好只读接口；旧版不存在"
+  },
+  {
     "path": "/user/guess-you-like/modes",
     "baseline": "3.3.5",
     "since": "3.3.6",

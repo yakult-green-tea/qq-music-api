@@ -371,6 +371,7 @@ POST /login/refresh
 | 接口 | 说明 | 登录 |
 | --- | --- | --- |
 | `/user/guess-you-like` | 猜你喜欢 | 是 |
+| `/user/recommendation-preferences` | 私人FM／每日30首共用的音乐偏好（只读） | 是 |
 | `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读，待更多账号验收） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
 | `/user/personal-fm` | 私人 FM 批次（待真账号验收） | 是 |
@@ -788,6 +789,15 @@ GET /recommend/toplist?id=26
 - 单选后请求对应 radio ID 是取歌，不是 `UpdateRadioSceneConfig` 或音乐偏好写入；radio ID 与 id99场景目录／pool、偏好key、风格复合键不能互换。
 - 不接受 `page`、`cursor`、`mode`、`submode`、`scene_id`。成功却无内容回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
 - 已完成合成上游的跨宿主契约，并有一个经通用QR取得的微信账号的只读成功样本：目录9项、选定目录ID取歌5首。最小参数与Android comm仅在此样本可用，其他账号、ID和宿主仍待验收；没有因此启用Folia模式能力或新增设置保存接口。
+
+#### 音乐偏好（未发布候选）
+
+`GET /user/recommendation-preferences` 需要有效会话；Serverless 未配置密钥回 `501`。私人 FM 与每日30首的偏好入口打开的是同一个页面，所以这里返回的是账号的一份偏好，不按入口区分。
+
+- 返回 `{ code:200, scope:"account", profiles:[{ key, name, score }] }`。`key` 是偏好项编号（例如熟悉度、各语种），`score` 是 0 到 100 的当前分值；偏好 key 不能当模式目录编号、radio ID 或风格黑名单编号使用。
+- 数据来自官方偏好页的首屏数据：只发一次请求、不跟随转址、回包限 1 MB；只认唯一一处明确的数据赋值，不执行页面脚本，不返回页面里的歌曲。目标分值、是否可调、更新时间等字段含义未确认，不对外返回。
+- 不接受 `station`、`entry`、`profileKey`、`page`、`cursor`、`id`。没有偏好项回 `422`；页面结构不对回 `502`；转址或其他非 2xx 回 `502`，不清登录态；未知页面码保留 `502` 与 `upstreamCode`。
+- 已有一个经通用QR取得的微信账号读到本人偏好的样本。偏好写入尚未提供；偏好对各入口推荐算法的实际影响未验证。
 
 #### 猜你喜欢听歌模式目录（未发布候选）
 
