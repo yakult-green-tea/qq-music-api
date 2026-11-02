@@ -15,6 +15,7 @@ import { getSongListDetail } from './operations/getSongListDetail';
 import { getUserAlbums } from './operations/getUserAlbums';
 import { getUserLikedSongs } from './operations/getUserLikedSongs';
 import { getUserPlaylist } from './operations/getUserPlaylist';
+import { getGuessYouLikeModes } from './operations/guessYouLikeModes';
 import { loginChannels } from './operations/loginChannels';
 import { loginRefresh } from './operations/loginRefresh';
 import { loginStatus } from './operations/loginStatus';
@@ -171,6 +172,14 @@ export const routeManifest = [
     path: '/user/daily-songs/history',
     category: 'User',
     handler: dailyHistorySongs,
+    needsSecret: true,
+  },
+  {
+    name: 'getGuessYouLikeModes',
+    method: 'GET',
+    path: '/user/guess-you-like/modes',
+    category: 'User',
+    handler: getGuessYouLikeModes,
     needsSecret: true,
   },
   {

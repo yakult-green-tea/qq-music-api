@@ -1,5 +1,11 @@
 [
   {
+    "path": "/user/guess-you-like/modes",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增猜你喜欢单选听歌模式目录只读接口；旧版不存在，保留原 /user/guess-you-like 取歌"
+  },
+  {
     "path": "/radio/recommendation-modes",
     "baseline": "3.3.5",
     "since": "3.3.6",

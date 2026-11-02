@@ -371,6 +371,7 @@ POST /login/refresh
 | 接口 | 说明 | 登录 |
 | --- | --- | --- |
 | `/user/guess-you-like` | 猜你喜欢 | 是 |
+| `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读，待更多账号验收） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
 | `/user/personal-fm` | 私人 FM 批次（待真账号验收） | 是 |
 | `/recommend/playlists` | 推荐歌单 | 可选 |
@@ -787,6 +788,15 @@ GET /recommend/toplist?id=26
 - 单选后请求对应 radio ID 是取歌，不是 `UpdateRadioSceneConfig` 或音乐偏好写入；radio ID 与 id99场景目录／pool、偏好key、风格复合键不能互换。
 - 不接受 `page`、`cursor`、`mode`、`submode`、`scene_id`。成功却无内容回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
 - 已完成合成上游的跨宿主契约，并有一个经通用QR取得的微信账号的只读成功样本：目录9项、选定目录ID取歌5首。最小参数与Android comm仅在此样本可用，其他账号、ID和宿主仍待验收；没有因此启用Folia模式能力或新增设置保存接口。
+
+#### 猜你喜欢听歌模式目录（未发布候选）
+
+`GET /user/guess-you-like/modes` 需要有效会话；Serverless 未配置密钥回 `501`。只读 id 99 的 RadioConfig 目录，不改变 `/user/guess-you-like` 的取歌行为。
+
+- 返回 `{ code:200, station:"guess-you-like", radioId:99, selection:"single", primaryModes, scenes, recommended, selectedIds }`。三组条目都是 `{ id, name, cover, poolId? }`；`selectedIds` 是上游给出的当前选中项，可以为空。
+- `id` 是模式目录编号，`poolId` 只是取歌端的对照值；两者都不能当普通雷达 radio ID、音乐偏好 key 或风格黑名单编号使用。上游的状态、时间、排序字段含义未确认，不对外返回。
+- 不接受 `id`、`page`、`cursor`、`mode`、`scene_id`、`pool_id`。目录为空回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
+- 暂不提供切换模式的写入接口：写入参数还没有可验证的形状。已有一个经通用QR取得的QQ账号的只读成功样本；其他账号与宿主仍待验收，没有启用Folia模式能力。
 
 #### 黑名单首屏与单曲风格选项
 
