@@ -452,6 +452,30 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getBlacklist: {
+    description:
+      'Read the first song, singer or style blacklist page for this account. Completeness and pagination are unverified; internal tokens are not exposed. API real-account acceptance is pending.',
+    queryParams: [
+      {
+        key: 'type',
+        label: 'Type',
+        description: 'song, singer or style. Only the first page is supported.',
+        required: true,
+      },
+    ],
+  },
+  getBlacklistStyleOptions: {
+    description:
+      'Read the available style choices of one song. Some songs have no choices. Status values retain their upstream numeric form without inferred meanings.',
+    queryParams: [
+      {
+        key: 'songId',
+        label: 'Song ID',
+        description: 'Positive numeric song ID, not a mid.',
+        required: true,
+      },
+    ],
+  },
   dailyHistoryDates: {
     description:
       'Read only the daily recommendation dates returned for this account. Dates can be sparse; real-account API acceptance is pending.',

@@ -774,6 +774,16 @@ GET /recommend/toplist?id=26
 
 历史查询不创建或编辑普通歌单，不提供整份历史收藏。日期生成条件、保留期限、跨日更新时间及 API Android comm/session 尚待验证；`features.recommendations.getHistoryDates/getHistorySongs` 保持关闭。
 
+#### 黑名单首屏与单曲风格选项
+
+`GET /user/blacklist?type=song|singer|style` 读取对应分类的首屏，返回 `{ code: 200, type, items, coverage: "first-page", complete: false }`。条目为 `{ id, idType, name, image, time }`；`time` 保留上游数值，不推断时间单位。风格身分由 `id + idType` 共同确定。
+
+当前只支持首屏；`page` 只能省略或为 `1`，不接受 `cursor`。内部 `Token` 不公开。正常空首屏回 `200` 与空 `items`，仍是 `complete: false`，不能把它解释为整份清单已空。`user` 分类属于其他服务，当前不支持。
+
+`GET /user/blacklist/style-options?songId=90001` 返回 `{ code: 200, styles: [{ id, idType, name, status }] }`。示例编号为虚构数据；`songId` 必须是正的安全整数，不是 mid。某些歌曲没有风格候选，正常返回空数组；`status` 只保留数值，不推断所有取值的意义。
+
+两条路由需要有效会话，不匿名读取；Serverless 缺密钥回 `501`。网络、结构异常和未验证业务码回安全错误，失败不自动重试。它们不新增或取消屏蔽，也没有 Folia 黑名单管理 UI；API session、完整分页面及取消后读回仍待验收。
+
 ### 9. 批量歌曲详情
 
 ```http

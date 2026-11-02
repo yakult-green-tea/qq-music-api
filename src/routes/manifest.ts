@@ -1,5 +1,6 @@
 import { albumSubscribe } from './operations/albumSubscribe';
 import { allPlaylistCategories } from './operations/allPlaylistCategories';
+import { getBlacklist, getBlacklistStyleOptions } from './operations/blacklistReads';
 import { commentList } from './operations/commentList';
 import { dailyHistoryDates, dailyHistorySongs } from './operations/dailyHistory';
 import { getAlbumInfo } from './operations/getAlbumInfo';
@@ -103,6 +104,22 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'getBlacklist',
+    method: 'GET',
+    path: '/user/blacklist',
+    category: 'User',
+    handler: getBlacklist,
+    needsSecret: true,
+  },
+  {
+    name: 'getBlacklistStyleOptions',
+    method: 'GET',
+    path: '/user/blacklist/style-options',
+    category: 'User',
+    handler: getBlacklistStyleOptions,
+    needsSecret: true,
+  },
   {
     name: 'dailyHistoryDates',
     method: 'GET',

@@ -51,6 +51,7 @@ export const UPSTREAM_OPERATIONS = [
   /** 每日 30 首（带凭证按系统目录 202 读 `uniform_get_Dissinfo`），要登录。 */
   'recommend.daily-songs',
   'recommend.daily-history',
+  'recommend.blacklist-read',
   /** 音乐云盘（`GetMatchAudio`），要登录；非零码除了凭证失效都还是未知。 */
   'cloud.list',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
