@@ -786,9 +786,17 @@ GET /recommend/toplist?id=26
 - `GET /radio/recommendation-tracks?id=91001` 返回 `{ code:200, station:"official-radio", radioId, title, songs, extras? }`。编号为虚构示例；`id` 必须为正的安全整数，`99` 仍走 `/user/guess-you-like`。请求上游一批，曲数由上游决定，不保证恰好五首，也不提供猜测的游标或结束标志。
 - 单选后请求对应 radio ID 是取歌，不是 `UpdateRadioSceneConfig` 或音乐偏好写入；radio ID 与 id99场景目录／pool、偏好key、风格复合键不能互换。
 - 不接受 `page`、`cursor`、`mode`、`submode`、`scene_id`。成功却无内容回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
-- 当前仅完成合成上游的跨宿主契约。最小业务参数、Android comm、通用QR返回的QQ／微信账号credential仍待实网验收；没有因此启用Folia模式能力或新增设置保存接口。
+- 已完成合成上游的跨宿主契约，并有一个经通用QR取得的微信账号的只读成功样本：目录9项、选定目录ID取歌5首。最小参数与Android comm仅在此样本可用，其他账号、ID和宿主仍待验收；没有因此启用Folia模式能力或新增设置保存接口。
 
 #### 黑名单首屏与单曲风格选项
+
+实验写入候选：`POST /user/blacklist/add`、`POST /user/blacklist/remove`。默认回 `501 feature.unavailable`；只有可信宿主配置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能测试，正文／查询参数不能开启。开关不代表写入已完成真账号验收，也不启用下游界面能力。
+
+- 新增正文为 `{ songs?:string[], singers?:string[], songId?:string, styles?:[{id:string,idType:number}] }`。至少选择一项；每类最多20项、合计最多30项，不接受重复项。ID为不超过40位的正十进制字符串；风格按 `id + idType` 区分，不能只按ID去重。
+- 选择风格时必须给数字歌曲的 `songId`（安全整数），先读取该曲可选风格；没有候选或选项不匹配就不写。名称来自上游候选，不接收调用方伪造的名称；歌曲、歌手和风格只发送选中分类，不自动关联。风格表示「减少风格推荐」，不保证完全排除。
+- 一次写入后，逐个选中分类读首屏。回 `{accepted,verified,verification,writeAttempted,coverage:"first-page",complete:false,results}`；`accepted`只表示写入回包被接受。仅所有目标在对应首屏出现时 `verified:true`、`verification:"confirmed"`；否则保持`unconfirmed`。各项结果区分`present`和`not-seen-in-first-page`，不承诺原子性或回滚，不捏造replacement。
+- 取消正文为 `{type:"song"|"singer"|"style",id:string,idType:number}`，仅单类单项。先从当前账号首屏取得完整元数据再写一次；首屏没有该项回`422`且不写，表示未在支持的首屏找到，不证明全表不存在。写后即使首屏不再出现，仍为`verified:false`／`unconfirmed`，不回`removed:true`，直到完整分页另经验证。
+- 写入、失败与确认读取都不自动重送。写入已尝试而结果不明时返回`writeAttempted:true`、`verified:false`、`retryable:false`；重新读取确认，不自动重写。未知业务码维持`502`，不扩大清会话的`401`。
 
 `GET /user/blacklist?type=song|singer|style` 读取对应分类的首屏，返回 `{ code: 200, type, items, coverage: "first-page", complete: false }`。条目为 `{ id, idType, name, image, time }`；`time` 保留上游数值，不推断时间单位。风格身分由 `id + idType` 共同确定。
 

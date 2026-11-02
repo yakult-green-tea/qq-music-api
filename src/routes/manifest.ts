@@ -1,6 +1,7 @@
 import { albumSubscribe } from './operations/albumSubscribe';
 import { allPlaylistCategories } from './operations/allPlaylistCategories';
 import { getBlacklist, getBlacklistStyleOptions } from './operations/blacklistReads';
+import { addBlacklist, removeBlacklist } from './operations/blacklistWrites';
 import { commentList } from './operations/commentList';
 import { dailyHistoryDates, dailyHistorySongs } from './operations/dailyHistory';
 import { getAlbumInfo } from './operations/getAlbumInfo';
@@ -108,6 +109,22 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'addBlacklist',
+    method: 'POST',
+    path: '/user/blacklist/add',
+    category: 'User',
+    handler: addBlacklist,
+    needsSecret: true,
+  },
+  {
+    name: 'removeBlacklist',
+    method: 'POST',
+    path: '/user/blacklist/remove',
+    category: 'User',
+    handler: removeBlacklist,
+    needsSecret: true,
+  },
   {
     name: 'getRadioRecommendationModes',
     method: 'GET',

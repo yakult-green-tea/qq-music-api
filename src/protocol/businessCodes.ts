@@ -52,6 +52,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.daily-songs',
   'recommend.daily-history',
   'recommend.blacklist-read',
+  'recommend.blacklist-add',
+  'recommend.blacklist-remove',
   'recommend.official-radio',
   /** 音乐云盘（`GetMatchAudio`），要登录；非零码除了凭证失效都还是未知。 */
   'cloud.list',

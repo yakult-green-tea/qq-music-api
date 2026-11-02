@@ -481,6 +481,16 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  addBlacklist: {
+    description:
+      'Experimental classified dislike write. Requires trusted QQ_UNVERIFIED_WRITES_ENABLED=1. Selected targets only; one write, then first-page checks. accepted is acknowledgement; only verified=true confirms presence. No replacement is required. Real-account write acceptance is pending.',
+    bodyExample: { songs: ['91001'] },
+  },
+  removeBlacklist: {
+    description:
+      'Experimental single-entry cancellation. Requires trusted QQ_UNVERIFIED_WRITES_ENABLED=1. Uses fresh metadata from this account first page. First-page absence never claims complete removal; verified remains false until complete traversal is verified.',
+    bodyExample: { type: 'song', id: '91001', idType: 1 },
+  },
   getBlacklistStyleOptions: {
     description:
       'Read the available style choices of one song. Some songs have no choices. Status values retain their upstream numeric form without inferred meanings.',
