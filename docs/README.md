@@ -817,7 +817,7 @@ GET /recommend/toplist?id=26
 
 #### 黑名单首屏与单曲风格选项
 
-实验写入候选：`POST /user/blacklist/add`、`POST /user/blacklist/remove`。默认回 `501 feature.unavailable`；只有可信宿主配置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能测试，正文／查询参数不能开启。开关不代表写入已完成真账号验收，也不启用下游界面能力。
+写入：`POST /user/blacklist/add` 只选歌曲（正文只有 `songs`）时默认可用，用来做歌曲“不喜欢”；选了歌手、风格或混合选择，以及 `POST /user/blacklist/remove`，默认回 `501 feature.unavailable`，只有可信宿主配置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能测试，正文／查询参数不能开启，而且在检查会话前就回 `501`。已有一个微信账号的三类新增与逐项取消实写样本；开关不启用下游界面能力。
 
 - 新增正文为 `{ songs?:string[], singers?:string[], songId?:string, styles?:[{id:string,idType:number}] }`。至少选择一项；每类最多20项、合计最多30项，不接受重复项。ID为不超过40位的正十进制字符串；风格按 `id + idType` 区分，不能只按ID去重。
 - 选择风格时必须给数字歌曲的 `songId`（安全整数），先读取该曲可选风格；没有候选或选项不匹配就不写。名称来自上游候选，不接收调用方伪造的名称；歌曲、歌手和风格只发送选中分类，不自动关联。风格表示「减少风格推荐」，不保证完全排除。

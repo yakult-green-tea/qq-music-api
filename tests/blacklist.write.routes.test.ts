@@ -62,6 +62,35 @@ describe.each(CATALOG_RUNTIMES)('blacklist writes: %s', (runtime) => {
     expect((await call(action, { ...songBody, enabled: true }, false)).status).toBe(501);
     expect(methods()).toEqual([]);
   });
+  it('allows a songs-only dislike without the experimental flag and writes only songs', async () => {
+    const result = await call('add', songBody, false);
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ accepted: true, verified: true, writeAttempted: true });
+    expect(upstream.calls.flatMap((c) => c.rpc).filter((c) => c.method === 'AddDislike')).toEqual([
+      {
+        module: 'music.feedback.FeedbackBlack',
+        method: 'AddDislike',
+        param: { Songs: [{ ID: song.ID }] },
+      },
+    ]);
+  });
+  it('still checks the session and input for a songs-only dislike without the flag', async () => {
+    expect((await call('add', songBody, false, false)).status).toBe(401);
+    expect((await call('add', { songs: [] }, false)).status).toBe(400);
+    expect((await call('add', songBody, false, true, 'GET')).status).toBe(405);
+    expect(methods()).toEqual([]);
+  });
+  it.each([
+    { singers: [singer.ID] },
+    styleBody,
+    { songs: [song.ID], singers: [singer.ID] },
+    { ...styleBody, songs: [song.ID] },
+    [song.ID],
+  ])('keeps singer, style and mixed dislikes behind the flag before the session check: %j', async (body) => {
+    expect((await call('add', body, false)).status).toBe(501);
+    expect((await call('add', body, false, false)).status).toBe(501);
+    expect(methods()).toEqual([]);
+  });
   it.each(['add', 'remove'] as const)('%s requires POST and a valid session', async (action) => {
     expect((await call(action, songBody, true, true, 'GET')).status).toBe(405);
     expect((await call(action, songBody, true, false)).status).toBe(401);

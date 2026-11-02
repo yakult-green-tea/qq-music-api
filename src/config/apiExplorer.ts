@@ -495,7 +495,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   addBlacklist: {
     description:
-      'Experimental classified dislike write. Requires trusted QQ_UNVERIFIED_WRITES_ENABLED=1. Selected targets only; one write, then first-page checks. accepted is acknowledgement; only verified=true confirms presence. No replacement is required. Real-account write acceptance is pending.',
+      'Classified dislike write. A songs-only body is enabled by default (song dislike); singers, styles and mixed selections need the trusted QQ_UNVERIFIED_WRITES_ENABLED=1 flag. Selected targets only; one write, then first-page checks. accepted is acknowledgement; only verified=true confirms presence. No replacement is required.',
     bodyExample: { songs: ['91001'] },
   },
   removeBlacklist: {
