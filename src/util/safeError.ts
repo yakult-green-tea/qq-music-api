@@ -49,6 +49,8 @@ export const UPSTREAM_PHASES = [
   'get-recommend-playlists',
   'get-radio-list',
   'get-radio-tracks',
+  'get-radio-recommendation-modes',
+  'get-radio-recommendation-tracks',
   'get-playlist-categories',
   'get-category-playlists',
   'get-new-songs',

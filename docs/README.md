@@ -386,6 +386,8 @@ POST /login/refresh
 | `/radio/categories` | 匿名电台分类 | 否 |
 | `/radio/list` | 账号电台列表 | 是 |
 | `/radio/tracks` | 电台歌曲 | 是 |
+| `/radio/recommendation-modes` | 普通官方雷达单选 radio ID 选项（待真账号验收） | 是 |
+| `/radio/recommendation-tracks` | 普通官方雷达批次（待真账号验收） | 是 |
 | `/song/similar` | 相似歌曲 | 是 |
 | `/song/related-playlists` | 包含指定歌曲的相关歌单 | 是 |
 
@@ -775,6 +777,16 @@ GET /recommend/toplist?id=26
 两条路由只读当前会话本人，Serverless 未配置密钥回 `501`；会话缺失或无法解析回 `401`，无日期或无歌曲回 `422`，结构损坏回 `502`。新上游业务码尚未验证时保留 `502` 与安全的 `upstreamCode`，不猜测为登录失效。每次只发一次上游请求，不自动重试。
 
 历史查询不创建或编辑普通歌单，不提供整份历史收藏。日期生成条件、保留期限、跨日更新时间及 API Android comm/session 尚待验证；`features.recommendations.getHistoryDates/getHistorySongs` 保持关闭。
+
+#### 普通官方雷达选项与批次（未发布候选）
+
+两条路径都需要有效会话；Serverless 未配置密钥回 `501`。它们与旧 `/radio/list`、`/radio/tracks` 分开，保留旧路径的上游与回包。私人 FM、每日30首、id 99 猜你喜欢不改为这个来源。
+
+- `GET /radio/recommendation-modes` 返回 `{ code:200, selection:"single", modes:[{radioId,title,cover}], coverage:"first-page", complete:false }`。选项来自 `GetRecRadioList`，没有当前选中／永久保存状态；不支持分页，不把首屏当完整目录。
+- `GET /radio/recommendation-tracks?id=91001` 返回 `{ code:200, station:"official-radio", radioId, title, songs, extras? }`。编号为虚构示例；`id` 必须为正的安全整数，`99` 仍走 `/user/guess-you-like`。请求上游一批，曲数由上游决定，不保证恰好五首，也不提供猜测的游标或结束标志。
+- 单选后请求对应 radio ID 是取歌，不是 `UpdateRadioSceneConfig` 或音乐偏好写入；radio ID 与 id99场景目录／pool、偏好key、风格复合键不能互换。
+- 不接受 `page`、`cursor`、`mode`、`submode`、`scene_id`。成功却无内容回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
+- 当前仅完成合成上游的跨宿主契约。最小业务参数、Android comm、通用QR返回的QQ／微信账号credential仍待实网验收；没有因此启用Folia模式能力或新增设置保存接口。
 
 #### 黑名单首屏与单曲风格选项
 

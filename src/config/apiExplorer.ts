@@ -452,6 +452,23 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getRadioRecommendationModes: {
+    description:
+      'Read single-choice radio-ID options for official recommendation radios. First page only; no saved account selection is claimed. Separate from guess-you-like RadioConfig. Real-account acceptance is pending.',
+  },
+  getRadioRecommendationTracks: {
+    description:
+      'Read one official recommendation-radio batch by radio ID. No settings write, cursor or retry; real-account acceptance is pending. Existing radio routes are unchanged.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Radio ID',
+        description:
+          'Positive safe numeric radio ID; id 99 keeps its separate guess-you-like route.',
+        required: true,
+      },
+    ],
+  },
   getBlacklist: {
     description:
       'Read the first song, singer or style blacklist page for this account. Completeness and pagination are unverified; internal tokens are not exposed. API real-account acceptance is pending.',

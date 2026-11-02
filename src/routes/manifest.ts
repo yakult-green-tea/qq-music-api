@@ -34,6 +34,10 @@ import {
   getSongMvs,
   listSingers,
 } from './operations/mediaCatalog';
+import {
+  getRadioRecommendationModes,
+  getRadioRecommendationTracks,
+} from './operations/officialRadio';
 import { playlistCreate, playlistDelete, playlistRename } from './operations/playlistManagement';
 import { playlistTracks } from './operations/playlistTracks';
 import { qrCancel } from './operations/qrCancel';
@@ -104,6 +108,22 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'getRadioRecommendationModes',
+    method: 'GET',
+    path: '/radio/recommendation-modes',
+    category: 'Recommend',
+    handler: getRadioRecommendationModes,
+    needsSecret: true,
+  },
+  {
+    name: 'getRadioRecommendationTracks',
+    method: 'GET',
+    path: '/radio/recommendation-tracks',
+    category: 'Recommend',
+    handler: getRadioRecommendationTracks,
+    needsSecret: true,
+  },
   {
     name: 'getBlacklist',
     method: 'GET',

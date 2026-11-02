@@ -1,5 +1,17 @@
 [
   {
+    "path": "/radio/recommendation-modes",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增普通官方雷达单选radio ID选项读取，不写RadioConfig，不改变旧电台列表"
+  },
+  {
+    "path": "/radio/recommendation-tracks",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增普通官方雷达按radio ID取批次，旧版不存在；保留旧radio/tracks与id99接口"
+  },
+  {
     "path": "/login/channels",
     "baseline": "3.3.5",
     "since": "3.3.6",
