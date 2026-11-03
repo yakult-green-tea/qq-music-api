@@ -374,6 +374,7 @@ POST /login/refresh
 | `/user/guess-you-like` | 猜你喜欢 | 是 |
 | `/user/recommendation-preferences` | 私人FM／每日30首共用的音乐偏好（只读） | 是 |
 | `/user/recommendation-preferences/update` | 修改音乐偏好 | 是 |
+| `/user/listening-rank` | 本人听歌排行：日／周／月／年，可选历史日期（只读，待真账号验收） | 是 |
 | `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读，待更多账号验收） | 是 |
 | `/user/guess-you-like/tracks` | 猜你喜欢按模式取一批（不写设置，待真账号验收） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
@@ -827,6 +828,17 @@ GET /recommend/toplist?id=26
 - `id` 是模式目录编号，`poolId` 只是取歌端的对照值；两者都不能当普通雷达 radio ID、音乐偏好 key 或风格黑名单编号使用。上游的状态、时间、排序字段含义未确认，不对外返回。
 - 不接受 `id`、`page`、`cursor`、`mode`、`scene_id`、`pool_id`。目录为空回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
 - 暂不提供切换模式的写入接口：写入参数还没有可验证的形状。已有一个经通用QR取得的QQ账号的只读成功样本；其他账号与宿主仍待验收，没有启用Folia模式能力。
+
+#### 听歌排行（未发布候选）
+
+`GET /user/listening-rank?range=week` 需要有效会话；Serverless 未配置密钥回 `501`。只读本人在 QQ 音乐「听歌报告」里的歌曲排行，不能读别人的。
+
+- `range` 必填：`day`、`week`、`month`、`year`（分别对应上游的 1、2、3、4）。没有「全部时间」，传 `all` 回 `400`，也不会用年排行冒充。
+- `date` 可选，读历史时段：`day`／`week` 用 `YYYYMMDD`，`month` 用 `YYYYMM`，必须是真实日期；`year` 没有样本，不接受 `date`。不给就读当前时段。
+- `token` 可选，上游回应里有这个字段、用途还不清楚，所以只原样转交（1–512 个可见 ASCII 字符），不解释它是不是翻页游标。
+- 返回 `{ code:200, range, date?, from?, token?, items:[{ track, listenCount }] }`。`track` 是上游的歌曲对象原样交出，由客户端自己正规化；`listenCount` 是该时段的播放次数。
+- 没听过歌的时段上游给 `rank:null`，这里回 `200` 和空的 `items`，不是错误。请求里没见过分页字段，也不知道有没有上限；条目超过 500 或格式不对回 `502`。
+- 周的边界（自然周还是最近七天）由上游决定，目前只有以周一为日期的历史样本推测是自然周，没有验证；不接受 `uin`、`page`、`cursor`、`offset`、`limit`、`type`、`version`，重复的参数在 Node 回 `400`。失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
 
 #### 黑名单首屏与单曲风格选项
 

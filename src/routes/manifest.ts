@@ -16,6 +16,7 @@ import { getUserAlbums } from './operations/getUserAlbums';
 import { getUserLikedSongs } from './operations/getUserLikedSongs';
 import { getUserPlaylist } from './operations/getUserPlaylist';
 import { getGuessYouLikeModes } from './operations/guessYouLikeModes';
+import { getListeningRank } from './operations/listeningRank';
 import { loginChannels } from './operations/loginChannels';
 import { loginRefresh } from './operations/loginRefresh';
 import { loginStatus } from './operations/loginStatus';
@@ -195,6 +196,14 @@ export const routeManifest = [
     path: '/user/recommendation-preferences',
     category: 'User',
     handler: getRecommendationPreferences,
+    needsSecret: true,
+  },
+  {
+    name: 'getListeningRank',
+    method: 'GET',
+    path: '/user/listening-rank',
+    category: 'User',
+    handler: getListeningRank,
     needsSecret: true,
   },
   {

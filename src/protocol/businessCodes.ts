@@ -56,6 +56,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.blacklist-remove',
   'recommend.official-radio',
   'recommend.guess-you-like-modes',
+  /** 本人听歌排行（`ListenReportSvr.GetRank`），要登录；非零码都还是未知。 */
+  'user.listening-rank',
   'recommend.preferences',
   'recommend.preferences-write',
   /** 音乐云盘（`GetMatchAudio`），要登录；非零码除了凭证失效都还是未知。 */

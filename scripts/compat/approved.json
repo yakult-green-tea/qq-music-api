@@ -1,5 +1,11 @@
 [
   {
+    "path": "/user/listening-rank",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增本人听歌排行只读接口；旧版不存在"
+  },
+  {
     "path": "/user/recommendation-preferences/update",
     "baseline": "3.3.5",
     "since": "3.3.6",

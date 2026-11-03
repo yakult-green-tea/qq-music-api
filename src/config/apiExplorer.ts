@@ -406,6 +406,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Read the account music preferences shared by Personal FM and Daily 30: each item key, name and current score (0-100). Read from the first-page data of the official preference page without running its scripts; songs on that page are not returned. Writing preferences is not offered yet.',
   },
+  getListeningRank: {
+    description:
+      "Read the authenticated user's own listening rank (QQ Music listening report) for a day, week, month or year, optionally for a history date. Items keep the upstream song object plus a play count. An empty period answers 200 with no items. The period boundary of a week is decided by the upstream and not verified; there is no all-time range. Only range, date and token are accepted; uin and paging are rejected.",
+  },
   getGuessYouLikeModes: {
     description:
       'Read the single-choice listening-mode catalog of Guess You Like (radio 99): primary modes, scenes, suggestions and the current selection. Read only; no mode switch is offered. Mode ids and pool ids are not radio IDs or preference keys.',
