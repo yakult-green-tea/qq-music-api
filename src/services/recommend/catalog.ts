@@ -20,6 +20,9 @@ const DEFAULT_NEW_SONG_AREA = 5;
 
 const positiveIdOf = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
+// 榜单组的 id 从 0 起：上游第一组「巅峰榜」就是 0。榜单自己的 id 仍要正整数。
+const groupIdOf = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 
 const countOf = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
@@ -306,7 +309,7 @@ export const toplistsResult = async (
             };
           })
           .filter(Boolean);
-        const id = positiveIdOf(group.groupId);
+        const id = groupIdOf(group.groupId);
         return toplists.length && id !== undefined
           ? { id, name: stringOf(group.groupName), toplists }
           : null;
