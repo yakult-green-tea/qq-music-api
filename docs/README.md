@@ -358,6 +358,7 @@ POST /login/refresh
 | `/song/batch` | 批量歌曲详情，POST | 否 |
 | `/song/fav-count` | 歌曲收藏数 | 否 |
 | `/song/versions` | 歌曲其他版本 | 否 |
+| `/song/replacement` | 放不了的歌找可播的其他版本 | 是 |
 | `/getSongInfo` | 歌曲资料 | 否 |
 | `/getAlbumInfo` | 专辑详情 | 否 |
 | `/getLyric` | 歌词与翻译 | 否 |
@@ -916,6 +917,18 @@ GET /song/versions?mid=fixtureVersionA
 不需要登录。`id` 是正整数 songid，`mid` 是歌曲 MID，两者必须二选一；同时提供、都不提供或提供空值都回 `400`。MID 最长 64 个字母或数字。
 
 响应为 `{ code: 200, songs: [...] }`，`songs` 保留上游 `versionList` 的原始条目；没有其他版本回 `422`。不同歌曲能返回的版本数量可能不同。
+
+#### 替代歌曲
+
+```text
+GET /song/replacement?mid=fixtureVersionA
+```
+
+需要有效会话；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。`mid` 是原曲 MID，必填，1–64 个字母或数字。
+
+先用当前会话要原曲 128 的链接。拿到了就不找，回 `reason: "original-playable"`；拿不到但原因没确认（不是地区、会员规则），也不找，回 `reason: "reason-unconfirmed"`，因为一次没拿到链接不等于这首放不了。只有命中地区或会员规则时，才读其他版本：跳过原曲和自己就带着这些特征的版本，剩下的最多 3 个合成一次要链接，原因没确认的照 `/getMusicPlay` 的规则再取一次；按版本顺序，第一个真拿到链接的才算。
+
+响应为 `{ code: 200, original: { mid, playable, hint }, song, label?, reason? }`。`song` 保留上游 `versionList` 的原始条目，找不到时为 `null`，`reason` 是 `no-other-version` 或 `no-playable-version`；`label` 只在版本有副标题时给，不自己编替代原因。回包不带链接，播放照常用 `/getMusicPlay`。读其他版本失败照新路由的错误回 `502`，不重试。
 
 ### 14. 本人音乐基因
 

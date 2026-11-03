@@ -75,6 +75,7 @@ import { searchUsers } from './operations/searchUsers';
 import { songBatch } from './operations/songBatch';
 import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
+import { songReplacement } from './operations/songReplacement';
 import { songVersions } from './operations/songVersions';
 import { sortedCategoryPlaylists } from './operations/sortedCategoryPlaylists';
 import { playlistSubscribe, subscriptionStatus } from './operations/subscriptions';
@@ -224,6 +225,14 @@ export const routeManifest = [
     path: '/song/versions',
     category: 'Song',
     handler: songVersions,
+  },
+  {
+    name: 'songReplacement',
+    method: 'GET',
+    path: '/song/replacement',
+    category: 'Song',
+    handler: songReplacement,
+    needsSecret: true,
   },
   {
     name: 'searchUsers',

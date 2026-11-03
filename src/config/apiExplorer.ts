@@ -131,6 +131,19 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  songReplacement: {
+    description:
+      '带会话给放不了的歌找一个能放的其他版本：原曲 128 拿不到链接、且命中地区或会员规则时才找，最多试 3 个版本，以真拿到链接为准；找不到回 song:null 与 reason。Serverless 需要会话密钥。',
+    queryParams: [
+      {
+        key: 'mid',
+        label: '原曲 MID',
+        placeholder: 'fixtureVersionA',
+        description: '1–64 个字母或数字。',
+        required: true,
+      },
+    ],
+  },
   userMusicGene: {
     description:
       '带会话读取本人的音乐基因，无业务参数。profile 保留原始结构，IsVisitAccount 保持数字；上游非零业务码回 502 并保留 upstreamCode。Serverless 需要会话密钥。',
