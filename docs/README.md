@@ -375,6 +375,7 @@ POST /login/refresh
 | `/user/recommendation-preferences` | 私人FM／每日30首共用的音乐偏好（只读） | 是 |
 | `/user/recommendation-preferences/update` | 修改音乐偏好（实验，默认关闭） | 是 |
 | `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读，待更多账号验收） | 是 |
+| `/user/guess-you-like/tracks` | 猜你喜欢按模式取一批（不写设置，待真账号验收） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
 | `/user/personal-fm` | 私人 FM 批次（待真账号验收） | 是 |
 | `/recommend/feed` | 客户端首页 feed 第 1 页（歌曲与歌单） | 是 |
@@ -817,6 +818,8 @@ GET /recommend/toplist?id=26
 - 写入不重试。写入已发出后的任何失败都带 `writeAttempted:true`、`verified:false`、`retryable:false`，请先读回再决定是否重试。
 
 #### 猜你喜欢听歌模式目录（未发布候选）
+
+`GET /user/guess-you-like/tracks?pool=1001` 按模式取一批：`pool` 是模式目录条目的 `poolId`（示例编号为虚构），只接受不超过 10 位的正整数。上游请求是 id 99 的 `get_radio_track`，在 `ext.scene_id` 带上这个值，**不写账号的模式设置**。返回 `{ code:200, station:"guess-you-like", poolId, songs }`，没有歌回 `422`；失败不重试，避免多消耗一批。上游不写设置是否也按模式给歌，还待真账号验收。
 
 `GET /user/guess-you-like/modes` 需要有效会话；Serverless 未配置密钥回 `501`。只读 id 99 的 RadioConfig 目录，不改变 `/user/guess-you-like` 的取歌行为。
 

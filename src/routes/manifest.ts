@@ -53,6 +53,7 @@ import {
 } from './operations/recommendationPreferences';
 import {
   getGuessYouLike,
+  getGuessYouLikeModeTracks,
   getPersonalFm,
   getRadioList,
   getRadioTracks,
@@ -480,6 +481,14 @@ export const routeManifest = [
     path: '/user/guess-you-like',
     category: 'User',
     handler: getGuessYouLike,
+    needsSecret: true,
+  },
+  {
+    name: 'getGuessYouLikeModeTracks',
+    method: 'GET',
+    path: '/user/guess-you-like/tracks',
+    category: 'User',
+    handler: getGuessYouLikeModeTracks,
     needsSecret: true,
   },
   {

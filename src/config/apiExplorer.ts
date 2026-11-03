@@ -465,6 +465,19 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getGuessYouLikeModeTracks: {
+    description:
+      'Read one guess-you-like (radio 99) batch for a mode pool, with a required session. Does not write the account mode setting. Whether QQ honours the pool without the setting is pending real-account acceptance. No retry. Serverless needs the session secret.',
+    queryParams: [
+      {
+        key: 'pool',
+        label: 'Pool id',
+        description:
+          'poolId of a mode from /user/guess-you-like/modes; positive integer, up to 10 digits.',
+        required: true,
+      },
+    ],
+  },
   recommendFeed: {
     description:
       'Read page 1 of the client home feed with a required session. Keeps song cards (completed by songid) and 500/3003/513 playlist cards only; programs, radios and promotions are left out. No further pages (the continuation answered 500020). Serverless needs the session secret.',
