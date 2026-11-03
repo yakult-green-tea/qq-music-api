@@ -485,7 +485,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getGuessYouLikeModeTracks: {
     description:
-      'Read one guess-you-like (radio 99) batch for a mode pool, with a required session. Does not write the account mode setting. Whether QQ honours the pool without the setting is pending real-account acceptance. No retry. Serverless needs the session secret.',
+      'Read one guess-you-like (radio 99) batch for a mode pool, with a required session. Does not write the account mode setting. Tested with a real account; whether QQ always honours the pool without the setting is not confirmed. No retry. Serverless needs the session secret.',
     queryParams: [
       {
         key: 'pool',
@@ -502,7 +502,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getPersonalFm: {
     description:
-      'Read one personal FM batch with a required session. Uses radar songs, independently of guess-you-like. Does not retry a failed batch; real-account acceptance is pending.',
+      'Read one personal FM batch with a required session. Uses radar songs, independently of guess-you-like. Does not retry a failed batch. Tested with a real account: reading page 1 again returns a new batch.',
     queryParams: [
       {
         key: 'page',

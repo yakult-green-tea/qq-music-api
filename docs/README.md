@@ -378,11 +378,11 @@ POST /login/refresh
 | `/user/guess-you-like` | 猜你喜欢 | 是 |
 | `/user/recommendation-preferences` | 私人FM／每日30首共用的音乐偏好（只读） | 是 |
 | `/user/recommendation-preferences/update` | 修改音乐偏好 | 是 |
-| `/user/listening-rank` | 本人听歌排行：日／周／月／年，可选历史日期（只读，待真账号验收） | 是 |
-| `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读，待更多账号验收） | 是 |
-| `/user/guess-you-like/tracks` | 猜你喜欢按模式取一批（不写设置，待真账号验收） | 是 |
+| `/user/listening-rank` | 本人听歌排行：日／周／月／年，可选历史日期（只读） | 是 |
+| `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读） | 是 |
+| `/user/guess-you-like/tracks` | 猜你喜欢按模式取一批（不写设置） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
-| `/user/personal-fm` | 私人 FM 批次（待真账号验收） | 是 |
+| `/user/personal-fm` | 私人 FM 批次 | 是 |
 | `/recommend/feed` | 客户端首页 feed 第 1 页（歌曲与歌单） | 是 |
 | `/recommend/playlists` | 推荐歌单 | 可选 |
 | `/recommend/radar` | 刷歌模式 | 可选 |
@@ -397,8 +397,8 @@ POST /login/refresh
 | `/radio/categories` | 匿名电台分类 | 否 |
 | `/radio/list` | 账号电台列表 | 是 |
 | `/radio/tracks` | 电台歌曲 | 是 |
-| `/radio/recommendation-modes` | 普通官方雷达单选 radio ID 选项（待真账号验收） | 是 |
-| `/radio/recommendation-tracks` | 普通官方雷达批次（待真账号验收） | 是 |
+| `/radio/recommendation-modes` | 普通官方雷达单选 radio ID 选项 | 是 |
+| `/radio/recommendation-tracks` | 普通官方雷达批次 | 是 |
 | `/song/similar` | 相似歌曲 | 是 |
 | `/song/related-playlists` | 包含指定歌曲的相关歌单 | 是 |
 
@@ -777,9 +777,9 @@ GET /recommend/toplist?id=26
 - `more: true` 且未到本地上限时给 `nextPage`；第 100 页仍有更多时给 `paginationLimitReached: true`，不提供下一页，也不把它说成上游结束。
 - 空批次回 `422`；条目存在但无法解析回 `502`。失败只请求一次，调用方不能假定超时或取消代表上游未消耗批次。
 - 服务不保存跨请求的批次位置。调用方按账号与来源隔离页序，预览、并发提交与晚到应答由自己的控制器处理，不能只为卡片封面消耗批次。
-- 此路由已提供离线契约测试；手机入口对应仍为强候选，当前 Android comm、账号个性化及连续批次仍待真账号验收。
+- 已用真实账号实测：连读三次第 1 页，每次都是新的一批，彼此没有重复。
 
-#### 首页 feed（未发布候选）
+#### 首页 feed
 
 `GET /recommend/feed` 需要有效会话；Serverless 未配置密钥回 `501`。只读第 1 页：续页组合实测回 `500020`，所以 `more` 恒为 `false`，不提供翻页。
 
@@ -795,9 +795,9 @@ GET /recommend/toplist?id=26
 
 两条路由只读当前会话本人，Serverless 未配置密钥回 `501`；会话缺失或无法解析回 `401`，无日期或无歌曲回 `422`，结构损坏回 `502`。新上游业务码尚未验证时保留 `502` 与安全的 `upstreamCode`，不猜测为登录失效。每次只发一次上游请求，不自动重试。
 
-历史查询不创建或编辑普通歌单，不提供整份历史收藏。日期生成条件、保留期限、跨日更新时间及 API Android comm/session 尚待验证；`features.recommendations.getHistoryDates/getHistorySongs` 保持关闭。
+历史查询不创建或编辑普通歌单，不提供整份历史收藏。日期怎么产生、保留多久、几点换日还没确认；`features.recommendations.getHistoryDates/getHistorySongs` 保持关闭。
 
-#### 普通官方雷达选项与批次（未发布候选）
+#### 普通官方雷达选项与批次
 
 两条路径都需要有效会话；Serverless 未配置密钥回 `501`。它们与旧 `/radio/list`、`/radio/tracks` 分开，保留旧路径的上游与回包。私人 FM、每日30首、id 99 猜你喜欢不改为这个来源。
 
@@ -805,36 +805,36 @@ GET /recommend/toplist?id=26
 - `GET /radio/recommendation-tracks?id=91001` 返回 `{ code:200, station:"official-radio", radioId, title, songs, extras? }`。编号为虚构示例；`id` 必须为正的安全整数，`99` 仍走 `/user/guess-you-like`。请求上游一批，曲数由上游决定，不保证恰好五首，也不提供猜测的游标或结束标志。
 - 单选后请求对应 radio ID 是取歌，不是 `UpdateRadioSceneConfig` 或音乐偏好写入；radio ID 与 id99场景目录／pool、偏好key、风格复合键不能互换。
 - 不接受 `page`、`cursor`、`mode`、`submode`、`scene_id`。成功却无内容回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
-- 已完成合成上游的跨宿主契约，并有一个经通用QR取得的微信账号的只读成功样本：目录9项、选定目录ID取歌5首。最小参数与Android comm仅在此样本可用，其他账号、ID和宿主仍待验收；没有因此启用Folia模式能力或新增设置保存接口。
+- 已用真实账号实测：读到选项，按选中的 radio ID 取到一批歌。其他 radio ID 没有逐一试过；这两条接口不提供保存设置。
 
-#### 音乐偏好（未发布候选）
+#### 音乐偏好
 
 `GET /user/recommendation-preferences` 需要有效会话；Serverless 未配置密钥回 `501`。私人 FM 与每日30首的偏好入口打开的是同一个页面，所以这里返回的是账号的一份偏好，不按入口区分。
 
 - 返回 `{ code:200, scope:"account", profiles:[{ key, name, score }] }`。`key` 是偏好项编号（例如熟悉度、各语种），`score` 是 0 到 100 的当前分值；偏好 key 不能当模式目录编号、radio ID 或风格黑名单编号使用。
 - 数据来自官方偏好页的首屏数据：只发一次请求、不跟随转址、回包限 1 MB；只认唯一一处明确的数据赋值，不执行页面脚本，不返回页面里的歌曲。目标分值、是否可调、更新时间等字段含义未确认，不对外返回。
 - 不接受 `station`、`entry`、`profileKey`、`page`、`cursor`、`id`。没有偏好项回 `422`；页面结构不对回 `502`；转址或其他非 2xx 回 `502`，不清登录态；未知页面码保留 `502` 与 `upstreamCode`。
-- 已有一个经通用QR取得的微信账号读到本人偏好的样本。偏好对各入口推荐算法的实际影响未验证。
+- 已用真实账号实测读取。偏好对各入口推荐结果的实际影响还没验证。
 
-`POST /user/recommendation-preferences/update`（需要有效会话，不需要实验开关；QQ 与微信账号都实写过、读回一致）：
+`POST /user/recommendation-preferences/update`（需要有效会话，不需要实验开关；已用真实账号实测写入，读回一致）：
 
 - 请求 `{ "profiles": [{ "key": "10008", "score": 75 }] }`，1 到 32 项、key 不重复、score 为 0 到 100 的整数，不接受其他字段。
 - 先读现值；key 不在账号偏好里回 `400`，不写。所有指定项已是目标值时不写，回 `writeAttempted:false`。否则按现有顺序把整份偏好写一次（只替换指定项），再读偏好页：全部吻合回 `verified:true`、`verification:"confirmed"`，否则 `verified:false`、`verification:"unconfirmed"`，同时返回读回的 `profiles`。
 - 写入不重试。写入已发出后的任何失败都带 `writeAttempted:true`、`verified:false`、`retryable:false`，请先读回再决定是否重试。
 - 必须使用 `application/json`，否则回 `415`。页面缺少屏蔽旗标时不写；读回也核对未修改项。同一进程内同账号写入排队，其他实例和客户端的并发修改不受保护。
 
-#### 猜你喜欢听歌模式目录（未发布候选）
+#### 猜你喜欢听歌模式目录
 
-`GET /user/guess-you-like/tracks?pool=1001` 按模式取一批：`pool` 是模式目录条目的 `poolId`（示例编号为虚构），只接受不超过 10 位的正整数。上游请求是 id 99 的 `get_radio_track`，在 `ext.scene_id` 带上这个值，**不写账号的模式设置**。返回 `{ code:200, station:"guess-you-like", poolId, songs }`，没有歌回 `422`；失败不重试，避免多消耗一批。上游不写设置是否也按模式给歌，还待真账号验收。
+`GET /user/guess-you-like/tracks?pool=1001` 按模式取一批：`pool` 是模式目录条目的 `poolId`（示例编号为虚构），只接受不超过 10 位的正整数。上游请求是 id 99 的 `get_radio_track`，在 `ext.scene_id` 带上这个值，**不写账号的模式设置**。返回 `{ code:200, station:"guess-you-like", poolId, songs }`，没有歌回 `422`；失败不重试，避免多消耗一批。已用真实账号按两种模式各取过一批，两批没有重复；不写设置时上游是否一定按模式给歌，还没确认。
 
 `GET /user/guess-you-like/modes` 需要有效会话；Serverless 未配置密钥回 `501`。只读 id 99 的 RadioConfig 目录，不改变 `/user/guess-you-like` 的取歌行为。
 
 - 返回 `{ code:200, station:"guess-you-like", radioId:99, selection:"single", primaryModes, scenes, recommended, selectedIds }`。三组条目都是 `{ id, name, cover, poolId? }`；`selectedIds` 是上游给出的当前选中项，可以为空。
 - `id` 是模式目录编号，`poolId` 只是取歌端的对照值；两者都不能当普通雷达 radio ID、音乐偏好 key 或风格黑名单编号使用。上游的状态、时间、排序字段含义未确认，不对外返回。
 - 不接受 `id`、`page`、`cursor`、`mode`、`scene_id`、`pool_id`。目录为空回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
-- 暂不提供切换模式的写入接口：写入参数还没有可验证的形状。已有一个经通用QR取得的QQ账号的只读成功样本；其他账号与宿主仍待验收，没有启用Folia模式能力。
+- 暂不提供切换模式的写入接口：写入参数还没有可验证的形状。已用真实账号实测读取目录。
 
-#### 听歌排行（未发布候选）
+#### 听歌排行
 
 `GET /user/listening-rank?range=week` 需要有效会话；Serverless 未配置密钥回 `501`。只读本人在 QQ 音乐「听歌报告」里的歌曲排行，不能读别人的。
 
@@ -843,7 +843,7 @@ GET /recommend/toplist?id=26
 - `token` 可选，上游回应里有这个字段、用途还不清楚，所以只原样转交（1–512 个可见 ASCII 字符），不解释它是不是翻页游标。
 - 返回 `{ code:200, range, date?, from?, token?, items:[{ track, listenCount }] }`。`track` 是上游的歌曲对象原样交出，由客户端自己正规化；`listenCount` 是该时段的播放次数。
 - 没听过歌的时段上游给 `rank:null`，这里回 `200` 和空的 `items`，不是错误。请求里没见过分页字段，也不知道有没有上限；条目超过 500 或格式不对回 `502`。
-- 周的边界（自然周还是最近七天）由上游决定，目前只有以周一为日期的历史样本推测是自然周，没有验证；不接受 `uin`、`page`、`cursor`、`offset`、`limit`、`type`、`version`，重复的参数回 `400`。失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
+- 周的边界（自然周还是最近七天）由上游决定，还没确认：已用真实账号读过本周，和以周一为日期的上一周；用周中其他日子当 `date`，实测回过上游错误。不接受 `uin`、`page`、`cursor`、`offset`、`limit`、`type`、`version`，重复的参数回 `400`。失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
 
 **设计取舍与向后兼容（3.3.6 范围说明）**
 
@@ -854,7 +854,7 @@ GET /recommend/toplist?id=26
 
 #### 黑名单首屏与单曲风格选项
 
-写入：`POST /user/blacklist/add` 只选歌曲（正文只有 `songs`）时默认可用，用来做歌曲“不喜欢”；选了歌手、风格或混合选择，以及 `POST /user/blacklist/remove`，默认回 `501 feature.unavailable`，只有可信宿主配置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能测试，正文／查询参数不能开启，而且在检查会话前就回 `501`。已有一个微信账号的三类新增与逐项取消实写样本；开关不启用下游界面能力。
+写入：`POST /user/blacklist/add` 只选歌曲（正文只有 `songs`）时默认可用，用来做歌曲“不喜欢”；选了歌手、风格或混合选择，以及 `POST /user/blacklist/remove`，默认回 `501 feature.unavailable`，只有可信宿主配置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能测试，正文／查询参数不能开启，而且在检查会话前就回 `501`。已用真实账号实测过三类新增与逐项取消；开关不启用下游界面能力。
 
 - 新增正文为 `{ songs?:string[], singers?:string[], songId?:string, styles?:[{id:string,idType:number}] }`。至少选择一项；每类最多20项、合计最多30项，不接受重复项。ID为不超过40位的正十进制字符串；风格按 `id + idType` 区分，不能只按ID去重。
 - 选择风格时必须给数字歌曲的 `songId`（安全整数），先读取该曲可选风格；没有候选或选项不匹配就不写。名称来自上游候选，不接收调用方伪造的名称；歌曲、歌手和风格只发送选中分类，不自动关联。风格表示「减少风格推荐」，不保证完全排除。
@@ -868,7 +868,7 @@ GET /recommend/toplist?id=26
 
 `GET /user/blacklist/style-options?songId=90001` 返回 `{ code: 200, styles: [{ id, idType, name, status }] }`。示例编号为虚构数据；`songId` 必须是正的安全整数，不是 mid。某些歌曲没有风格候选，正常返回空数组；`status` 只保留数值，不推断所有取值的意义。
 
-两条路由需要有效会话，不匿名读取；Serverless 缺密钥回 `501`。网络、结构异常和未验证业务码回安全错误，失败不自动重试。它们不新增或取消屏蔽，也没有 Folia 黑名单管理 UI；API session、完整分页面及取消后读回仍待验收。
+两条路由需要有效会话，不匿名读取；Serverless 缺密钥回 `501`。网络、结构异常和未验证业务码回安全错误，失败不自动重试。它们不新增或取消屏蔽；完整分页和取消后的读回还没验证。
 
 ### 9. 批量歌曲详情
 
