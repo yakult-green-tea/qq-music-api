@@ -85,6 +85,25 @@ describe.each(CATALOG_RUNTIMES)('recommendation preference writes: %s', (runtime
     expect(writes()).toHaveLength(1);
   });
 
+  // 跨站页面不经预检就能发出表单和纯文本，带着 Cookie 也不能写进来。
+  it.each([
+    'text/plain',
+    'application/x-www-form-urlencoded',
+    '',
+  ])('refuses %j before reading or writing', async (type) => {
+    const options = await upstream.options('valid');
+    await options.beforeEachLeg?.();
+    const result = await callRoute(runtime, PATH, {
+      method: 'POST',
+      body: UPDATE,
+      headers: { 'X-QQ-Session': options.token ?? '', 'Content-Type': type },
+      env: options.env,
+    });
+    expect(result.status).toBe(415);
+    expect(ssrReads).toBe(0);
+    expect(writes()).toEqual([]);
+  });
+
   it('requires POST and a valid session', async () => {
     expect((await call(UPDATE, true, true, 'GET')).status).toBe(405);
     expect((await call(UPDATE, true, false)).status).toBe(401);
@@ -135,6 +154,65 @@ describe.each(CATALOG_RUNTIMES)('recommendation preference writes: %s', (runtime
     expect(writes()).toHaveLength(1);
   });
 
+  it('queues concurrent changes for the same account without losing either score', async () => {
+    const base = jest.mocked(fetch).getMockImplementation();
+    jest.mocked(fetch).mockImplementation(async (input, init) => {
+      const request = new Request(input, init);
+      if (new URL(request.url).host !== 'i.y.qq.com') return (base as typeof fetch)(input, init);
+      const last = writes().at(-1);
+      const scores: [string, number][] = last
+        ? (last.param.Profiles as { ProfileKey: string; Score: number }[]).map((item) => [
+            item.ProfileKey,
+            item.Score,
+          ])
+        : BEFORE;
+      return new Response(page(scores));
+    });
+    const results = await Promise.all([
+      call(UPDATE),
+      call({ profiles: [{ key: '10003', score: 30 }] }),
+    ]);
+    expect(results.map((result) => result.status)).toEqual([200, 200]);
+    expect(results.map((result) => (result.body as { verified: boolean }).verified)).toEqual([
+      true,
+      true,
+    ]);
+    expect(writes()).toHaveLength(2);
+    expect(writes()[1].param.Profiles).toEqual([
+      { Score: 75, ProfileKey: '10008', IsAdjust: 0, IsSetBlack: 0 },
+      { Score: 30, ProfileKey: '10003', IsAdjust: 0, IsSetBlack: 0 },
+    ]);
+  });
+
+  it('preserves the black flag in the full write', async () => {
+    pages = [
+      { body: page(BEFORE).replace('"IsBlack":false', '"IsBlack":true') },
+      { body: page(AFTER).replace('"IsBlack":false', '"IsBlack":true') },
+    ];
+    expect((await call(UPDATE)).status).toBe(200);
+    expect((writes()[0].param.Profiles as { IsSetBlack: number }[])[0].IsSetBlack).toBe(1);
+  });
+
+  it('refuses to write if the page omits a black flag', async () => {
+    pages = [{ body: page(BEFORE).replace(',"IsBlack":false', '') }];
+    expect((await call(UPDATE)).status).toBe(502);
+    expect(writes()).toEqual([]);
+  });
+
+  it('does not verify when a non-target score changes on readback', async () => {
+    pages = [
+      { body: page(BEFORE) },
+      {
+        body: page([
+          ['10008', 75],
+          ['10003', 1],
+        ]),
+      },
+    ];
+    const result = await call(UPDATE);
+    expect(result.body).toMatchObject({ verified: false, verification: 'unconfirmed' });
+  });
+
   it('does not write when the requested scores are already current', async () => {
     const result = await call({ profiles: [{ key: '10008', score: 50 }] });
     expect(result.status).toBe(200);
@@ -182,6 +260,37 @@ describe.each(CATALOG_RUNTIMES)('recommendation preference writes: %s', (runtime
     const result = await call(UPDATE);
     expect(result.status).toBe(502);
     expect(result.body).not.toHaveProperty('writeAttempted');
+    expect(writes()).toEqual([]);
+  });
+
+  it.each(['length', 'stream'])('cancels an oversized preference page by %s', async (kind) => {
+    const base = jest.mocked(fetch).getMockImplementation();
+    let cancelled = false;
+    let pulls = 0;
+    jest.mocked(fetch).mockImplementation(async (input, init) => {
+      const request = new Request(input, init);
+      if (new URL(request.url).host !== 'i.y.qq.com') return (base as typeof fetch)(input, init);
+      const stream = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulls += 1;
+          if (pulls > 4) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(new Uint8Array(600 * 1024));
+        },
+        cancel() {
+          cancelled = true;
+        },
+      });
+      return new Response(stream, {
+        headers: kind === 'length' ? { 'Content-Length': '1048577' } : {},
+      });
+    });
+    const result = await call(UPDATE);
+    expect(result.status).toBe(502);
+    expect(cancelled).toBe(true);
+    expect(pulls).toBeLessThanOrEqual(kind === 'length' ? 1 : 3);
     expect(writes()).toEqual([]);
   });
 
