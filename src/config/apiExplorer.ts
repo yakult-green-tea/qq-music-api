@@ -400,15 +400,29 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   updateRecommendationPreferences: {
     description:
-      'Needs a session; no experimental flag (written and read back on QQ and WeChat accounts). Change music preference scores: reads current values, replaces only the given keys, writes the full list once and reads back. No retry; unknown outcomes are marked writeAttempted.',
+      'Needs a session and application/json. Change scores by key: reads current values, writes the full list once and verifies all items. No retry; unknown outcomes are marked writeAttempted. Requests within one process are serialized per account; other instances and clients can still change the account concurrently.',
+    bodyExample: { profiles: [{ key: '10008', score: 75 }] },
   },
   getRecommendationPreferences: {
     description:
-      'Read the account music preferences shared by Personal FM and Daily 30: each item key, name and current score (0-100). Read from the first-page data of the official preference page without running its scripts; songs on that page are not returned. Writing preferences is not offered yet.',
+      'Read the account music preferences shared by Personal FM and Daily 30: each item key, name and current score (0-100). Read from the first-page data of the official preference page without running its scripts; songs on that page are not returned. Use /user/recommendation-preferences/update to change scores.',
   },
   getListeningRank: {
     description:
       "Read the authenticated user's own listening rank (QQ Music listening report) for a day, week, month or year, optionally for a history date. Items keep the upstream song object plus a play count. An empty period answers 200 with no items. The period boundary of a week is decided by the upstream and not verified; there is no all-time range. Only range, date and token are accepted; uin and paging are rejected.",
+    queryParams: [
+      { key: 'range', label: 'Range', description: 'day, week, month or year.', required: true },
+      {
+        key: 'date',
+        label: 'Date',
+        description: 'Optional YYYYMMDD for day or week, YYYYMM for month; not supported for year.',
+      },
+      {
+        key: 'token',
+        label: 'Token',
+        description: 'Optional opaque token from an earlier response.',
+      },
+    ],
   },
   getGuessYouLikeModes: {
     description:

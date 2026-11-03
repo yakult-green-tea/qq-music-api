@@ -115,11 +115,15 @@ export interface SharedRoute extends RouteBase {
   serverlessPath?: string;
   /** Serverless 没设 `QQ_SESSION_SECRET` 时直接回 501。 */
   needsSecret?: true;
+  strictRequest?: true;
+  accountWrite?: true;
 }
 
 export const routeManifest = [
   {
     name: 'addBlacklist',
+    accountWrite: true,
+    strictRequest: true,
     method: 'POST',
     path: '/user/blacklist/add',
     category: 'User',
@@ -128,6 +132,8 @@ export const routeManifest = [
   },
   {
     name: 'removeBlacklist',
+    accountWrite: true,
+    strictRequest: true,
     method: 'POST',
     path: '/user/blacklist/remove',
     category: 'User',
@@ -136,6 +142,7 @@ export const routeManifest = [
   },
   {
     name: 'getRadioRecommendationModes',
+    strictRequest: true,
     method: 'GET',
     path: '/radio/recommendation-modes',
     category: 'Recommend',
@@ -144,6 +151,7 @@ export const routeManifest = [
   },
   {
     name: 'getRadioRecommendationTracks',
+    strictRequest: true,
     method: 'GET',
     path: '/radio/recommendation-tracks',
     category: 'Recommend',
@@ -152,6 +160,7 @@ export const routeManifest = [
   },
   {
     name: 'getBlacklist',
+    strictRequest: true,
     method: 'GET',
     path: '/user/blacklist',
     category: 'User',
@@ -160,6 +169,7 @@ export const routeManifest = [
   },
   {
     name: 'getBlacklistStyleOptions',
+    strictRequest: true,
     method: 'GET',
     path: '/user/blacklist/style-options',
     category: 'User',
@@ -168,6 +178,7 @@ export const routeManifest = [
   },
   {
     name: 'dailyHistoryDates',
+    strictRequest: true,
     method: 'GET',
     path: '/user/daily-songs/history/dates',
     category: 'User',
@@ -176,6 +187,7 @@ export const routeManifest = [
   },
   {
     name: 'dailyHistorySongs',
+    strictRequest: true,
     method: 'GET',
     path: '/user/daily-songs/history',
     category: 'User',
@@ -184,6 +196,8 @@ export const routeManifest = [
   },
   {
     name: 'updateRecommendationPreferences',
+    accountWrite: true,
+    strictRequest: true,
     method: 'POST',
     path: '/user/recommendation-preferences/update',
     category: 'User',
@@ -192,6 +206,7 @@ export const routeManifest = [
   },
   {
     name: 'getRecommendationPreferences',
+    strictRequest: true,
     method: 'GET',
     path: '/user/recommendation-preferences',
     category: 'User',
@@ -200,6 +215,7 @@ export const routeManifest = [
   },
   {
     name: 'getListeningRank',
+    strictRequest: true,
     method: 'GET',
     path: '/user/listening-rank',
     category: 'User',
@@ -208,6 +224,7 @@ export const routeManifest = [
   },
   {
     name: 'getGuessYouLikeModes',
+    strictRequest: true,
     method: 'GET',
     path: '/user/guess-you-like/modes',
     category: 'User',
@@ -216,6 +233,7 @@ export const routeManifest = [
   },
   {
     name: 'recommendFeed',
+    strictRequest: true,
     method: 'GET',
     path: '/recommend/feed',
     category: 'Recommend',
@@ -224,6 +242,7 @@ export const routeManifest = [
   },
   {
     name: 'getPersonalFm',
+    strictRequest: true,
     method: 'GET',
     path: '/user/personal-fm',
     category: 'User',
@@ -247,6 +266,7 @@ export const routeManifest = [
   },
   {
     name: 'songReplacement',
+    strictRequest: true,
     method: 'GET',
     path: '/song/replacement',
     category: 'Song',
@@ -363,6 +383,7 @@ export const routeManifest = [
   },
   {
     name: 'loginRefresh',
+    accountWrite: true,
     method: 'POST',
     path: '/login/refresh',
     category: 'Login',
@@ -389,6 +410,7 @@ export const routeManifest = [
   },
   {
     name: 'songLike',
+    accountWrite: true,
     method: 'POST',
     path: '/user/song/like',
     category: 'User',
@@ -397,6 +419,7 @@ export const routeManifest = [
   },
   {
     name: 'albumSubscribe',
+    accountWrite: true,
     method: 'POST',
     path: '/user/album/subscribe',
     category: 'User',
@@ -405,6 +428,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistTracks',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/tracks',
     category: 'User',
@@ -413,6 +437,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistCreate',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/create',
     category: 'User',
@@ -421,6 +446,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistRename',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/rename',
     category: 'User',
@@ -429,6 +455,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistDelete',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/delete',
     category: 'User',
@@ -437,6 +464,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistSubscribe',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/subscribe',
     category: 'User',
@@ -494,6 +522,7 @@ export const routeManifest = [
   },
   {
     name: 'getGuessYouLikeModeTracks',
+    strictRequest: true,
     method: 'GET',
     path: '/user/guess-you-like/tracks',
     category: 'User',

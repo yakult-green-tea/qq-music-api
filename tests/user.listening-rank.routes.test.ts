@@ -125,10 +125,43 @@ describe.each(CATALOG_RUNTIMES)('/user/listening-rank（%s）', (runtime) => {
     expect(upstream.calls).toHaveLength(0);
   });
 
-  // Serverless 只读到重复参数的第一个值，所以只在 Node 宿主验证重复参数被拒。
-  (runtime === 'node' ? it : it.skip)('rejects a repeated range on node', async () => {
+  it('rejects a repeated range', async () => {
     expect((await call(`${RANK}?range=week&range=day`)).status).toBe(400);
     expect(upstream.calls).toHaveLength(0);
+  });
+
+  it('rejects DELETE before reading repeated parameters', async () => {
+    const options = await upstream.options('valid');
+    await options.beforeEachLeg?.();
+    const result = await callRoute(runtime, `${RANK}?range=day&range=year`, {
+      method: 'DELETE',
+      headers: { 'X-QQ-Session': options.token ?? '' },
+      env: options.env,
+      responseHeaders: ['allow'],
+    });
+    expect(result.status).toBe(405);
+    expect(result.headers?.allow?.[0]).toContain('GET');
+    expect(upstream.calls).toHaveLength(0);
+  });
+
+  it('accepts HEAD for a GET route', async () => {
+    const options = await upstream.options('valid');
+    await options.beforeEachLeg?.();
+    const result = await callRoute(runtime, `${RANK}?range=day`, {
+      method: 'HEAD',
+      headers: { 'X-QQ-Session': options.token ?? '' },
+      env: options.env,
+    });
+    expect(result.status).toBe(200);
+  });
+
+  it('rejects DELETE even without a configured session secret', async () => {
+    const result = await callRoute(runtime, `${RANK}?range=day&range=year`, {
+      method: 'DELETE',
+      responseHeaders: ['allow'],
+    });
+    expect(result.status).toBe(405);
+    expect(result.headers?.allow?.[0]).toContain('GET');
   });
 
   it.each([

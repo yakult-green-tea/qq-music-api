@@ -1,5 +1,12 @@
 [
   {
+    "path": "/recommend/toplists",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "difference": "toplist-group-zero",
+    "reason": "只允许榜单清单补回 groupId 为 0 的组，其他响应及上游请求必须一致"
+  },
+  {
     "path": "/user/listening-rank",
     "baseline": "3.3.5",
     "since": "3.3.6",
@@ -9,7 +16,7 @@
     "path": "/user/recommendation-preferences/update",
     "baseline": "3.3.5",
     "since": "3.3.6",
-    "reason": "新增默认关闭的音乐偏好写入候选；旧版不存在"
+    "reason": "新增默认开放的音乐偏好写入；旧版不存在"
   },
   {
     "path": "/user/recommendation-preferences",

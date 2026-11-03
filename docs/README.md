@@ -184,6 +184,10 @@ Serverless 请求由部署平台的网络出口发送，可能与用户本地网
 
 ### 会话安全
 
+账号 POST 写入在会话来自 Cookie 标头、且浏览器发出 `Sec-Fetch-Site: same-site` 或 `cross-site` 时回 `403`，不请求上游。会话来自 `X-QQ-Session` 或 `?cookie=`、未带此标头、以及 `same-origin`／`none` 时保持原有行为。旧写入的正文格式不变；新偏好写入、黑名单新增和取消启用后只收 `application/json`，否则回 `415`。
+
+`GET /logout` 和扫码流程没有这层保护；接受同站其他来源可能触发这些 GET 的风险。偏好写入仅在同一进程内按账号排队，Serverless 多实例之间或与手机 App 同时修改仍可能互相覆盖，这是已接受的风险。
+
 `QQ_SESSION_SECRET` 应使用独立生成的高强度随机密钥，并通过部署平台的密钥管理功能注入。
 
 建议：
@@ -817,6 +821,7 @@ GET /recommend/toplist?id=26
 - 请求 `{ "profiles": [{ "key": "10008", "score": 75 }] }`，1 到 32 项、key 不重复、score 为 0 到 100 的整数，不接受其他字段。
 - 先读现值；key 不在账号偏好里回 `400`，不写。所有指定项已是目标值时不写，回 `writeAttempted:false`。否则按现有顺序把整份偏好写一次（只替换指定项），再读偏好页：全部吻合回 `verified:true`、`verification:"confirmed"`，否则 `verified:false`、`verification:"unconfirmed"`，同时返回读回的 `profiles`。
 - 写入不重试。写入已发出后的任何失败都带 `writeAttempted:true`、`verified:false`、`retryable:false`，请先读回再决定是否重试。
+- 必须使用 `application/json`，否则回 `415`。页面缺少屏蔽旗标时不写；读回也核对未修改项。同一进程内同账号写入排队，其他实例和客户端的并发修改不受保护。
 
 #### 猜你喜欢听歌模式目录（未发布候选）
 
@@ -838,7 +843,14 @@ GET /recommend/toplist?id=26
 - `token` 可选，上游回应里有这个字段、用途还不清楚，所以只原样转交（1–512 个可见 ASCII 字符），不解释它是不是翻页游标。
 - 返回 `{ code:200, range, date?, from?, token?, items:[{ track, listenCount }] }`。`track` 是上游的歌曲对象原样交出，由客户端自己正规化；`listenCount` 是该时段的播放次数。
 - 没听过歌的时段上游给 `rank:null`，这里回 `200` 和空的 `items`，不是错误。请求里没见过分页字段，也不知道有没有上限；条目超过 500 或格式不对回 `502`。
-- 周的边界（自然周还是最近七天）由上游决定，目前只有以周一为日期的历史样本推测是自然周，没有验证；不接受 `uin`、`page`、`cursor`、`offset`、`limit`、`type`、`version`，重复的参数在 Node 回 `400`。失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
+- 周的边界（自然周还是最近七天）由上游决定，目前只有以周一为日期的历史样本推测是自然周，没有验证；不接受 `uin`、`page`、`cursor`、`offset`、`limit`、`type`、`version`，重复的参数回 `400`。失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
+
+**设计取舍与向后兼容（3.3.6 范围说明）**
+
+- 3.3.6 先把听歌排行（`GetRank`）做完；同批抓包里出现的 `GetBar` 等其他听歌报告字段没有证据，本版不做，留给后续版本补充。
+- 空榜返回 `200` 加空 `items`，和本组其他只读接口「内容为空回 `422`」不一样：没听过歌的时段是正常状态，不是错误。客户端不要把空 `items` 当失败处理。
+- 向后兼容：响应对象今后可能增加字段，`items` 里的每一项也可能增加字段，客户端必须忽略不认识的字段；`range` 今后可能增加取值，不要把现有四个值当成封闭集合。现有字段的名字与含义、`400`／`401`／`502` 的错误语义不会改。
+- 没有「全部时间」：传 `all` 回 `400`。需要这个效果的客户端请自己声明是用年排行暂代，不要当成真正的历史总排行。
 
 #### 黑名单首屏与单曲风格选项
 
@@ -950,7 +962,7 @@ GET /song/replacement?mid=fixtureVersionA
 
 需要有效会话；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。`mid` 是原曲 MID，必填，1–64 个字母或数字。
 
-先用当前会话要原曲 128 的链接。拿到了就不找，回 `reason: "original-playable"`；拿不到但原因没确认（不是地区、会员规则），也不找，回 `reason: "reason-unconfirmed"`，因为一次没拿到链接不等于这首放不了。只有命中地区或会员规则时，才读其他版本：跳过原曲和自己就带着这些特征的版本，剩下的最多 3 个合成一次要链接，原因没确认的照 `/getMusicPlay` 的规则再取一次；按版本顺序，第一个真拿到链接的才算。
+先用当前会话要原曲 128 的链接。拿到了就不找，回 `reason: "original-playable"`；拿不到但原因没确认（不是地区、会员规则），也不找，回 `reason: "reason-unconfirmed"`，因为一次没拿到链接不等于这首放不了。只有命中地区或会员规则时，才读其他版本：跳过原曲，将带这些特征的版本排在后面，最多 3 个合成一次要链接，原因没确认的照 `/getMusicPlay` 的规则再取一次；按排序后顺序，第一个真拿到链接的才算。
 
 响应为 `{ code: 200, original: { mid, playable, hint }, song, label?, reason? }`。`song` 保留上游 `versionList` 的原始条目，找不到时为 `null`，`reason` 是 `no-other-version` 或 `no-playable-version`；`label` 只在版本有副标题时给，不自己编替代原因。回包不带链接，播放照常用 `/getMusicPlay`。读其他版本失败照新路由的错误回 `502`，不重试。
 

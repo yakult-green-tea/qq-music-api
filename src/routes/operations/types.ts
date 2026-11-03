@@ -18,18 +18,21 @@ export interface OperationRequest {
   readonly method?: string;
   /** 新写入路由使用；旧路由不读取正文。 */
   body?(): Promise<unknown>;
+  /** 请求的 Content-Type 原值；新写入路由用它拒绝跨站表单能直接发出的类型。 */
+  readonly contentType?: string;
   runtime: OperationRuntime;
   /** 同名参数的第一个值；没带这个参数是 `undefined`，带了但是空的是 `''`。两边一致。 */
   query(name: string): string | undefined;
   /**
-   * 各自原来读到的值，只给要保留原有行为的 handler 用。Node 是 `ctx.query[name]`，重复的参数是
-   * 数组；serverless 一直用 `searchParams.get`，只有第一个值。
+   * Node 的重复参数是数组；serverless 的新路由也回数组，旧路由仍只取第一个值。
    */
   queryRaw(name: string): string | string[] | undefined;
   /** 路径参数。可选的段没出现就没有这个键，不是空字符串。 */
   params: Readonly<Record<string, string>>;
   /** 会话 token，两边都是 header、query 里的 cookie、Cookie header 依次取。 */
   readonly token: string | undefined;
+  readonly tokenSource?: 'header' | 'query' | 'cookie';
+  readonly fetchSite?: string;
   /** serverless 是否配置了会话密钥，只传能力判断，不传密钥本身。 */
   readonly sessionConfigured?: boolean;
   /** 仅可信部署配置能开启未完成真账号验证的写入，不从请求参数读取。 */

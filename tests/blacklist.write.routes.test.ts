@@ -91,6 +91,44 @@ describe.each(CATALOG_RUNTIMES)('blacklist writes: %s', (runtime) => {
     expect((await call('add', body, false, false)).status).toBe(501);
     expect(methods()).toEqual([]);
   });
+  // 跨站页面不经预检就能发出表单和纯文本，带着 Cookie 也不能写进来。
+  it.each([
+    ['add', false, 'text/plain'],
+    ['add', true, 'text/plain'],
+    ['add', false, 'application/x-www-form-urlencoded'],
+    ['remove', true, 'text/plain'],
+    ['add', false, ''],
+  ] as const)('%s (flag %s) refuses %j before reading the session or writing', async (action, enabled, type) => {
+    const options = await upstream.options('valid');
+    await options.beforeEachLeg?.();
+    if (enabled) process.env.QQ_UNVERIFIED_WRITES_ENABLED = '1';
+    else delete process.env.QQ_UNVERIFIED_WRITES_ENABLED;
+    const result = await callRoute(runtime, `/user/blacklist/${action}`, {
+      method: 'POST',
+      body: { songs: ['123'] },
+      headers: { 'X-QQ-Session': options.token ?? '', 'Content-Type': type },
+      env: { ...options.env, ...(enabled ? { QQ_UNVERIFIED_WRITES_ENABLED: '1' } : {}) },
+    });
+    expect(result.status).toBe(415);
+    expect(methods()).toEqual([]);
+  });
+
+  it('accepts JSON with a charset', async () => {
+    const options = await upstream.options('valid');
+    await options.beforeEachLeg?.();
+    delete process.env.QQ_UNVERIFIED_WRITES_ENABLED;
+    const result = await callRoute(runtime, '/user/blacklist/add', {
+      method: 'POST',
+      body: { songs: ['123'] },
+      headers: {
+        'X-QQ-Session': options.token ?? '',
+        'Content-Type': 'Application/JSON; charset=utf-8',
+      },
+      env: options.env,
+    });
+    expect(result.status).not.toBe(415);
+  });
+
   it.each(['add', 'remove'] as const)('%s requires POST and a valid session', async (action) => {
     expect((await call(action, songBody, true, true, 'GET')).status).toBe(405);
     expect((await call(action, songBody, true, false)).status).toBe(401);
