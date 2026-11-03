@@ -465,6 +465,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  recommendFeed: {
+    description:
+      'Read page 1 of the client home feed with a required session. Keeps song cards (completed by songid) and 500/3003/513 playlist cards only; programs, radios and promotions are left out. No further pages (the continuation answered 500020). Serverless needs the session secret.',
+  },
   getPersonalFm: {
     description:
       'Read one personal FM batch with a required session. Uses radar songs, independently of guess-you-like. Does not retry a failed batch; real-account acceptance is pending.',

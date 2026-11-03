@@ -69,6 +69,7 @@ import {
   getRecommendToplistSongs,
   getRecommendToplists,
 } from './operations/recommendCatalog';
+import { recommendFeed } from './operations/recommendFeed';
 import { getHotSearches, getSearch, getSearchSuggestions } from './operations/searchCatalog';
 import { searchMatch } from './operations/searchMatch';
 import { searchUsers } from './operations/searchUsers';
@@ -201,6 +202,14 @@ export const routeManifest = [
     path: '/user/guess-you-like/modes',
     category: 'User',
     handler: getGuessYouLikeModes,
+    needsSecret: true,
+  },
+  {
+    name: 'recommendFeed',
+    method: 'GET',
+    path: '/recommend/feed',
+    category: 'Recommend',
+    handler: recommendFeed,
     needsSecret: true,
   },
   {

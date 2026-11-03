@@ -377,6 +377,7 @@ POST /login/refresh
 | `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读，待更多账号验收） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
 | `/user/personal-fm` | 私人 FM 批次（待真账号验收） | 是 |
+| `/recommend/feed` | 客户端首页 feed 第 1 页（歌曲与歌单） | 是 |
 | `/recommend/playlists` | 推荐歌单 | 可选 |
 | `/recommend/radar` | 刷歌模式 | 可选 |
 | `/recommend/categories` | 热门歌单分类 | 否 |
@@ -771,6 +772,14 @@ GET /recommend/toplist?id=26
 - 空批次回 `422`；条目存在但无法解析回 `502`。失败只请求一次，调用方不能假定超时或取消代表上游未消耗批次。
 - 服务不保存跨请求的批次位置。调用方按账号与来源隔离页序，预览、并发提交与晚到应答由自己的控制器处理，不能只为卡片封面消耗批次。
 - 此路由已提供离线契约测试；手机入口对应仍为强候选，当前 Android comm、账号个性化及连续批次仍待真账号验收。
+
+#### 首页 feed（未发布候选）
+
+`GET /recommend/feed` 需要有效会话；Serverless 未配置密钥回 `501`。只读第 1 页：续页组合实测回 `500020`，所以 `more` 恒为 `false`，不提供翻页。
+
+- 返回 `{ code:200, page:1, more:false, shelves:[{ id, titleTemplate, titleContent, items }] }`。`titleTemplate` 可能带 `{String}` 占位，`titleContent` 是填进去的字（可能是昵称或一首歌名），怎么显示由调用方决定；两者都可能为空。
+- `items` 只有两种：`{ type:"song", song }`（歌曲卡只有数字 songid，用 `CgiGetTrackInfo` 一次 20 首补全，`song` 保留上游曲目原样；补不到的略过）和 `{ type:"playlist", playlist:{ id, title, subtitle, cover } }`（只收 `500/3003/513`，`id` 可用歌单详情读）。节目、电台、运营入口、动态日推卡和没验证过的私荐歌单卡都不收。一架里同一首、同一张歌单只出一次；没有可用条目的架子不出。
+- 请求只带已实测的精简参数，不送电量、蓝牙、最近播放等手机环境。没有可用架子回 `422`；非零 `retcode` 回 `502` 并保留 `upstreamCode`；结构不对回 `502`。失败不重试。
 
 #### 每日30首历史
 

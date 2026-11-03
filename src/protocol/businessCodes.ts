@@ -136,6 +136,10 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.radio-list',
   /** 99 以外的电台取歌（`pf.radiosvr/GetRadiosonglist`），要登录。 */
   'recommend.radio-tracks',
+  /** 客户端首页 feed 第 1 页（`RecommendFeed/get_recommend_feed`），要登录；非零 retcode 都还是未知。 */
+  'recommend.feed',
+  /** 首页 feed 歌曲卡按 songid 补全（`UniformRuleCtrl/CgiGetTrackInfo`）。 */
+  'recommend.feed-tracks',
   /** 网页版每日推荐候选接口（目前没有路由用它，只记录观测）。 */
   'recommend.web-daily-candidate',
   /** 匿名的歌单详情 CGI。 */

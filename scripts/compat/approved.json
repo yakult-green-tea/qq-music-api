@@ -54,6 +54,12 @@
     "reason": "新增需要会话的私人 FM 批次路径，旧版不存在；既有雷达、猜你喜欢和每日30首保持不变"
   },
   {
+    "path": "/recommend/feed",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增需要会话的首页 feed 第 1 页，旧版不存在；既有推荐与电台路由保持不变"
+  },
+  {
     "path": "/song/replacement",
     "baseline": "3.3.5",
     "since": "3.3.6",
