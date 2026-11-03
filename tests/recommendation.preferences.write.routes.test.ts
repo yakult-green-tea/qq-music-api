@@ -77,10 +77,12 @@ describe.each(CATALOG_RUNTIMES)('recommendation preference writes: %s', (runtime
     else process.env.QQ_UNVERIFIED_WRITES_ENABLED = previous;
   });
 
-  it('stays disabled by default and never trusts a request-body flag', async () => {
-    expect((await call({ ...UPDATE, enabled: true }, false)).status).toBe(501);
-    expect(ssrReads).toBe(0);
-    expect(writes()).toEqual([]);
+  // QQ 与微信账号都实写过、读回一致（D238）：不用实验开关就能写。
+  it('writes without the experimental flag', async () => {
+    const result = await call(UPDATE, false);
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ verified: true });
+    expect(writes()).toHaveLength(1);
   });
 
   it('requires POST and a valid session', async () => {

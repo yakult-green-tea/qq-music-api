@@ -400,7 +400,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   updateRecommendationPreferences: {
     description:
-      'Experimental and off by default (trusted host flag QQ_UNVERIFIED_WRITES_ENABLED). Change music preference scores: reads current values, replaces only the given keys, writes the full list once and reads back. No retry; unknown outcomes are marked writeAttempted. Real-account acceptance is pending.',
+      'Needs a session; no experimental flag (written and read back on QQ and WeChat accounts). Change music preference scores: reads current values, replaces only the given keys, writes the full list once and reads back. No retry; unknown outcomes are marked writeAttempted.',
   },
   getRecommendationPreferences: {
     description:

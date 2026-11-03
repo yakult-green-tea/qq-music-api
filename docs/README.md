@@ -373,7 +373,7 @@ POST /login/refresh
 | --- | --- | --- |
 | `/user/guess-you-like` | 猜你喜欢 | 是 |
 | `/user/recommendation-preferences` | 私人FM／每日30首共用的音乐偏好（只读） | 是 |
-| `/user/recommendation-preferences/update` | 修改音乐偏好（实验，默认关闭） | 是 |
+| `/user/recommendation-preferences/update` | 修改音乐偏好 | 是 |
 | `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读，待更多账号验收） | 是 |
 | `/user/guess-you-like/tracks` | 猜你喜欢按模式取一批（不写设置，待真账号验收） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
@@ -811,7 +811,7 @@ GET /recommend/toplist?id=26
 - 不接受 `station`、`entry`、`profileKey`、`page`、`cursor`、`id`。没有偏好项回 `422`；页面结构不对回 `502`；转址或其他非 2xx 回 `502`，不清登录态；未知页面码保留 `502` 与 `upstreamCode`。
 - 已有一个经通用QR取得的微信账号读到本人偏好的样本。偏好对各入口推荐算法的实际影响未验证。
 
-`POST /user/recommendation-preferences/update`（实验，默认关闭，与黑名单写入共用可信宿主的 `QQ_UNVERIFIED_WRITES_ENABLED`；请求参数不能打开）：
+`POST /user/recommendation-preferences/update`（需要有效会话，不需要实验开关；QQ 与微信账号都实写过、读回一致）：
 
 - 请求 `{ "profiles": [{ "key": "10008", "score": 75 }] }`，1 到 32 项、key 不重复、score 为 0 到 100 的整数，不接受其他字段。
 - 先读现值；key 不在账号偏好里回 `400`，不写。所有指定项已是目标值时不写，回 `writeAttempted:false`。否则按现有顺序把整份偏好写一次（只替换指定项），再读偏好页：全部吻合回 `verified:true`、`verification:"confirmed"`，否则 `verified:false`、`verification:"unconfirmed"`，同时返回读回的 `profiles`。
