@@ -1,12 +1,13 @@
 import { QqApiError } from '../../protocol/errors';
 import { hasKnownUnplayableTraits } from '../../protocol/playbackHints';
+import { AuthCredentialRejectedError } from '../../util/authError';
 import { dictionaryOf, isDictionary } from '../../util/values';
 import type { AuthSession } from '../auth/qrLogin';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { songVersionsResult } from './versions';
 
 // 替代歌曲：原曲拿不到链接、而且命中已验证的不可播规则（地区或会员）时，才从「其他版本」里挑一首。
-// 跳过原曲和自己就带着这些特征的版本，剩下的最多 3 个合成一次取链接；按版本顺序，第一个真拿到链接的才算。
+// 跳过原曲，有这些特征的版本排后面，最多 3 个合成一次取链接；第一个真拿到链接的才算。
 // 原因没确认时不找：不能把一次没拿到链接说成这首放不了。
 
 /** 取 128 链接；回 `/getMusicPlay` 同形的 `{ [mid]: { url, restriction? } }`，会话解不开回 null。 */
@@ -58,11 +59,9 @@ export const songReplacementResult = async (
       .filter(isDictionary)
       .filter(
         (song) =>
-          typeof song.mid === 'string' &&
-          /^[A-Za-z0-9]{1,64}$/.test(song.mid) &&
-          song.mid !== mid &&
-          !hasKnownUnplayableTraits(song),
+          typeof song.mid === 'string' && /^[A-Za-z0-9]{1,64}$/.test(song.mid) && song.mid !== mid,
       )
+      .sort((a, b) => Number(hasKnownUnplayableTraits(a)) - Number(hasKnownUnplayableTraits(b)))
       .slice(0, MAX_CANDIDATES);
     if (!candidates.length)
       return okResult({ original, song: null, reason: 'no-playable-version' });
@@ -76,6 +75,9 @@ export const songReplacementResult = async (
     const subtitle = typeof song.subtitle === 'string' ? song.subtitle.trim() : '';
     return okResult({ original, song, ...(subtitle ? { label: subtitle } : {}) });
   } catch (error) {
-    return failureResult('get-song-replacement', error);
+    return failureResult(
+      'get-song-replacement',
+      error instanceof AuthCredentialRejectedError ? new QqApiError('auth-missing') : error,
+    );
   }
 };

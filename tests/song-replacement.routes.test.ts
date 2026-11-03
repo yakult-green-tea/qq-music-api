@@ -63,7 +63,7 @@ describe.each(CATALOG_RUNTIMES)('/song/replacement（%s）', (runtime) => {
     });
   };
 
-  it('原曲被地区规则挡下：跳过原曲与已知不可播的版本，回第一个真拿到链接的版本', async () => {
+  it('原曲被地区规则挡下：有特征的版本排后面，仍可取链接', async () => {
     upstream.state.songDetails = { origA: REGION_DETAIL };
     const list = [
       version('origA'),
@@ -73,19 +73,23 @@ describe.each(CATALOG_RUNTIMES)('/song/replacement（%s）', (runtime) => {
     ];
     const result = await call('?mid=origA', {
       versions: { data: { id: 90001, versionList: list } },
-      vkeys: [vkeyReply(['origA']), vkeyReply(['verB', 'verC'], ['verB', 'verC'])],
+      vkeys: [
+        vkeyReply(['origA']),
+        vkeyReply(['verB', 'verC', 'verRegion'], ['verRegion']),
+        vkeyReply(['verB', 'verC']),
+      ],
     });
     expect(result).toEqual({
       status: 200,
       body: {
         code: 200,
         original: { mid: 'origA', playable: false, hint: 'playback.maybe-region-restricted' },
-        song: list[2],
-        label: '现场版',
+        song: list[1],
       },
     });
     expect(vkeyCallsOf(upstream.calls).map((rpc) => rpc.param.songmid)).toEqual([
       ['origA'],
+      ['verB', 'verC', 'verRegion'],
       ['verB', 'verC'],
     ]);
     const versionCall = upstream.calls
@@ -123,6 +127,21 @@ describe.each(CATALOG_RUNTIMES)('/song/replacement（%s）', (runtime) => {
       ['v1', 'v2', 'v3'],
       ['v1', 'v2'],
     ]);
+  });
+
+  it('会员特征的版本也会排在普通版本后面取链接', async () => {
+    upstream.state.songDetails = { origA: REGION_DETAIL };
+    const list = [version('member', MEMBERSHIP_DETAIL), version('normal')];
+    const result = await call('?mid=origA', {
+      versions: { data: { versionList: list } },
+      vkeys: [
+        vkeyReply(['origA']),
+        vkeyReply(['normal', 'member'], ['member']),
+        vkeyReply(['normal']),
+      ],
+    });
+    expect(result.body).toMatchObject({ song: list[0] });
+    expect(vkeyCallsOf(upstream.calls)[1].param.songmid).toEqual(['normal', 'member']);
   });
 
   it('原曲拿得到链接：不找替代，也不读其他版本', async () => {
@@ -165,7 +184,7 @@ describe.each(CATALOG_RUNTIMES)('/song/replacement（%s）', (runtime) => {
 
     const onlyBlocked = await call('?mid=origA', {
       versions: { data: { versionList: [version('origA'), version('verRegion', REGION_DETAIL)] } },
-      vkeys: [vkeyReply(['origA'])],
+      vkeys: [vkeyReply(['origA']), vkeyReply(['verRegion']), vkeyReply(['verRegion'])],
     });
     expect(onlyBlocked.body).toMatchObject({ song: null, reason: 'no-playable-version' });
 
@@ -185,6 +204,11 @@ describe.each(CATALOG_RUNTIMES)('/song/replacement（%s）', (runtime) => {
     expect(result.status).toBe(502);
     expect(result.body).toMatchObject({ kind: 'upstream-business', upstreamCode: 2001 });
     expect(methodsOf(upstream.calls).filter((m) => m === 'GetOtherVersionSongs')).toHaveLength(1);
+  });
+
+  it('上游明确拒绝取链接凭证时回 401', async () => {
+    const result = await call('?mid=origA', { vkeys: [{ code: 1000 }] });
+    expect(result.status).toBe(401);
   });
 
   it('需要会话；mid 必填且只收字母数字', async () => {
