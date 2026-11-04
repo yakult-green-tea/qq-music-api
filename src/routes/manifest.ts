@@ -1,6 +1,9 @@
 import { albumSubscribe } from './operations/albumSubscribe';
 import { allPlaylistCategories } from './operations/allPlaylistCategories';
+import { getBlacklist, getBlacklistStyleOptions } from './operations/blacklistReads';
+import { addBlacklist, removeBlacklist } from './operations/blacklistWrites';
 import { commentList } from './operations/commentList';
+import { dailyHistoryDates, dailyHistorySongs } from './operations/dailyHistory';
 import { getAlbumInfo } from './operations/getAlbumInfo';
 import { getLyricOperation } from './operations/getLyric';
 import { getMusicPlay } from './operations/getMusicPlay';
@@ -12,6 +15,8 @@ import { getSongListDetail } from './operations/getSongListDetail';
 import { getUserAlbums } from './operations/getUserAlbums';
 import { getUserLikedSongs } from './operations/getUserLikedSongs';
 import { getUserPlaylist } from './operations/getUserPlaylist';
+import { getGuessYouLikeModes } from './operations/guessYouLikeModes';
+import { getListeningRank } from './operations/listeningRank';
 import { loginChannels } from './operations/loginChannels';
 import { loginRefresh } from './operations/loginRefresh';
 import { loginStatus } from './operations/loginStatus';
@@ -32,6 +37,10 @@ import {
   getSongMvs,
   listSingers,
 } from './operations/mediaCatalog';
+import {
+  getRadioRecommendationModes,
+  getRadioRecommendationTracks,
+} from './operations/officialRadio';
 import { playlistCreate, playlistDelete, playlistRename } from './operations/playlistManagement';
 import { playlistTracks } from './operations/playlistTracks';
 import { qrCancel } from './operations/qrCancel';
@@ -40,7 +49,13 @@ import { qrCreate } from './operations/qrCreate';
 import { qrKey } from './operations/qrKey';
 import { radioCategories } from './operations/radioCategories';
 import {
+  getRecommendationPreferences,
+  updateRecommendationPreferences,
+} from './operations/recommendationPreferences';
+import {
   getGuessYouLike,
+  getGuessYouLikeModeTracks,
+  getPersonalFm,
   getRadioList,
   getRadioTracks,
   getRecommendPlaylists,
@@ -56,12 +71,14 @@ import {
   getRecommendToplistSongs,
   getRecommendToplists,
 } from './operations/recommendCatalog';
+import { recommendFeed } from './operations/recommendFeed';
 import { getHotSearches, getSearch, getSearchSuggestions } from './operations/searchCatalog';
 import { searchMatch } from './operations/searchMatch';
 import { searchUsers } from './operations/searchUsers';
 import { songBatch } from './operations/songBatch';
 import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
+import { songReplacement } from './operations/songReplacement';
 import { songVersions } from './operations/songVersions';
 import { sortedCategoryPlaylists } from './operations/sortedCategoryPlaylists';
 import { playlistSubscribe, subscriptionStatus } from './operations/subscriptions';
@@ -98,9 +115,140 @@ export interface SharedRoute extends RouteBase {
   serverlessPath?: string;
   /** Serverless 没设 `QQ_SESSION_SECRET` 时直接回 501。 */
   needsSecret?: true;
+  strictRequest?: true;
+  accountWrite?: true;
 }
 
 export const routeManifest = [
+  {
+    name: 'addBlacklist',
+    accountWrite: true,
+    strictRequest: true,
+    method: 'POST',
+    path: '/user/blacklist/add',
+    category: 'User',
+    handler: addBlacklist,
+    needsSecret: true,
+  },
+  {
+    name: 'removeBlacklist',
+    accountWrite: true,
+    strictRequest: true,
+    method: 'POST',
+    path: '/user/blacklist/remove',
+    category: 'User',
+    handler: removeBlacklist,
+    needsSecret: true,
+  },
+  {
+    name: 'getRadioRecommendationModes',
+    strictRequest: true,
+    method: 'GET',
+    path: '/radio/recommendation-modes',
+    category: 'Recommend',
+    handler: getRadioRecommendationModes,
+    needsSecret: true,
+  },
+  {
+    name: 'getRadioRecommendationTracks',
+    strictRequest: true,
+    method: 'GET',
+    path: '/radio/recommendation-tracks',
+    category: 'Recommend',
+    handler: getRadioRecommendationTracks,
+    needsSecret: true,
+  },
+  {
+    name: 'getBlacklist',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/blacklist',
+    category: 'User',
+    handler: getBlacklist,
+    needsSecret: true,
+  },
+  {
+    name: 'getBlacklistStyleOptions',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/blacklist/style-options',
+    category: 'User',
+    handler: getBlacklistStyleOptions,
+    needsSecret: true,
+  },
+  {
+    name: 'dailyHistoryDates',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/daily-songs/history/dates',
+    category: 'User',
+    handler: dailyHistoryDates,
+    needsSecret: true,
+  },
+  {
+    name: 'dailyHistorySongs',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/daily-songs/history',
+    category: 'User',
+    handler: dailyHistorySongs,
+    needsSecret: true,
+  },
+  {
+    name: 'updateRecommendationPreferences',
+    accountWrite: true,
+    strictRequest: true,
+    method: 'POST',
+    path: '/user/recommendation-preferences/update',
+    category: 'User',
+    handler: updateRecommendationPreferences,
+    needsSecret: true,
+  },
+  {
+    name: 'getRecommendationPreferences',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/recommendation-preferences',
+    category: 'User',
+    handler: getRecommendationPreferences,
+    needsSecret: true,
+  },
+  {
+    name: 'getListeningRank',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/listening-rank',
+    category: 'User',
+    handler: getListeningRank,
+    needsSecret: true,
+  },
+  {
+    name: 'getGuessYouLikeModes',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/guess-you-like/modes',
+    category: 'User',
+    handler: getGuessYouLikeModes,
+    needsSecret: true,
+  },
+  {
+    name: 'recommendFeed',
+    strictRequest: true,
+    method: 'GET',
+    path: '/recommend/feed',
+    category: 'Recommend',
+    handler: recommendFeed,
+    needsSecret: true,
+  },
+  {
+    name: 'getPersonalFm',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/personal-fm',
+    category: 'User',
+    handler: getPersonalFm,
+    needsSecret: true,
+  },
   {
     name: 'userMusicGene',
     method: 'GET',
@@ -115,6 +263,15 @@ export const routeManifest = [
     path: '/song/versions',
     category: 'Song',
     handler: songVersions,
+  },
+  {
+    name: 'songReplacement',
+    strictRequest: true,
+    method: 'GET',
+    path: '/song/replacement',
+    category: 'Song',
+    handler: songReplacement,
+    needsSecret: true,
   },
   {
     name: 'searchUsers',
@@ -226,6 +383,7 @@ export const routeManifest = [
   },
   {
     name: 'loginRefresh',
+    accountWrite: true,
     method: 'POST',
     path: '/login/refresh',
     category: 'Login',
@@ -252,6 +410,7 @@ export const routeManifest = [
   },
   {
     name: 'songLike',
+    accountWrite: true,
     method: 'POST',
     path: '/user/song/like',
     category: 'User',
@@ -260,6 +419,7 @@ export const routeManifest = [
   },
   {
     name: 'albumSubscribe',
+    accountWrite: true,
     method: 'POST',
     path: '/user/album/subscribe',
     category: 'User',
@@ -268,6 +428,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistTracks',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/tracks',
     category: 'User',
@@ -276,6 +437,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistCreate',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/create',
     category: 'User',
@@ -284,6 +446,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistRename',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/rename',
     category: 'User',
@@ -292,6 +455,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistDelete',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/delete',
     category: 'User',
@@ -300,6 +464,7 @@ export const routeManifest = [
   },
   {
     name: 'playlistSubscribe',
+    accountWrite: true,
     method: 'POST',
     path: '/user/playlist/subscribe',
     category: 'User',
@@ -353,6 +518,15 @@ export const routeManifest = [
     path: '/user/guess-you-like',
     category: 'User',
     handler: getGuessYouLike,
+    needsSecret: true,
+  },
+  {
+    name: 'getGuessYouLikeModeTracks',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/guess-you-like/tracks',
+    category: 'User',
+    handler: getGuessYouLikeModeTracks,
     needsSecret: true,
   },
   {

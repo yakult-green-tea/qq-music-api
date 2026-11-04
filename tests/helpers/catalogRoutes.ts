@@ -25,7 +25,7 @@ export interface RouteResult {
 }
 
 export interface RouteCallOptions {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'DELETE' | 'HEAD';
   body?: unknown;
   headers?: Record<string, string>;
   env?: ServerlessEnv;
@@ -159,10 +159,18 @@ export const callRoute = async (
 ): Promise<RouteResult> => {
   if (runtime === 'node') {
     const pending =
-      options.method === 'POST' ? request(server).post(path) : request(server).get(path);
+      options.method === 'POST'
+        ? request(server).post(path)
+        : options.method === 'DELETE'
+          ? request(server).delete(path)
+          : options.method === 'HEAD'
+            ? request(server).head(path)
+            : request(server).get(path);
     pending.set(options.headers ?? {});
     if (options.body !== undefined)
-      pending.set('Content-Type', 'application/json').send(JSON.stringify(options.body));
+      pending
+        .set('Content-Type', options.headers?.['Content-Type'] ?? 'application/json')
+        .send(JSON.stringify(options.body));
     const response = await pending;
     return {
       status: response.status,
@@ -184,7 +192,7 @@ export const callRoute = async (
   );
   return {
     status: response.status,
-    body: await response.json(),
+    body: options.method === 'HEAD' ? {} : await response.json(),
     ...selectedHeaders(options.responseHeaders, (name) =>
       name.toLowerCase() === 'set-cookie'
         ? response.headers.getSetCookie()

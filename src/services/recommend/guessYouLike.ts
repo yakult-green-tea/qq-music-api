@@ -52,3 +52,32 @@ export const guessYouLikeResult = async (
     return failureResult('get-guess-you-like', error);
   }
 };
+
+/**
+ * `/user/guess-you-like/tracks`：按模式目录给的 poolId 取一批（get_radio_track 的 `ext.scene_id`），
+ * 不写账号的模式设置。上游不写设置是否也认模式还待真账号验收；失败不重试，避免多消耗一批。
+ */
+export const guessYouLikeModeTracksResult = async (
+  session: AuthSession | null,
+  rawPool: unknown,
+): Promise<NewRouteResult> => {
+  try {
+    if (!session) throw new QqApiError('auth-missing');
+    if (typeof rawPool !== 'string' || !/^[1-9]\d{0,9}$/.test(rawPool))
+      throw new QqApiError('input');
+    const poolId = Number(rawPool);
+    const data = await createSessionMusicuClient(session, { maxRetries: 0 }).execute({
+      ...GUESS_YOU_LIKE,
+      param: { id: 99, num: 5, ext: { scene_id: rawPool } },
+    });
+    if (!data.tracks.length) throw new QqApiError('not-found');
+    return okResult({
+      station: 'guess-you-like',
+      poolId,
+      songs: data.tracks,
+      ...(data.extras ? { extras: data.extras } : {}),
+    });
+  } catch (error) {
+    return failureResult('get-guess-you-like', error);
+  }
+};

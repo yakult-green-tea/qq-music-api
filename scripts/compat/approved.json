@@ -1,5 +1,90 @@
 [
   {
+    "path": "/recommend/toplists",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "difference": "toplist-group-zero",
+    "reason": "只允许榜单清单补回 groupId 为 0 的组，其他响应及上游请求必须一致"
+  },
+  {
+    "path": "/user/listening-rank",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增本人听歌排行只读接口；旧版不存在"
+  },
+  {
+    "path": "/user/recommendation-preferences/update",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增默认开放的音乐偏好写入；旧版不存在"
+  },
+  {
+    "path": "/user/recommendation-preferences",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增私人FM与每日30首共用的音乐偏好只读接口；旧版不存在"
+  },
+  {
+    "path": "/user/guess-you-like/modes",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增猜你喜欢单选听歌模式目录只读接口；旧版不存在，保留原 /user/guess-you-like 取歌"
+  },
+  {
+    "path": "/radio/recommendation-modes",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增普通官方雷达单选radio ID选项读取，不写RadioConfig，不改变旧电台列表"
+  },
+  {
+    "path": "/radio/recommendation-tracks",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增普通官方雷达按radio ID取批次，旧版不存在；保留旧radio/tracks与id99接口"
+  },
+  {
+    "path": "/login/channels",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "仅修正features.recommendations.personalFmModes由true为false；取歌路由没有实现mode/submode，保留其他能力、登录通道与会话模式"
+  },
+  {
+    "path": "/user/blacklist",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增本人分类黑名单首屏、单曲风格候选及默认关闭的实验分类写入路径，旧版不存在；不改变既有推荐与写入接口"
+  },
+  {
+    "path": "/user/daily-songs/history",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增日推历史日期与指定日歌曲读取，旧版不存在；不改变当日日推与收藏接口"
+  },
+  {
+    "path": "/user/personal-fm",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增需要会话的私人 FM 批次路径，旧版不存在；既有雷达、猜你喜欢和每日30首保持不变"
+  },
+  {
+    "path": "/user/guess-you-like/tracks",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增需要会话的猜你喜欢按模式取歌，旧版不存在；/user/guess-you-like 原有行为不变"
+  },
+  {
+    "path": "/recommend/feed",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增需要会话的首页 feed 第 1 页，旧版不存在；既有推荐与电台路由保持不变"
+  },
+  {
+    "path": "/song/replacement",
+    "baseline": "3.3.5",
+    "since": "3.3.6",
+    "reason": "新增需要会话的替代歌曲路径，旧版不存在；既有其他版本和取链接接口保持不变"
+  },
+  {
     "path": "/song/fav-count",
     "baseline": "3.3.4",
     "since": "3.3.5",

@@ -147,12 +147,16 @@ const baseline = run(`v${baselineVersion}`, baselineRoot);
 const current = run('current', repo);
 
 const approved = JSON.parse(fs.readFileSync(path.join(__dirname, 'approved.json'), 'utf8'));
-const approvalOf = (testCase) =>
+const approvalOf = (testCase, before, after) =>
   approved.find(
     (entry) =>
       (testCase.path === entry.path || testCase.path.startsWith(`${entry.path}/`)) &&
       (!entry.runtime || entry.runtime === testCase.runtime) &&
       (entry.session === undefined || entry.session === testCase.session) &&
+      (!entry.difference || (entry.difference === 'toplist-group-zero' &&
+        testCase.path === '/recommend/toplists' && testCase.scenario === 'ok' &&
+        JSON.stringify(after?.body?.groups?.[0]) === JSON.stringify({ id: 0, name: 'Fixture zero', toplists: [{ id: 4, preview: [], title: 'Fixture zero chart' }] }) &&
+        JSON.stringify({ ...after, body: { ...after.body, groups: after.body.groups.slice(1) } }) === JSON.stringify(before))) &&
       // 带 baseline 的登记只对那个基准版本成立，换了基准就不再放行。
       (!entry.baseline || entry.baseline === baselineVersion),
   );
@@ -174,7 +178,7 @@ let approvedCount = 0;
 for (const testCase of cases) {
   const difference = firstDifference(baseline[testCase.id], current[testCase.id]);
   if (!difference) identical += 1;
-  else if (approvalOf(testCase)) approvedCount += 1;
+  else if (approvalOf(testCase, baseline[testCase.id], current[testCase.id])) approvedCount += 1;
   else unexpected.push({ testCase, difference });
 }
 

@@ -1,4 +1,5 @@
 import { CgiNetworkError, type CgiTransport } from '../protocol/cgi';
+import { QqApiError } from '../protocol/errors';
 
 // src/transport/fetchCgi.ts
 //
@@ -57,8 +58,37 @@ export const createFetchCgiTransport =
       };
     }
     try {
+      if (request.maxBytes !== undefined) {
+        const length = response.headers.get('Content-Length');
+        if (length && /^\d+$/.test(length) && Number(length) > request.maxBytes) {
+          void response.body?.cancel().catch(() => {});
+          throw new QqApiError('invalid-response');
+        }
+        if (!response.body) return { status: response.status, bytes: new ArrayBuffer(0) };
+        const reader = response.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > request.maxBytes) {
+            void reader.cancel().catch(() => {});
+            throw new QqApiError('invalid-response');
+          }
+          chunks.push(value);
+        }
+        const bytes = new Uint8Array(size);
+        let offset = 0;
+        for (const chunk of chunks) {
+          bytes.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
+        return { status: response.status, bytes: bytes.buffer };
+      }
       return { status: response.status, bytes: await response.arrayBuffer() };
     } catch (error) {
+      if (error instanceof QqApiError) throw error;
       throw observed(error);
     }
   };

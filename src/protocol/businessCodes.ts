@@ -50,6 +50,16 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.guess-you-like',
   /** 每日 30 首（带凭证按系统目录 202 读 `uniform_get_Dissinfo`），要登录。 */
   'recommend.daily-songs',
+  'recommend.daily-history',
+  'recommend.blacklist-read',
+  'recommend.blacklist-add',
+  'recommend.blacklist-remove',
+  'recommend.official-radio',
+  'recommend.guess-you-like-modes',
+  /** 本人听歌排行（`ListenReportSvr.GetRank`），要登录；非零码都还是未知。 */
+  'user.listening-rank',
+  'recommend.preferences',
+  'recommend.preferences-write',
   /** 音乐云盘（`GetMatchAudio`），要登录；非零码除了凭证失效都还是未知。 */
   'cloud.list',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
@@ -128,6 +138,10 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.radio-list',
   /** 99 以外的电台取歌（`pf.radiosvr/GetRadiosonglist`），要登录。 */
   'recommend.radio-tracks',
+  /** 客户端首页 feed 第 1 页（`RecommendFeed/get_recommend_feed`），要登录；非零 retcode 都还是未知。 */
+  'recommend.feed',
+  /** 首页 feed 歌曲卡按 songid 补全（`UniformRuleCtrl/CgiGetTrackInfo`）。 */
+  'recommend.feed-tracks',
   /** 网页版每日推荐候选接口（目前没有路由用它，只记录观测）。 */
   'recommend.web-daily-candidate',
   /** 匿名的歌单详情 CGI。 */

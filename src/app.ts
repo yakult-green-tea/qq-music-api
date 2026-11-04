@@ -12,12 +12,15 @@ import {
   API_EXPLORER_ROUTE_PATH,
   apiExplorerMetadata,
 } from './config/apiExplorer';
+import { operationRequestOf } from './controllers/operation';
 import cors from './middlewares/koa-cors';
 import cookie from './node/cookie';
 import { autoOpenExplorer } from './node/openExplorer';
 import { createAxiosLegacyTransport } from './node/request';
 import router from './node/router';
 import { shouldCheckLatestVersion } from './node/updateCheck';
+import { sharedRoutes } from './routes/manifest';
+import { refusedAccountWrite } from './routes/operations/writeSafety';
 import { configureAuthSessionPersistence } from './services/auth/fileAuthSessionRepository';
 import { setLegacyHttpTransport } from './services/httpTransport';
 import { logger, loggerState } from './util/logger';
@@ -72,7 +75,37 @@ if (shouldCheckLatestVersion()) {
 // can answer anything. Not set means the packaged in-memory default, exactly as before.
 configureAuthSessionPersistence();
 
-app.use(bodyParser());
+const privatePaths = new Set(
+  sharedRoutes
+    .filter((route) => route.strictRequest && route.needsSecret)
+    .map((route) => route.path.toLowerCase()),
+);
+const accountWritePaths = new Set(
+  sharedRoutes.filter((route) => route.accountWrite).map((route) => route.path.toLowerCase()),
+);
+const parseBody = bodyParser();
+app.use(async function bodyParser(ctx: Koa.Context, next: Koa.Next) {
+  const pathName = ctx.path.toLowerCase().replace(/\/$/, '');
+  const privateRoute = privatePaths.has(pathName);
+  if (privateRoute) ctx.set('Cache-Control', 'private, no-store');
+  if (accountWritePaths.has(pathName)) {
+    const refused = refusedAccountWrite(operationRequestOf(ctx));
+    if (refused) {
+      ctx.status = refused.status;
+      ctx.body = refused.body;
+      return;
+    }
+  }
+  try {
+    await parseBody(ctx, next);
+  } catch (error) {
+    if (privateRoute && error instanceof Error) {
+      const failure = error as Error & { headers?: Record<string, string> };
+      failure.headers = { ...failure.headers, 'Cache-Control': 'private, no-store' };
+    }
+    throw error;
+  }
+});
 app.use(cookie());
 app.use(async (ctx: Koa.Context, next: Koa.Next) => {
   if (isExplorerDebugRequest(ctx.path)) {

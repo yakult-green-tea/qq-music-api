@@ -12,6 +12,7 @@ export interface CgiRequest {
   url: string;
   headers: Record<string, string>;
   signal: AbortSignal;
+  maxBytes?: number;
 }
 
 export interface CgiResponse {

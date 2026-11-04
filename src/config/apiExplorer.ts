@@ -131,6 +131,19 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  songReplacement: {
+    description:
+      '带会话给放不了的歌找一个能放的其他版本：原曲 128 拿不到链接、且命中地区或会员规则时才找，最多试 3 个版本，以真拿到链接为准；找不到回 song:null 与 reason。Serverless 需要会话密钥。',
+    queryParams: [
+      {
+        key: 'mid',
+        label: '原曲 MID',
+        placeholder: 'fixtureVersionA',
+        description: '1–64 个字母或数字。',
+        required: true,
+      },
+    ],
+  },
   userMusicGene: {
     description:
       '带会话读取本人的音乐基因，无业务参数。profile 保留原始结构，IsVisitAccount 保持数字；上游非零业务码回 502 并保留 upstreamCode。Serverless 需要会话密钥。',
@@ -385,6 +398,36 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       "Get a few songs from QQ Music's Guess You Like radio for the authenticated user (usually 5 per call). Songs keep the upstream format; reasons, when given, are in extras. Without a session it answers 401; when the upstream returns no songs it answers 422.",
   },
+  updateRecommendationPreferences: {
+    description:
+      'Needs a session and application/json. Change scores by key: reads current values, writes the full list once and verifies all items. No retry; unknown outcomes are marked writeAttempted. Requests within one process are serialized per account; other instances and clients can still change the account concurrently.',
+    bodyExample: { profiles: [{ key: '10008', score: 75 }] },
+  },
+  getRecommendationPreferences: {
+    description:
+      'Read the account music preferences shared by Personal FM and Daily 30: each item key, name and current score (0-100). Read from the first-page data of the official preference page without running its scripts; songs on that page are not returned. Use /user/recommendation-preferences/update to change scores.',
+  },
+  getListeningRank: {
+    description:
+      "Read the authenticated user's own listening rank (QQ Music listening report) for a day, week, month or year, optionally for a history date. Items keep the upstream song object plus a play count. An empty period answers 200 with no items. The period boundary of a week is decided by the upstream and not verified; there is no all-time range. Only range, date and token are accepted; uin and paging are rejected.",
+    queryParams: [
+      { key: 'range', label: 'Range', description: 'day, week, month or year.', required: true },
+      {
+        key: 'date',
+        label: 'Date',
+        description: 'Optional YYYYMMDD for day or week, YYYYMM for month; not supported for year.',
+      },
+      {
+        key: 'token',
+        label: 'Token',
+        description: 'Optional opaque token from an earlier response.',
+      },
+    ],
+  },
+  getGuessYouLikeModes: {
+    description:
+      'Read the single-choice listening-mode catalog of Guess You Like (radio 99): primary modes, scenes, suggestions and the current selection. Read only; no mode switch is offered. Mode ids and pool ids are not radio IDs or preference keys.',
+  },
   getRecommendPlaylists: {
     description:
       'Get recommended playlists from the QQ Music playlist square. Uses the login session when there is one, otherwise reads anonymously. more only repeats the upstream hint; there is no continuation offset.',
@@ -436,6 +479,102 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         key: 'id',
         label: 'Song ID',
         description: 'Numeric song id (not the mid).',
+        required: true,
+      },
+    ],
+  },
+  getGuessYouLikeModeTracks: {
+    description:
+      'Read one guess-you-like (radio 99) batch for a mode pool, with a required session. Does not write the account mode setting. Tested with a real account; whether QQ always honours the pool without the setting is not confirmed. No retry. Serverless needs the session secret.',
+    queryParams: [
+      {
+        key: 'pool',
+        label: 'Pool id',
+        description:
+          'poolId of a mode from /user/guess-you-like/modes; positive integer, up to 10 digits.',
+        required: true,
+      },
+    ],
+  },
+  recommendFeed: {
+    description:
+      'Read page 1 of the client home feed with a required session. Keeps song cards (completed by songid) and 500/3003/513 playlist cards only; programs, radios and promotions are left out. No further pages (the continuation answered 500020). Serverless needs the session secret.',
+  },
+  getPersonalFm: {
+    description:
+      'Read one personal FM batch with a required session. Uses radar songs, independently of guess-you-like. Does not retry a failed batch. Tested with a real account: reading page 1 again returns a new batch.',
+    queryParams: [
+      {
+        key: 'page',
+        label: 'Page',
+        description:
+          'Integer from 1 to 100; defaults to 1. Follow nextPage; a local page limit is not an upstream end.',
+      },
+    ],
+  },
+  getRadioRecommendationModes: {
+    description:
+      'Read single-choice radio-ID options for official recommendation radios. First page only; no saved account selection is claimed. Separate from guess-you-like RadioConfig. Real-account acceptance is pending.',
+  },
+  getRadioRecommendationTracks: {
+    description:
+      'Read one official recommendation-radio batch by radio ID. No settings write, cursor or retry; real-account acceptance is pending. Existing radio routes are unchanged.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Radio ID',
+        description:
+          'Positive safe numeric radio ID; id 99 keeps its separate guess-you-like route.',
+        required: true,
+      },
+    ],
+  },
+  getBlacklist: {
+    description:
+      'Read the first song, singer or style blacklist page for this account. Completeness and pagination are unverified; internal tokens are not exposed. API real-account acceptance is pending.',
+    queryParams: [
+      {
+        key: 'type',
+        label: 'Type',
+        description: 'song, singer or style. Only the first page is supported.',
+        required: true,
+      },
+    ],
+  },
+  addBlacklist: {
+    description:
+      'Classified dislike write. A songs-only body is enabled by default (song dislike); singers, styles and mixed selections need the trusted QQ_UNVERIFIED_WRITES_ENABLED=1 flag. Selected targets only; one write, then first-page checks. accepted is acknowledgement; only verified=true confirms presence. No replacement is required.',
+    bodyExample: { songs: ['91001'] },
+  },
+  removeBlacklist: {
+    description:
+      'Experimental single-entry cancellation. Requires trusted QQ_UNVERIFIED_WRITES_ENABLED=1. Uses fresh metadata from this account first page. First-page absence never claims complete removal; verified remains false until complete traversal is verified.',
+    bodyExample: { type: 'song', id: '91001', idType: 1 },
+  },
+  getBlacklistStyleOptions: {
+    description:
+      'Read the available style choices of one song. Some songs have no choices. Status values retain their upstream numeric form without inferred meanings.',
+    queryParams: [
+      {
+        key: 'songId',
+        label: 'Song ID',
+        description: 'Positive numeric song ID, not a mid.',
+        required: true,
+      },
+    ],
+  },
+  dailyHistoryDates: {
+    description:
+      'Read only the daily recommendation dates returned for this account. Dates can be sparse; real-account API acceptance is pending.',
+  },
+  dailyHistorySongs: {
+    description:
+      'Read the actual songs of one daily recommendation date. Does not create, subscribe to, or edit a playlist. Real-account API acceptance is pending.',
+    queryParams: [
+      {
+        key: 'date',
+        label: 'Date',
+        description: 'Calendar date as YYYY-MM-DD, from the history dates list.',
         required: true,
       },
     ],

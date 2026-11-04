@@ -184,6 +184,10 @@ Serverless 请求由部署平台的网络出口发送，可能与用户本地网
 
 ### 会话安全
 
+账号 POST 写入在会话来自 Cookie 标头、且浏览器发出 `Sec-Fetch-Site: same-site` 或 `cross-site` 时回 `403`，不请求上游。会话来自 `X-QQ-Session` 或 `?cookie=`、未带此标头、以及 `same-origin`／`none` 时保持原有行为。旧写入的正文格式不变；新偏好写入、黑名单新增和取消启用后只收 `application/json`，否则回 `415`。
+
+`GET /logout` 和扫码流程没有这层保护；接受同站其他来源可能触发这些 GET 的风险。偏好写入仅在同一进程内按账号排队，Serverless 多实例之间或与手机 App 同时修改仍可能互相覆盖，这是已接受的风险。
+
 `QQ_SESSION_SECRET` 应使用独立生成的高强度随机密钥，并通过部署平台的密钥管理功能注入。
 
 建议：
@@ -358,6 +362,7 @@ POST /login/refresh
 | `/song/batch` | 批量歌曲详情，POST | 否 |
 | `/song/fav-count` | 歌曲收藏数 | 否 |
 | `/song/versions` | 歌曲其他版本 | 否 |
+| `/song/replacement` | 放不了的歌找可播的其他版本 | 是 |
 | `/getSongInfo` | 歌曲资料 | 否 |
 | `/getAlbumInfo` | 专辑详情 | 否 |
 | `/getLyric` | 歌词与翻译 | 否 |
@@ -371,7 +376,14 @@ POST /login/refresh
 | 接口 | 说明 | 登录 |
 | --- | --- | --- |
 | `/user/guess-you-like` | 猜你喜欢 | 是 |
+| `/user/recommendation-preferences` | 私人FM／每日30首共用的音乐偏好（只读） | 是 |
+| `/user/recommendation-preferences/update` | 修改音乐偏好 | 是 |
+| `/user/listening-rank` | 本人听歌排行：日／周／月／年，可选历史日期（只读） | 是 |
+| `/user/guess-you-like/modes` | 猜你喜欢单选听歌模式目录（只读） | 是 |
+| `/user/guess-you-like/tracks` | 猜你喜欢按模式取一批（不写设置） | 是 |
 | `/user/daily-songs` | 每日 30 首 | 是 |
+| `/user/personal-fm` | 私人 FM 批次 | 是 |
+| `/recommend/feed` | 客户端首页 feed 第 1 页（歌曲与歌单） | 是 |
 | `/recommend/playlists` | 推荐歌单 | 可选 |
 | `/recommend/radar` | 刷歌模式 | 可选 |
 | `/recommend/categories` | 热门歌单分类 | 否 |
@@ -385,6 +397,8 @@ POST /login/refresh
 | `/radio/categories` | 匿名电台分类 | 否 |
 | `/radio/list` | 账号电台列表 | 是 |
 | `/radio/tracks` | 电台歌曲 | 是 |
+| `/radio/recommendation-modes` | 普通官方雷达单选 radio ID 选项 | 是 |
+| `/radio/recommendation-tracks` | 普通官方雷达批次 | 是 |
 | `/song/similar` | 相似歌曲 | 是 |
 | `/song/related-playlists` | 包含指定歌曲的相关歌单 | 是 |
 
@@ -730,6 +744,7 @@ GET /user/cloud?offset=0&limit=200
 常用调用：
 
 ```http
+GET /user/personal-fm?page=1
 GET /user/guess-you-like
 GET /user/daily-songs
 GET /recommend/playlists
@@ -750,6 +765,110 @@ GET /recommend/toplist?id=26
 - 新歌、新碟和歌单分类支持各自的地区、分类或分页参数。
 
 推荐列表的 `more` 不一定代表服务提供了连续游标。具体分页方式应按对应接口处理。
+
+`features.recommendations.personalFmModes` 为 `false`：已有取歌接口不代表能处理 mode/submode。猜你喜欢的动态模式是独立能力，不能用此旗标代替；历史和屏蔽的未验能力同样保持关闭。
+
+#### 私人 FM 批次
+
+`GET /user/personal-fm?page=1` 需要可解析的登录会话；Serverless 未配置密钥回 `501`。此路径复用雷达协议，与 `/user/guess-you-like` 的 id 99 分开，不改变原有匿名 `/recommend/radar`。
+
+- `page` 省略时为 1；只接受 1–100 的十进制整数，不接受空串、小数、前导零或越界值，不把越界页压回第 100 页。
+- 成功回 `{ code: 200, station: "personal-fm", page, songs, more, nextPage? }`。曲目数量由上游决定，不固定为 5 或 10 首。
+- `more: true` 且未到本地上限时给 `nextPage`；第 100 页仍有更多时给 `paginationLimitReached: true`，不提供下一页，也不把它说成上游结束。
+- 空批次回 `422`；条目存在但无法解析回 `502`。失败只请求一次，调用方不能假定超时或取消代表上游未消耗批次。
+- 服务不保存跨请求的批次位置。调用方按账号与来源隔离页序，预览、并发提交与晚到应答由自己的控制器处理，不能只为卡片封面消耗批次。
+- 已用真实账号实测：连读三次第 1 页，每次都是新的一批，彼此没有重复。
+
+#### 首页 feed
+
+`GET /recommend/feed` 需要有效会话；Serverless 未配置密钥回 `501`。只读第 1 页：续页组合实测回 `500020`，所以 `more` 恒为 `false`，不提供翻页。
+
+- 返回 `{ code:200, page:1, more:false, shelves:[{ id, titleTemplate, titleContent, items }] }`。`titleTemplate` 可能带 `{String}` 占位，`titleContent` 是填进去的字（可能是昵称或一首歌名），怎么显示由调用方决定；两者都可能为空。
+- `items` 只有两种：`{ type:"song", song }`（歌曲卡只有数字 songid，用 `CgiGetTrackInfo` 一次 20 首补全，`song` 保留上游曲目原样；补不到的略过）和 `{ type:"playlist", playlist:{ id, title, subtitle, cover } }`（只收 `500/3003/513`，`id` 可用歌单详情读）。节目、电台、运营入口、动态日推卡和没验证过的私荐歌单卡都不收。一架里同一首、同一张歌单只出一次；没有可用条目的架子不出。
+- 请求只带已实测的精简参数，不送电量、蓝牙、最近播放等手机环境。没有可用架子回 `422`；非零 `retcode` 回 `502` 并保留 `upstreamCode`；结构不对回 `502`。失败不重试。
+
+#### 每日30首历史
+
+`GET /user/daily-songs/history/dates` 返回 `{ code: 200, dates: ["2026-11-01", "2026-10-27"] }`，示例日期为虚构数据。列表保留上游顺序，日期可能不连续；不从本地日历生成缺日，不把 `bSet` 解释为收藏状态。
+
+`GET /user/daily-songs/history?date=2026-10-27` 返回 `{ code: 200, date, songs }`。日期必须是真实的 `YYYY-MM-DD` 日历日期；歌曲从上游 `songlist[].track` 读取，不补到30首。
+
+两条路由只读当前会话本人，Serverless 未配置密钥回 `501`；会话缺失或无法解析回 `401`，无日期或无歌曲回 `422`，结构损坏回 `502`。新上游业务码尚未验证时保留 `502` 与安全的 `upstreamCode`，不猜测为登录失效。每次只发一次上游请求，不自动重试。
+
+历史查询不创建或编辑普通歌单，不提供整份历史收藏。日期怎么产生、保留多久、几点换日还没确认；`features.recommendations.getHistoryDates/getHistorySongs` 保持关闭。
+
+#### 普通官方雷达选项与批次
+
+两条路径都需要有效会话；Serverless 未配置密钥回 `501`。它们与旧 `/radio/list`、`/radio/tracks` 分开，保留旧路径的上游与回包。私人 FM、每日30首、id 99 猜你喜欢不改为这个来源。
+
+- `GET /radio/recommendation-modes` 返回 `{ code:200, selection:"single", modes:[{radioId,title,cover}], coverage:"first-page", complete:false }`。选项来自 `GetRecRadioList`，没有当前选中／永久保存状态；不支持分页，不把首屏当完整目录。
+- `GET /radio/recommendation-tracks?id=91001` 返回 `{ code:200, station:"official-radio", radioId, title, songs, extras? }`。编号为虚构示例；`id` 必须为正的安全整数，`99` 仍走 `/user/guess-you-like`。请求上游一批，曲数由上游决定，不保证恰好五首，也不提供猜测的游标或结束标志。
+- 单选后请求对应 radio ID 是取歌，不是 `UpdateRadioSceneConfig` 或音乐偏好写入；radio ID 与 id99场景目录／pool、偏好key、风格复合键不能互换。
+- 不接受 `page`、`cursor`、`mode`、`submode`、`scene_id`。成功却无内容回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
+- 已用真实账号实测：读到选项，按选中的 radio ID 取到一批歌。其他 radio ID 没有逐一试过；这两条接口不提供保存设置。
+
+#### 音乐偏好
+
+`GET /user/recommendation-preferences` 需要有效会话；Serverless 未配置密钥回 `501`。私人 FM 与每日30首的偏好入口打开的是同一个页面，所以这里返回的是账号的一份偏好，不按入口区分。
+
+- 返回 `{ code:200, scope:"account", profiles:[{ key, name, score }] }`。`key` 是偏好项编号（例如熟悉度、各语种），`score` 是 0 到 100 的当前分值；偏好 key 不能当模式目录编号、radio ID 或风格黑名单编号使用。
+- 数据来自官方偏好页的首屏数据：只发一次请求、不跟随转址、回包限 1 MB；只认唯一一处明确的数据赋值，不执行页面脚本，不返回页面里的歌曲。目标分值、是否可调、更新时间等字段含义未确认，不对外返回。
+- 不接受 `station`、`entry`、`profileKey`、`page`、`cursor`、`id`。没有偏好项回 `422`；页面结构不对回 `502`；转址或其他非 2xx 回 `502`，不清登录态；未知页面码保留 `502` 与 `upstreamCode`。
+- 已用真实账号实测读取。偏好对各入口推荐结果的实际影响还没验证。
+
+`POST /user/recommendation-preferences/update`（需要有效会话，不需要实验开关；已用真实账号实测写入，读回一致）：
+
+- 请求 `{ "profiles": [{ "key": "10008", "score": 75 }] }`，1 到 32 项、key 不重复、score 为 0 到 100 的整数，不接受其他字段。
+- 先读现值；key 不在账号偏好里回 `400`，不写。所有指定项已是目标值时不写，回 `writeAttempted:false`。否则按现有顺序把整份偏好写一次（只替换指定项），再读偏好页：全部吻合回 `verified:true`、`verification:"confirmed"`，否则 `verified:false`、`verification:"unconfirmed"`，同时返回读回的 `profiles`。
+- 写入不重试。写入已发出后的任何失败都带 `writeAttempted:true`、`verified:false`、`retryable:false`，请先读回再决定是否重试。
+- 必须使用 `application/json`，否则回 `415`。页面缺少屏蔽旗标时不写；读回也核对未修改项。同一进程内同账号写入排队，其他实例和客户端的并发修改不受保护。
+
+#### 猜你喜欢听歌模式目录
+
+`GET /user/guess-you-like/tracks?pool=1001` 按模式取一批：`pool` 是模式目录条目的 `poolId`（示例编号为虚构），只接受不超过 10 位的正整数。上游请求是 id 99 的 `get_radio_track`，在 `ext.scene_id` 带上这个值，**不写账号的模式设置**。返回 `{ code:200, station:"guess-you-like", poolId, songs }`，没有歌回 `422`；失败不重试，避免多消耗一批。已用真实账号按两种模式各取过一批，两批没有重复；不写设置时上游是否一定按模式给歌，还没确认。
+
+`GET /user/guess-you-like/modes` 需要有效会话；Serverless 未配置密钥回 `501`。只读 id 99 的 RadioConfig 目录，不改变 `/user/guess-you-like` 的取歌行为。
+
+- 返回 `{ code:200, station:"guess-you-like", radioId:99, selection:"single", primaryModes, scenes, recommended, selectedIds }`。三组条目都是 `{ id, name, cover, poolId? }`；`selectedIds` 是上游给出的当前选中项，可以为空。
+- `id` 是模式目录编号，`poolId` 只是取歌端的对照值；两者都不能当普通雷达 radio ID、音乐偏好 key 或风格黑名单编号使用。上游的状态、时间、排序字段含义未确认，不对外返回。
+- 不接受 `id`、`page`、`cursor`、`mode`、`scene_id`、`pool_id`。目录为空回 `422`；失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
+- 暂不提供切换模式的写入接口：写入参数还没有可验证的形状。已用真实账号实测读取目录。
+
+#### 听歌排行
+
+`GET /user/listening-rank?range=week` 需要有效会话；Serverless 未配置密钥回 `501`。只读本人在 QQ 音乐「听歌报告」里的歌曲排行，不能读别人的。
+
+- `range` 必填：`day`、`week`、`month`、`year`（分别对应上游的 1、2、3、4）。没有「全部时间」，传 `all` 回 `400`，也不会用年排行冒充。
+- `date` 可选，读历史时段：`day`／`week` 用 `YYYYMMDD`，`month` 用 `YYYYMM`，必须是真实日期；`year` 没有样本，不接受 `date`。不给就读当前时段。
+- `token` 可选，上游回应里有这个字段、用途还不清楚，所以只原样转交（1–512 个可见 ASCII 字符），不解释它是不是翻页游标。
+- 返回 `{ code:200, range, date?, from?, token?, items:[{ track, listenCount }] }`。`track` 是上游的歌曲对象原样交出，由客户端自己正规化；`listenCount` 是该时段的播放次数。
+- 没听过歌的时段上游给 `rank:null`，这里回 `200` 和空的 `items`，不是错误。请求里没见过分页字段，也不知道有没有上限；条目超过 500 或格式不对回 `502`。
+- 周的边界（自然周还是最近七天）由上游决定，还没确认：已用真实账号读过本周，和以周一为日期的上一周；用周中其他日子当 `date`，实测回过上游错误。不接受 `uin`、`page`、`cursor`、`offset`、`limit`、`type`、`version`，重复的参数回 `400`。失败不重试，未知业务码保留 `502`，不会凭新RPC的1000清登录态。
+
+**设计取舍与向后兼容（3.3.6 范围说明）**
+
+- 3.3.6 先把听歌排行（`GetRank`）做完；同批抓包里出现的 `GetBar` 等其他听歌报告字段没有证据，本版不做，留给后续版本补充。
+- 空榜返回 `200` 加空 `items`，和本组其他只读接口「内容为空回 `422`」不一样：没听过歌的时段是正常状态，不是错误。客户端不要把空 `items` 当失败处理。
+- 向后兼容：响应对象今后可能增加字段，`items` 里的每一项也可能增加字段，客户端必须忽略不认识的字段；`range` 今后可能增加取值，不要把现有四个值当成封闭集合。现有字段的名字与含义、`400`／`401`／`502` 的错误语义不会改。
+- 没有「全部时间」：传 `all` 回 `400`。需要这个效果的客户端请自己声明是用年排行暂代，不要当成真正的历史总排行。
+
+#### 黑名单首屏与单曲风格选项
+
+写入：`POST /user/blacklist/add` 只选歌曲（正文只有 `songs`）时默认可用，用来做歌曲“不喜欢”；选了歌手、风格或混合选择，以及 `POST /user/blacklist/remove`，默认回 `501 feature.unavailable`，只有可信宿主配置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能测试，正文／查询参数不能开启，而且在检查会话前就回 `501`。已用真实账号实测过三类新增与逐项取消；开关不启用下游界面能力。
+
+- 新增正文为 `{ songs?:string[], singers?:string[], songId?:string, styles?:[{id:string,idType:number}] }`。至少选择一项；每类最多20项、合计最多30项，不接受重复项。ID为不超过40位的正十进制字符串；风格按 `id + idType` 区分，不能只按ID去重。
+- 选择风格时必须给数字歌曲的 `songId`（安全整数），先读取该曲可选风格；没有候选或选项不匹配就不写。名称来自上游候选，不接收调用方伪造的名称；歌曲、歌手和风格只发送选中分类，不自动关联。风格表示「减少风格推荐」，不保证完全排除。
+- 一次写入后，逐个选中分类读首屏。回 `{accepted,verified,verification,writeAttempted,coverage:"first-page",complete:false,results}`；`accepted`只表示写入回包被接受。仅所有目标在对应首屏出现时 `verified:true`、`verification:"confirmed"`；否则保持`unconfirmed`。各项结果区分`present`和`not-seen-in-first-page`，不承诺原子性或回滚，不捏造replacement。
+- 取消正文为 `{type:"song"|"singer"|"style",id:string,idType:number}`，仅单类单项。先从当前账号首屏取得完整元数据再写一次；首屏没有该项回`422`且不写，表示未在支持的首屏找到，不证明全表不存在。写后即使首屏不再出现，仍为`verified:false`／`unconfirmed`，不回`removed:true`，直到完整分页另经验证。
+- 写入、失败与确认读取都不自动重送。写入已尝试而结果不明时返回`writeAttempted:true`、`verified:false`、`retryable:false`；重新读取确认，不自动重写。未知业务码维持`502`，不扩大清会话的`401`。
+
+`GET /user/blacklist?type=song|singer|style` 读取对应分类的首屏，返回 `{ code: 200, type, items, coverage: "first-page", complete: false }`。条目为 `{ id, idType, name, image, time }`；`time` 保留上游数值，不推断时间单位。风格身分由 `id + idType` 共同确定。
+
+当前只支持首屏；`page` 只能省略或为 `1`，不接受 `cursor`。内部 `Token` 不公开。正常空首屏回 `200` 与空 `items`，仍是 `complete: false`，不能把它解释为整份清单已空。`user` 分类属于其他服务，当前不支持。
+
+`GET /user/blacklist/style-options?songId=90001` 返回 `{ code: 200, styles: [{ id, idType, name, status }] }`。示例编号为虚构数据；`songId` 必须是正的安全整数，不是 mid。某些歌曲没有风格候选，正常返回空数组；`status` 只保留数值，不推断所有取值的意义。
+
+两条路由需要有效会话，不匿名读取；Serverless 缺密钥回 `501`。网络、结构异常和未验证业务码回安全错误，失败不自动重试。它们不新增或取消屏蔽；完整分页和取消后的读回还没验证。
 
 ### 9. 批量歌曲详情
 
@@ -834,6 +953,18 @@ GET /song/versions?mid=fixtureVersionA
 不需要登录。`id` 是正整数 songid，`mid` 是歌曲 MID，两者必须二选一；同时提供、都不提供或提供空值都回 `400`。MID 最长 64 个字母或数字。
 
 响应为 `{ code: 200, songs: [...] }`，`songs` 保留上游 `versionList` 的原始条目；没有其他版本回 `422`。不同歌曲能返回的版本数量可能不同。
+
+#### 替代歌曲
+
+```text
+GET /song/replacement?mid=fixtureVersionA
+```
+
+需要有效会话；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。`mid` 是原曲 MID，必填，1–64 个字母或数字。
+
+先用当前会话要原曲 128 的链接。拿到了就不找，回 `reason: "original-playable"`；拿不到但原因没确认（不是地区、会员规则），也不找，回 `reason: "reason-unconfirmed"`，因为一次没拿到链接不等于这首放不了。只有命中地区或会员规则时，才读其他版本：跳过原曲，将带这些特征的版本排在后面，最多 3 个合成一次要链接，原因没确认的照 `/getMusicPlay` 的规则再取一次；按排序后顺序，第一个真拿到链接的才算。
+
+响应为 `{ code: 200, original: { mid, playable, hint }, song, label?, reason? }`。`song` 保留上游 `versionList` 的原始条目，找不到时为 `null`，`reason` 是 `no-other-version` 或 `no-playable-version`；`label` 只在版本有副标题时给，不自己编替代原因。回包不带链接，播放照常用 `/getMusicPlay`。读其他版本失败照新路由的错误回 `502`，不重试。
 
 ### 14. 本人音乐基因
 

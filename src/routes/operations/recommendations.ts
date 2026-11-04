@@ -1,4 +1,8 @@
-import { guessYouLikeResult } from '../../services/recommend/guessYouLike';
+import {
+  guessYouLikeModeTracksResult,
+  guessYouLikeResult,
+} from '../../services/recommend/guessYouLike';
+import { personalFmResult } from '../../services/recommend/personalFm';
 import { radarPageOf, radarResult } from '../../services/recommend/radar';
 import { radioListResult, radioTracksResult } from '../../services/recommend/radio';
 import {
@@ -16,6 +20,13 @@ import type { OperationHandler } from './types';
 
 export const getGuessYouLike: OperationHandler = async (request) =>
   guessYouLikeResult(await requiredSession(request));
+
+// 按模式目录的 poolId 取一批；不写账号的模式设置。
+export const getGuessYouLikeModeTracks: OperationHandler = async (request) =>
+  guessYouLikeModeTracksResult(await requiredSession(request), request.query('pool'));
+
+export const getPersonalFm: OperationHandler = async (request) =>
+  personalFmResult(await requiredSession(request), rawQuery(request, 'page'));
 
 export const getRecommendPlaylists: OperationHandler = async (request) =>
   recommendPlaylistsResult(

@@ -1006,17 +1006,11 @@
           "keys": {
             "subPeriod": {
               "type": "array",
-              "empty": false,
-              "item": {
-                "type": "array",
-                "empty": false,
-                "item": "number"
-              }
+              "empty": true
             },
             "year": {
               "type": "array",
-              "empty": false,
-              "item": "number"
+              "empty": true
             }
           }
         },

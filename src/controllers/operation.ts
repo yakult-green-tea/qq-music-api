@@ -1,5 +1,6 @@
 import type { Context } from 'koa';
 import type { OperationHandler, OperationRequest } from '../routes/operations/types';
+import { AUTH_HEADER_NAME, tokenFromCookieString } from '../routes/sessionToken';
 import qrLoginService from '../services/auth/qrLogin.node';
 import { getAuthToken } from './login';
 
@@ -16,12 +17,23 @@ export const operationRequestOf = (ctx: Context): OperationRequest => ({
   unverifiedWritesEnabled: process.env.QQ_UNVERIFIED_WRITES_ENABLED === '1',
   method: ctx.method,
   body: async () => (ctx.request as { body?: unknown }).body,
+  get contentType() {
+    return ctx.get('content-type') || undefined;
+  },
   query: (name) => firstOf(ctx.query[name]),
   queryRaw: (name) => ctx.query[name],
   params: (ctx as Context & { params?: Record<string, string> }).params ?? {},
   // 用到才读：原来的 controller 不碰 header 和 cookie 的，转接也不先去碰。
   get token() {
     return getAuthToken(ctx);
+  },
+  get tokenSource() {
+    if (ctx.get(AUTH_HEADER_NAME).trim()) return 'header';
+    if (tokenFromCookieString(String(ctx.query.cookie ?? ''))) return 'query';
+    return ctx.cookies.get('qqmusic_session') ? 'cookie' : undefined;
+  },
+  get fetchSite() {
+    return ctx.get('sec-fetch-site') || undefined;
   },
   service: async () => qrLoginService,
 });

@@ -18,27 +18,36 @@ export interface OperationRouteContext {
   url: URL;
   params: Record<string, string>;
   token: string | undefined;
+  tokenSource?: 'header' | 'query' | 'cookie';
   service: () => Promise<QrLoginService>;
+  strictRequest?: boolean;
 }
 
 export const operationRequestOf = ({
   url,
   params,
   token,
+  tokenSource,
   service,
   env,
   options,
   request,
+  strictRequest,
 }: OperationRouteContext): OperationRequest => ({
   runtime: 'serverless',
   unverifiedWritesEnabled: env?.QQ_UNVERIFIED_WRITES_ENABLED === '1',
   method: request?.method ?? 'GET',
   body: async () => request?.json(),
+  contentType: request?.headers.get('content-type') ?? undefined,
   query: (name) => url.searchParams.get(name) ?? undefined,
-  // serverless 原来就只读第一个值，两个取法在这边是同一个。
-  queryRaw: (name) => url.searchParams.get(name) ?? undefined,
+  queryRaw: (name) => {
+    const values = url.searchParams.getAll(name);
+    return strictRequest && values.length > 1 ? values : values[0];
+  },
   params,
   token,
+  tokenSource,
+  fetchSite: request?.headers.get('sec-fetch-site') ?? undefined,
   sessionConfigured: Boolean(env?.QQ_SESSION_SECRET),
   service,
   qr: createServerlessQrOperations({ env: env ?? {}, options: options ?? {}, service }),
@@ -46,8 +55,8 @@ export const operationRequestOf = ({
 });
 
 export const operationRoute =
-  (handler: OperationHandler) =>
+  (handler: OperationHandler, strictRequest = false) =>
   async (context: OperationRouteContext): Promise<Response> => {
-    const result = await handler(operationRequestOf(context));
+    const result = await handler(operationRequestOf({ ...context, strictRequest }));
     return json(result.body, result.status, result.headers);
   };

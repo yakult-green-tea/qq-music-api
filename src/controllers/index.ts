@@ -1,5 +1,6 @@
 import type { Context, Next } from 'koa';
 import { type RouteName, routeManifest } from '../routes/manifest';
+import { protectAccountWrite } from '../routes/operations/writeSafety';
 import { withControllerLogging } from '../util/observability';
 import logoutOperationController from './logoutOperation';
 import musicPlayOperationController from './musicPlayOperation';
@@ -18,8 +19,11 @@ const nodeAdapters: Partial<Record<RouteName, Controller>> = {
   getMusicPlay: musicPlayOperationController,
 };
 
-const controllerOf = (route: (typeof routeManifest)[number]): Controller =>
-  nodeAdapters[route.name] ?? operationController(route.handler);
+const controllerOf = (route: (typeof routeManifest)[number]): Controller => {
+  const accountWrite = 'accountWrite' in route && route.accountWrite;
+  const handler = accountWrite ? protectAccountWrite(route.handler) : route.handler;
+  return nodeAdapters[route.name] ?? operationController(handler);
+};
 
 export default Object.fromEntries(
   routeManifest.map((route) => [

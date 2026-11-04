@@ -77,28 +77,32 @@ export const canLookupPlaybackHint = (context: PlaybackHintContext): boolean =>
   ['m4a', '128'].includes(context.quality) &&
   context.codes.result === 104003 &&
   context.codes.subcode === 1;
+const REGION_TUPLES = ['1/23/0/0', '769/0/35/0', '769/0/35/1'];
+const MEMBERSHIP_TUPLES = [`${0x101d701}/13/21/1`, `${0x101d701}/13/41/1`, `${0x1019701}/13/41/1`];
 export const PLAYBACK_HINT_RULES: readonly PlaybackHintRule[] = [
   {
     key: 'playback.maybe-region-restricted',
     matches: (track, context) =>
-      Boolean(
-        context &&
-          canLookupPlaybackHint(context) &&
-          ['1/23/0/0', '769/0/35/0', '769/0/35/1'].includes(tupleOf(track)),
-      ),
+      Boolean(context && canLookupPlaybackHint(context) && REGION_TUPLES.includes(tupleOf(track))),
   },
   {
     key: 'playback.maybe-membership',
     matches: (track, context) =>
       Boolean(
-        context &&
-          canLookupPlaybackHint(context) &&
-          [`${0x101d701}/13/21/1`, `${0x101d701}/13/41/1`, `${0x1019701}/13/41/1`].includes(
-            tupleOf(track),
-          ),
+        context && canLookupPlaybackHint(context) && MEMBERSHIP_TUPLES.includes(tupleOf(track)),
       ),
   },
 ];
+
+/** 条目本身带着上面两条规则认得的特征（不看取链结果）；挑替代版本时用来先跳过。 */
+export const hasKnownUnplayableTraits = (track: unknown): boolean => {
+  try {
+    const tuple = tupleOf(track);
+    return REGION_TUPLES.includes(tuple) || MEMBERSHIP_TUPLES.includes(tuple);
+  } catch {
+    return false;
+  }
+};
 
 const hint = (key: PlaybackHintKey): PlaybackHint => ({
   key,

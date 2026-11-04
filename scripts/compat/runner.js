@@ -106,6 +106,11 @@ const rpcData = (method, param) => {
       return { track_info: SONGS[0] };
     case 'GetAlbumList':
       return { list: [{ album_mid: 'fixture-album', album_name: 'Fixture album' }] };
+    case 'GetAll':
+      return { group: [
+        { groupId: 0, groupName: 'Fixture zero', toplist: [{ topId: 4, title: 'Fixture zero chart', song: [] }] },
+        { groupId: 1, groupName: 'Fixture one', toplist: [{ topId: 5, title: 'Fixture one chart', song: [] }] },
+      ] };
     case 'get_singer_detail_info':
       return { songlist: SONGS };
     default:

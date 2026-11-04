@@ -278,6 +278,85 @@ describe.each(['node', 'serverless'] as const)('radar route: %s', (runtime) => {
     expect(JSON.stringify(result.body)).not.toContain('fixture-private-error-page');
   });
 
+  describe('private personal FM', () => {
+    it.each([undefined, 'invalid-token'])('requires a resolving session: %s', async (value) => {
+      const result = await call('/user/personal-fm', { token: value });
+      expect(result.status).toBe(401);
+      expect(result.body.errorKey).toBe('auth.required');
+      expect(recorded).toHaveLength(0);
+    });
+
+    it.each([undefined, '1', '2', '3'])('reads an explicit personal FM page: %s', async (page) => {
+      const result = await call(`/user/personal-fm${page ? `?page=${page}` : ''}`, { token });
+      const expected = Number(page ?? 1);
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual({
+        code: 200,
+        station: 'personal-fm',
+        page: expected,
+        songs: [track(701), track(702)],
+        more: true,
+        nextPage: expected + 1,
+      });
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].rpcs[0]).toMatchObject({
+        method: 'GetRadarSong',
+        param: { Page: expected, ReqType: 0, FavSongs: [], EntranceSongs: [] },
+      });
+      expect(recorded[0].comm.authst).toBe(CONTRACT_CREDENTIAL.musickey);
+    });
+
+    it.each([
+      '0',
+      '-1',
+      '101',
+      '1x',
+      '1.5',
+      '',
+      '01',
+    ])('rejects invalid pages without calling upstream: %s', async (page) => {
+      const result = await call(`/user/personal-fm?page=${page}`, { token });
+      expect(result.status).toBe(400);
+      expect(result.body.errorKey).toBe('input.invalid');
+      expect(recorded).toHaveLength(0);
+    });
+
+    it('does not silently repeat page 100 when the local bound is reached', async () => {
+      const result = await call('/user/personal-fm?page=100', { token });
+      expect(result.body).toMatchObject({ page: 100, more: true, paginationLimitReached: true });
+      expect(result.body).not.toHaveProperty('nextPage');
+    });
+
+    it('does not invent another page after the upstream ends the stream', async () => {
+      replies.GetRadarSong = { data: { ...RADAR, HasMore: false } };
+      const result = await call('/user/personal-fm?page=2', { token });
+      expect(result.status).toBe(200);
+      expect(result.body.more).toBe(false);
+      expect(result.body).not.toHaveProperty('nextPage');
+    });
+
+    it('does not retry a failed batch which might already have been consumed', async () => {
+      replies.GetRadarSong = { httpStatus: 503 };
+      const result = await call('/user/personal-fm', { token });
+      expect(result.status).toBe(502);
+      expect(recorded).toHaveLength(1);
+    });
+
+    it('keeps gateway and credential conflicts at 502', async () => {
+      replies.GetRadarSong = { globalCode: 500003, code: 1000 };
+      const result = await call('/user/personal-fm', { token });
+      expect(result.status).toBe(502);
+      expect(result.body.kind).not.toBe('credential-invalid');
+    });
+
+    it('keeps empty batches distinct from unreadable entries', async () => {
+      replies.GetRadarSong = { data: { ...RADAR, VecSongs: [] } };
+      expect((await call('/user/personal-fm', { token })).status).toBe(422);
+      replies.GetRadarSong = { data: { ...RADAR, VecSongs: [entry(null)] } };
+      expect((await call('/user/personal-fm', { token })).status).toBe(502);
+    });
+  });
+
   if (runtime === 'serverless') {
     it('still serves the anonymous radar without a session secret', async () => {
       const result = await call('/recommend/radar', { token, env: {} });

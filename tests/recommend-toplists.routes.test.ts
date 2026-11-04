@@ -183,6 +183,31 @@ describe.each(['node', 'serverless'] as const)('toplist routes: %s', (runtime) =
       ]);
     });
 
+    // 上游第一组「巅峰榜」的 groupId 是 0：组 id 允许 0，榜单自己的 id 仍要正整数。
+    it('keeps the group whose id is 0 and drops groups with a negative or non-integer id', async () => {
+      replies.GetAll = {
+        data: {
+          group: [
+            { groupId: 0, groupName: 'Fixture peak', toplist: [chart(4)] },
+            { groupId: 1, groupName: 'Fixture region', toplist: [chart(5)] },
+            { groupId: -1, groupName: 'Fixture negative', toplist: [chart(6)] },
+            { groupId: 1.5, groupName: 'Fixture fraction', toplist: [chart(7)] },
+            { groupId: '2', groupName: 'Fixture text', toplist: [chart(8)] },
+          ],
+        },
+      };
+
+      const result = await call('/recommend/toplists');
+
+      expect(result.status).toBe(200);
+      expect(
+        result.body.groups.map((group: { id: number; name: string }) => [group.id, group.name]),
+      ).toEqual([
+        [0, 'Fixture peak'],
+        [1, 'Fixture region'],
+      ]);
+    });
+
     it('skips charts without a usable id, leaves bad fields out and drops empty groups', async () => {
       replies.GetAll = {
         data: {

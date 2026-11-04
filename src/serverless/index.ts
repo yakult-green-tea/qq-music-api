@@ -1,5 +1,6 @@
 import { serverlessPathOf, sharedRoutes } from '../routes/manifest';
 import { loginChannels } from '../routes/operations/loginChannels';
+import { protectAccountWrite, refusedAccountWrite } from '../routes/operations/writeSafety';
 import { AUTH_HEADER_NAME, tokenFromCookieString } from '../routes/sessionToken';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import {
@@ -11,7 +12,7 @@ import { setLegacyHttpTransport } from '../services/httpTransport';
 import { createFetchAuthHttpClient } from '../transport/fetchAuthHttpClient';
 import { createFetchLegacyTransport } from '../transport/fetchLegacyTransport';
 import { deriveAndroidDevice } from './derivedDevice';
-import { operationRoute } from './operationRoute';
+import { operationRequestOf, operationRoute } from './operationRoute';
 import { CHECK_BUDGET_MS, capabilitiesFor, secretsOf } from './qrRuntime';
 import { failureResponse, json } from './response';
 import { createRouter } from './router';
@@ -76,6 +77,13 @@ const authTokenOf = (request: Request, url: URL): string | undefined => {
   return tokenFromCookieString(request.headers.get('cookie') ?? '');
 };
 
+const tokenSourceOf = (request: Request, url: URL): 'header' | 'query' | 'cookie' | undefined => {
+  if (request.headers.get(AUTH_HEADER_NAME)?.trim()) return 'header';
+  if (tokenFromCookieString(url.searchParams.get('cookie') ?? '')) return 'query';
+  if (tokenFromCookieString(request.headers.get('cookie') ?? '')) return 'cookie';
+  return undefined;
+};
+
 interface RouteContext {
   request: Request;
   url: URL;
@@ -87,6 +95,7 @@ interface RouteContext {
    */
   service: () => Promise<QrLoginService>;
   token: string | undefined;
+  tokenSource?: 'header' | 'query' | 'cookie';
   /**
    * The QR routes below build their own per-call `QrLoginService` (§ sealed QR state) instead of
    * using `service()`, because each of the three calls needs different wiring — `/key` captures
@@ -103,7 +112,26 @@ type RouteHandler = (context: RouteContext) => Promise<Response>;
 const routes: Record<string, RouteHandler> = Object.fromEntries(
   sharedRoutes
     .filter((route) => route.name !== 'loginChannels')
-    .map((route) => [serverlessPathOf(route), operationRoute(route.handler)]),
+    .map((route) => [
+      serverlessPathOf(route),
+      operationRoute(
+        route.accountWrite ? protectAccountWrite(route.handler) : route.handler,
+        route.strictRequest,
+      ),
+    ]),
+);
+
+const PRIVATE_ROUTES = new Set(
+  sharedRoutes.filter((route) => route.strictRequest && route.needsSecret).map(serverlessPathOf),
+);
+const ACCOUNT_WRITE_ROUTES = new Set(
+  sharedRoutes.filter((route) => route.accountWrite).map(serverlessPathOf),
+);
+
+const STRICT_GET_ROUTES = new Set(
+  sharedRoutes
+    .filter((route) => route.strictRequest && route.method === 'GET')
+    .map((route) => serverlessPathOf(route)),
 );
 
 const NO_SECRET =
@@ -138,7 +166,7 @@ const createServiceFor = async (
   });
 };
 
-export const handleRequest = async (
+const handleRequestInner = async (
   request: Request,
   env: ServerlessEnv = {},
   options: ServerlessOptions = {},
@@ -168,6 +196,25 @@ export const handleRequest = async (
     );
   }
 
+  if (STRICT_GET_ROUTES.has(matched.route) && !['GET', 'HEAD'].includes(request.method))
+    return json({ code: 405, message: 'Method Not Allowed' }, 405, { Allow: 'GET, HEAD' });
+
+  if (ACCOUNT_WRITE_ROUTES.has(matched.route)) {
+    const refused = refusedAccountWrite(
+      operationRequestOf({
+        request,
+        url,
+        params: matched.params,
+        env,
+        options,
+        token: authTokenOf(request, url),
+        tokenSource: tokenSourceOf(request, url),
+        service: () => createServiceFor(env, options),
+      }),
+    );
+    if (refused) return json(refused.body, refused.status, refused.headers);
+  }
+
   // 🔴 Explicit, never a silent downgrade. Without a secret there is no key to seal a session
   // with, and generating one per isolate would make every login vanish on the next cold start.
   if (!configured && LOGIN_ROUTES.has(matched.route)) {
@@ -193,12 +240,25 @@ export const handleRequest = async (
       params: matched.params,
       service,
       token: authTokenOf(request, url),
+      tokenSource: tokenSourceOf(request, url),
       env,
       options,
     });
   } catch (error) {
     return failureResponse(error);
   }
+};
+
+export const handleRequest = async (
+  request: Request,
+  env: ServerlessEnv = {},
+  options: ServerlessOptions = {},
+): Promise<Response> => {
+  const matched = match(new URL(request.url).pathname);
+  const response = await handleRequestInner(request, env, options);
+  if (matched && PRIVATE_ROUTES.has(matched.route))
+    response.headers.set('Cache-Control', 'private, no-store');
+  return response;
 };
 
 export default handleRequest;
