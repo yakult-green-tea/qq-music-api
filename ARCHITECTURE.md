@@ -16,7 +16,7 @@
 | `src/routes/manifest.ts` | 记录路由名称、方法、路径、handler、密钥要求及 Explorer 分类 |
 | `src/routes/operations/` | 共用 handler：读取参数、调用业务、交出响应结果 |
 | `src/services/` | 登录、会话、曲库、推荐、播放和写入等业务处理 |
-| `src/protocol/` | 上游请求封装、响应校验、业务码登记、错误分类、播放提示规则，以及 HTTP 传输接口、超时和限流 |
+| `src/protocol/` | 上游请求封装、响应校验、业务码登记、错误分类、播放提示规则，以及 HTTP 传输接口、超时和限流；送给上游的三种客户端身份（`clientProfiles.ts`）、播放文件名规则（`playbackFiles.ts`）和几种取播放链接办法的说明（`playbackSource.ts`）也在这里 |
 | `src/transport/` | 按协议层定义的传输接口提供 fetch 实现，以及两种 HTTP 客户端共用的 Cookie jar 和转址规则 |
 | `src/config/apiExplorer.ts`、`public/explorer/` | Explorer 元数据及调试页面 |
 | `tests/`、`scripts/compat/` | 离线案例、接口与产物契约检查、版本行为比对 |
