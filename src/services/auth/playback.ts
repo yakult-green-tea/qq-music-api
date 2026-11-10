@@ -1,6 +1,5 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
 import {
-  fullFilenameOf,
   PLAYBACK_FILE_TYPES,
   playbackFileTypeOf,
   previewFilenameOf,
@@ -12,6 +11,13 @@ import {
   previewUnavailableHint,
 } from '../../protocol/playbackHints';
 import { classifyPlaybackRestriction, playbackQualityOf } from '../../protocol/playbackRestriction';
+import {
+  PLAYBACK_PROTOCOLS,
+  type PlaybackCdnStatus,
+  type PlaybackSource,
+  playbackSourceKindOf,
+  publicPlayEntryOf,
+} from '../../protocol/playbackSource';
 import {
   previewFileMissingOf,
   previewMediaIdOf,
@@ -29,6 +35,7 @@ import { logger } from '../../util/logger';
 import { type Dictionary, dictionaryOf, identifierOf, numberOf, stringOf } from '../../util/values';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
+import { androidVKeyStrategy, previewRs02Strategy } from './playbackStrategies';
 import { type AuthSession, type PlaybackOptions } from './qrTypes';
 import { StreamCdnSelector } from './streamCdnSelector';
 
@@ -48,6 +55,18 @@ export const PREFERRED_STREAM_DOMAIN = 'http://sjy6.stream.qqmusic.qq.com/';
 export const PREFERRED_STREAM_HOST = new URL(PREFERRED_STREAM_DOMAIN).hostname;
 
 export const DEFAULT_CDN_REFRESH_MS = 30 * 60 * 1_000;
+
+/** 播放地址用的 CDN，以及它是怎么定下来的。 */
+interface StreamDomain {
+  base: string;
+  cdn: PlaybackCdnStatus;
+}
+
+/** 回应没给地址、探测也没通时用的默认地址；能不能播没有验过。 */
+const UNVERIFIED_DEFAULT_DOMAIN: StreamDomain = {
+  base: DEFAULT_STREAM_DOMAIN,
+  cdn: 'unverified-default',
+};
 
 export const isPreferredStreamDomain = (value: string): boolean => {
   try {
@@ -117,6 +136,12 @@ const previewMediaIdsOf = async (
   return { mediaIds, missing };
 };
 
+/** 取链接的结果：对外的 `playUrl`，加上内部用的逐首音源描述（只含真的向上游要过的歌）。 */
+export interface PlaybackResolution {
+  playUrl: Dictionary;
+  sources: PlaybackSource[];
+}
+
 /**
  * quality=best：先查详情（最多 `MAX_PLAYBACK_HINT_LOOKUPS` 首），再按 flac → 320 → 128 一级一级要，每一级把还没拿到
  * 链接、又有那一级文件的歌合成一个请求；拿到就停，条目标出实际音质。128 一定会要，那一级的结果（含提示）原样回传。
@@ -129,7 +154,7 @@ const bestPlayUrls = async (
   songmids: string[],
   mediaId: string | undefined,
   playbackHintsEnabled: boolean,
-): Promise<Dictionary> => {
+): Promise<PlaybackResolution> => {
   const unique = [...new Set(songmids)];
   const looked = unique.slice(0, MAX_PLAYBACK_HINT_LOOKUPS);
   const details = await Promise.all(
@@ -138,11 +163,12 @@ const bestPlayUrls = async (
   const levels = new Map<string, BestQuality[]>(unique.map((mid) => [mid, ['128']]));
   for (const [index, mid] of looked.entries()) levels.set(mid, bestQualityLevelsOf(details[index]));
   const playUrl: Dictionary = {};
+  const sources: PlaybackSource[] = [];
   let pending = unique;
   for (const level of BEST_QUALITY_ORDER) {
     const batch = pending.filter((mid) => levels.get(mid)?.includes(level));
     if (!batch.length) continue;
-    const result = await getAuthenticatedPlayUrls(
+    const result = await getAuthenticatedPlaybackSources(
       http,
       auth,
       streamCdnSelector,
@@ -153,16 +179,22 @@ const bestPlayUrls = async (
       playbackHintsEnabled,
     );
     for (const mid of batch) {
-      const entry = result[mid];
-      if (entry && (level === '128' || stringOf(dictionaryOf(entry).url)))
+      const entry = result.playUrl[mid];
+      if (entry && (level === '128' || stringOf(dictionaryOf(entry).url))) {
         playUrl[mid] = { ...dictionaryOf(entry), quality: level };
+        const source = result.sources.find((candidate) => candidate.songmid === mid);
+        if (source) sources.push({ ...source, requestedQuality: 'best' });
+      }
     }
     pending = level === '128' ? [] : pending.filter((mid) => !playUrl[mid]);
   }
-  return playUrl;
+  return { playUrl, sources };
 };
 
-export const getAuthenticatedPlayUrls = async (
+/**
+ * 带会话取播放链接。回对外的 `playUrl` 和内部的音源描述；对外只用前者，形状和以前一样。
+ */
+export const getAuthenticatedPlaybackSources = async (
   http: AuthHttpClient,
   auth: AuthSession,
   streamCdnSelector: StreamCdnSelector,
@@ -171,7 +203,7 @@ export const getAuthenticatedPlayUrls = async (
   mediaId?: string,
   options: PlaybackOptions = {},
   playbackHintsEnabled = true,
-): Promise<Dictionary> => {
+): Promise<PlaybackResolution> => {
   const requestedList = songmid
     .split(',')
     .map((value) => value.trim())
@@ -225,7 +257,8 @@ export const getAuthenticatedPlayUrls = async (
       return false;
     });
   }
-  if (!songmidList.length && (previewMediaIds || String(quality) === 'ape')) return skipped;
+  if (!songmidList.length && (previewMediaIds || String(quality) === 'ape'))
+    return { playUrl: skipped, sources: [] };
   const qualityKey = String(quality) as keyof typeof MUSIC_FILE_TYPES;
   const fileType = playbackFileTypeOf(quality);
   // `globalThis.crypto` is the Web Crypto API global: identical on Node ≥20, Electron, Cloudflare
@@ -233,87 +266,112 @@ export const getAuthenticatedPlayUrls = async (
   // deploy a bundle importing at all.
   const guid = globalThis.crypto.randomUUID().replaceAll('-', '');
   const normalizedMediaId = stringOf(mediaId).trim();
-  const data = await callMusicu(
-    http,
-    auth.device,
-    'get-music-play',
-    'music.vkey.GetVkey',
-    'UrlGetVkey',
-    {
-      filename: songmidList.map((mid) =>
-        previewMediaIds
-          ? previewFilenameOf(previewMediaIds.get(mid) as string)
-          : fullFilenameOf(fileType, mid, normalizedMediaId),
-      ),
-      guid,
-      songmid: songmidList,
-      songtype: songmidList.map(() => 0),
-      uin: stringOf(auth.credential.str_musicid) || String(auth.credential.musicid),
-      ctx: 0,
-    },
-    auth.credential,
+  // 这次请求走哪一种办法：明确要试听就要试听文件，否则要这个音质的完整文件。同一次请求不换办法。
+  const strategy = previewMediaIds ? previewRs02Strategy : androidVKeyStrategy(fileType);
+  const itemsOf = (mids: readonly string[]) =>
+    mids.map((mid) => ({
+      songmid: mid,
+      filename: strategy.filenameOf(mid, previewMediaIds?.get(mid) ?? normalizedMediaId),
+    }));
+  const data = await strategy.request(
+    { http, auth, guid, phase: 'get-music-play' },
+    itemsOf(songmidList),
   );
   /** 播放链接的域名：先用回应里的 sip，没有就拿第一个 purl 去测 CDN；都没有时回 undefined。 */
-  const streamDomainOf = async (payload: Dictionary): Promise<string | undefined> => {
+  const streamDomainOf = async (payload: Dictionary): Promise<StreamDomain | undefined> => {
     const sip = Array.isArray(payload.sip) ? payload.sip.map(stringOf).filter(Boolean) : [];
-    let domain: string | undefined = sip.find((value) => !value.startsWith('http://ws')) ?? sip[0];
-    if (!domain) {
-      const firstPurl = (Array.isArray(payload.midurlinfo) ? payload.midurlinfo : [])
-        .map(dictionaryOf)
-        .map((item) => stringOf(item.purl))
-        .find(Boolean);
-      if (firstPurl) {
-        try {
-          // sjy6 is the responsive compatible route observed across authenticated playback. Trying
-          // it first keeps the common Serverless path to one Range request instead of dispatch + N.
+    const fromResponse = sip.find((value) => !value.startsWith('http://ws')) ?? sip[0];
+    if (fromResponse) return { base: fromResponse, cdn: 'response-sip' };
+    let domain: string | undefined;
+    const firstPurl = (Array.isArray(payload.midurlinfo) ? payload.midurlinfo : [])
+      .map(dictionaryOf)
+      .map((item) => stringOf(item.purl))
+      .find(Boolean);
+    if (firstPurl) {
+      try {
+        // sjy6 is the responsive compatible route observed across authenticated playback. Trying
+        // it first keeps the common Serverless path to one Range request instead of dispatch + N.
+        domain =
+          (await streamCdnSelector.select([PREFERRED_STREAM_DOMAIN], firstPurl)) ?? undefined;
+        if (!domain) {
+          const dispatch = await callMusicu(
+            http,
+            auth.device,
+            'get-cdn-dispatch',
+            'music.audioCdnDispatch.cdnDispatch',
+            'GetCdnDispatch',
+            {
+              guid,
+              uid: '0',
+              use_new_domain: 1,
+              use_ipv6: 1,
+            },
+            auth.credential,
+          );
+          const dispatchSip = Array.isArray(dispatch.sip)
+            ? dispatch.sip.map(stringOf).filter(Boolean)
+            : [];
+          const alternativeSip = dispatchSip.filter((value) => !isPreferredStreamDomain(value));
+          const refreshMs =
+            (numberOf(dispatch.refreshTime) ?? DEFAULT_CDN_REFRESH_MS / 1_000) * 1_000;
           domain =
-            (await streamCdnSelector.select([PREFERRED_STREAM_DOMAIN], firstPurl)) ?? undefined;
-          if (!domain) {
-            const dispatch = await callMusicu(
-              http,
-              auth.device,
-              'get-cdn-dispatch',
-              'music.audioCdnDispatch.cdnDispatch',
-              'GetCdnDispatch',
-              {
-                guid,
-                uid: '0',
-                use_new_domain: 1,
-                use_ipv6: 1,
-              },
-              auth.credential,
-            );
-            const dispatchSip = Array.isArray(dispatch.sip)
-              ? dispatch.sip.map(stringOf).filter(Boolean)
-              : [];
-            const alternativeSip = dispatchSip.filter((value) => !isPreferredStreamDomain(value));
-            const refreshMs =
-              (numberOf(dispatch.refreshTime) ?? DEFAULT_CDN_REFRESH_MS / 1_000) * 1_000;
-            domain =
-              (await streamCdnSelector.select(
-                [...alternativeSip, DEFAULT_STREAM_DOMAIN],
-                firstPurl,
-                refreshMs,
-              )) ?? undefined;
-          }
-        } catch (error) {
-          logger.warn('qq-auth.cdn-selection-failed', {
-            error: error instanceof Error ? error.message : String(error),
-          });
+            (await streamCdnSelector.select(
+              [...alternativeSip, DEFAULT_STREAM_DOMAIN],
+              firstPurl,
+              refreshMs,
+            )) ?? undefined;
         }
+      } catch (error) {
+        logger.warn('qq-auth.cdn-selection-failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
-    return domain;
+    return domain ? { base: domain, cdn: 'probed' } : undefined;
   };
   const firstDomain = await streamDomainOf(data);
-  const domain = firstDomain ?? DEFAULT_STREAM_DOMAIN;
+  const domain = firstDomain ?? UNVERIFIED_DEFAULT_DOMAIN;
   const playUrl: Dictionary = { ...skipped };
+  const sources = new Map<string, PlaybackSource>();
   const entries = Array.isArray(data.midurlinfo) ? data.midurlinfo : [];
   const loggedQuality = options.preview
     ? 'preview'
     : MUSIC_FILE_TYPES[qualityKey]
       ? qualityKey
       : '128';
+  /** 这首歌这一次取链接的内部描述；`purl` 是空的就是没给链接。 */
+  const sourceOf = (
+    mid: string,
+    item: Dictionary,
+    purl: string,
+    stream: StreamDomain,
+    reply: Dictionary,
+  ): PlaybackSource => {
+    const codes = playbackEntryCodesOf(item);
+    const mediaMid = previewMediaIds?.get(mid) ?? validMediaIdOf(normalizedMediaId);
+    const expiration = numberOf(reply.expiration);
+    return {
+      songmid: mid,
+      ...(mediaMid ? { mediaMid } : {}),
+      kind: purl
+        ? playbackSourceKindOf(strategy.id, codes)
+        : strategy.id === 'preview-rs02'
+          ? 'preview'
+          : 'full',
+      requestedQuality: String(quality),
+      attemptedQuality: options.preview ? 'preview' : playbackQualityOf(loggedQuality),
+      protocol: strategy.id,
+      profile: PLAYBACK_PROTOCOLS[strategy.id].profile,
+      url: purl ? `${stream.base}${purl}` : '',
+      ...(expiration !== undefined && expiration > 0
+        ? { upstreamExpirationSeconds: expiration }
+        : {}),
+      granted: Boolean(purl),
+      cdn: purl ? stream.cdn : 'none',
+      audioVerified: false,
+      codes,
+    };
+  };
   const unavailable: Dictionary[] = [];
   for (const [index, entry] of entries.entries()) {
     const item = dictionaryOf(entry);
@@ -332,12 +390,10 @@ export const getAuthenticatedPlayUrls = async (
           entry: item,
         }),
       );
+    const source = sourceOf(mid, item, purl, domain, data);
+    sources.set(mid, source);
     if (purl) {
-      playUrl[mid] = {
-        url: `${domain}${purl}`,
-        error: false,
-        ...(options.preview ? { preview: true } : {}),
-      };
+      playUrl[mid] = publicPlayEntryOf(source);
       continue;
     }
     const restriction: Dictionary = {
@@ -392,36 +448,51 @@ export const getAuthenticatedPlayUrls = async (
           .map(({ mid }) => String(mid));
   if (retryList.length) {
     try {
-      const retry = await callMusicu(
-        http,
-        auth.device,
-        'get-music-play-retry',
-        'music.vkey.GetVkey',
-        'UrlGetVkey',
-        {
-          filename: retryList.map((mid) => fullFilenameOf(fileType, mid, normalizedMediaId)),
-          guid,
-          songmid: retryList,
-          songtype: retryList.map(() => 0),
-          uin: stringOf(auth.credential.str_musicid) || String(auth.credential.musicid),
-          ctx: 0,
-        },
-        auth.credential,
+      const retry = await strategy.request(
+        { http, auth, guid, phase: 'get-music-play-retry' },
+        itemsOf(retryList),
       );
       const retrySip = Array.isArray(retry.sip) ? retry.sip.map(stringOf).filter(Boolean) : [];
       const retryDomain =
         (retrySip.length || !firstDomain ? await streamDomainOf(retry) : firstDomain) ??
-        DEFAULT_STREAM_DOMAIN;
+        UNVERIFIED_DEFAULT_DOMAIN;
       for (const entry of Array.isArray(retry.midurlinfo) ? retry.midurlinfo : []) {
         const item = dictionaryOf(entry);
         const mid = identifierOf(item.songmid);
         const purl = stringOf(item.purl);
-        if (mid && purl && retryList.includes(mid))
-          playUrl[mid] = { url: `${retryDomain}${purl}`, error: false };
+        if (mid && purl && retryList.includes(mid)) {
+          const source = sourceOf(mid, item, purl, retryDomain, retry);
+          sources.set(mid, source);
+          playUrl[mid] = publicPlayEntryOf(source);
+        }
       }
     } catch {
       // 第一次的结果已经在 playUrl 里。
     }
   }
-  return playUrl;
+  return { playUrl, sources: [...sources.values()] };
 };
+
+/** 对外的入口：只交 `playUrl`，和以前一样。 */
+export const getAuthenticatedPlayUrls = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  streamCdnSelector: StreamCdnSelector,
+  songmid: string,
+  quality: string | number = 128,
+  mediaId?: string,
+  options: PlaybackOptions = {},
+  playbackHintsEnabled = true,
+): Promise<Dictionary> =>
+  (
+    await getAuthenticatedPlaybackSources(
+      http,
+      auth,
+      streamCdnSelector,
+      songmid,
+      quality,
+      mediaId,
+      options,
+      playbackHintsEnabled,
+    )
+  ).playUrl;
