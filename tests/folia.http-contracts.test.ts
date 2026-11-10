@@ -264,7 +264,13 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     expect(result.status).toBe(200);
     expect(result.body).toEqual({
       data: {
-        playUrl: { 'fixture-song-a': { url: 'https://stream.invalid/fixture.mp3', error: false } },
+        playUrl: {
+          'fixture-song-a': {
+            url: 'https://stream.invalid/fixture.mp3',
+            error: false,
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+          },
+        },
       },
     });
     expect(mockUpstream.calls).toContainEqual(
@@ -306,7 +312,11 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     expect(result.body).toEqual({
       data: {
         playUrl: {
-          'fixture-song-a': { url: 'https://stream.invalid/fixture.mp3', error: false },
+          'fixture-song-a': {
+            url: 'https://stream.invalid/fixture.mp3',
+            error: false,
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+          },
           'fixture-song-b': {
             url: '',
             error: '暂无播放链接',
@@ -316,6 +326,7 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
               codes: { result: 104003, errtype: 3, code: 0 },
               hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
             },
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
           },
           'fixture-song-c': {
             url: '',
@@ -325,6 +336,7 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
               evidence: 'observed-response',
               hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
             },
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
           },
         },
       },

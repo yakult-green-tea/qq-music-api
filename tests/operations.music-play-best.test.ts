@@ -43,6 +43,7 @@ const vkeyReply = (mids: string[], granted: string[]) => ({
 const ok = (mid: string, quality: string) => ({
   url: `https://stream.invalid/${mid}.audio`,
   error: false,
+  source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
   quality,
 });
 
@@ -213,7 +214,11 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay quality=best（%s）', (runtime) 
     const legs = await play(`fixture-a${query}`);
     expect(detailLookupsOf(legs.operation.calls)).toEqual([]);
     expect(playUrlOf(legs.operation.body)).toEqual({
-      'fixture-a': { url: 'https://stream.invalid/fixture.mp3', error: false },
+      'fixture-a': {
+        url: 'https://stream.invalid/fixture.mp3',
+        error: false,
+        source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+      },
     });
   });
 

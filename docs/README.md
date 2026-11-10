@@ -547,6 +547,19 @@ GET /getMusicPlay/demo-song-mid?quality=best
 - `preview=1`：请求试听文件。拿到链接的条目会带 `"preview": true`；`file.size_try` 大于 0 代表有试听文件，不代表文件大小。
 - `mediaId`：指定可信的媒体文件标识。
 
+带会话时，每首向上游要过的歌在 `playUrl` 里多一个可选的 `source`，旧的调用方不认识可以直接忽略：
+
+```json
+{ "url": "https://...", "error": false, "source": { "kind": "full", "protocol": "android-vkey", "cdn": "response-sip" } }
+```
+
+- `kind`：`full` 完整歌曲、`preview` 试听片段；拿到了链接、但这一条带着失败的结果码时是 `unknown`，链接照样给，能不能播完整首没有把握。
+- `protocol`：这次用的取链接办法，`android-vkey`（完整文件）或 `preview-rs02`（试听文件）。
+- `cdn`：链接的主机是上游回应自带的（`response-sip`）、探测过能用的（`probed`），还是探测都没通、用的默认地址（`unverified-default`，能不能播没有验过）；没有链接时是 `none`。
+
+上游回应里没有请求的那首歌时，那首会回一条空链接，提示是原因未确认，不再重取；回应里多出来、没有请求过的歌不会出现在结果里。
+`source` 不代表音频本身验过，也不带试听片段在原曲里的起止时间。匿名播放没有这个字段。
+
 `best` 不保证取得无损音质，实际结果以账号权限、文件存在情况与上游响应为准。
 
 #### 播放失败说明

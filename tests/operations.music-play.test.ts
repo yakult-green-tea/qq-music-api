@@ -37,7 +37,14 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 共用处理与真实宿主契约
         ? {
             data: {
               playUrl: {
-                'fixture-song': { url: 'https://stream.invalid/fixture.mp3', error: false },
+                'fixture-song': {
+                  url: 'https://stream.invalid/fixture.mp3',
+                  error: false,
+                  // 匿名分支没有 source；带会话的结果多一个可选的 source。
+                  ...(mode === 'valid'
+                    ? { source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' } }
+                    : {}),
+                },
               },
             },
           }

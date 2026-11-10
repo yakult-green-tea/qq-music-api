@@ -149,11 +149,25 @@ export const playbackSourceKindOf = (
   return codes.result === undefined || codes.result === 0 ? 'full' : 'unknown';
 };
 
-/** 对外的成功条目。字段和以前一样：完整链接只有 url 和 error，试听多一个 preview。 */
+/** 对外条目上可选的 `source`：旧的调用方不认识它也没关系，原有字段都不变。 */
+export interface PublicPlaybackSource {
+  kind: PlaybackSourceKind;
+  protocol: PlaybackProtocolId;
+  cdn: PlaybackCdnStatus;
+}
+
+export const publicSourceOf = (source: PlaybackSource): PublicPlaybackSource => ({
+  kind: source.kind,
+  protocol: source.protocol,
+  cdn: source.cdn,
+});
+
+/** 对外的成功条目：url、error 和以前一样，试听多一个 preview，最后是可选的 source。 */
 export const publicPlayEntryOf = (
   source: PlaybackSource,
-): { url: string; error: false; preview?: true } => ({
+): { url: string; error: false; preview?: true; source: PublicPlaybackSource } => ({
   url: source.url,
   error: false,
   ...(source.protocol === 'preview-rs02' ? { preview: true as const } : {}),
+  source: publicSourceOf(source),
 });

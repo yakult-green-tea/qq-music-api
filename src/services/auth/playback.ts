@@ -17,6 +17,7 @@ import {
   type PlaybackSource,
   playbackSourceKindOf,
   publicPlayEntryOf,
+  publicSourceOf,
 } from '../../protocol/playbackSource';
 import {
   previewFileMissingOf,
@@ -373,11 +374,19 @@ export const getAuthenticatedPlaybackSources = async (
     };
   };
   const unavailable: Dictionary[] = [];
+  // 只收这次请求过的歌：回应里多出来的不交出去，免得调用方拿到别首歌的链接。
+  // 多出来的只记数量，方便发现上游会不会对某些歌固定回另一个 mid。
+  const requested = new Set(songmidList);
+  let unrequested = 0;
   for (const [index, entry] of entries.entries()) {
     const item = dictionaryOf(entry);
     const mid = identifierOf(item.songmid);
     if (!mid) continue;
     if (skipped[mid]) continue;
+    if (!requested.has(mid)) {
+      unrequested += 1;
+      continue;
+    }
     const purl = stringOf(item.purl);
     // 开发日志（debug）：没链接的那首只记位置、音质和白名单里的数字，不记歌曲 id。
     if (!purl)
@@ -403,9 +412,11 @@ export const getAuthenticatedPlaybackSources = async (
         codes: playbackEntryCodesOf(item),
       }),
     };
-    playUrl[mid] = { url: '', error: '暂无播放链接', restriction };
+    playUrl[mid] = { url: '', error: '暂无播放链接', restriction, source: publicSourceOf(source) };
     unavailable.push({ mid, restriction });
   }
+  if (unrequested)
+    logger.info('playback.unrequested-entries', { phase: 'get-music-play', count: unrequested });
   // 试听拿不到链接一律是「试听不可用」；其他的在还没有验证过的规则时挑不出具体原因，不用多查。
   const contextOf = (restriction: Dictionary) => ({
     authenticated: true,
@@ -469,6 +480,25 @@ export const getAuthenticatedPlaybackSources = async (
     } catch {
       // 第一次的结果已经在 playUrl 里。
     }
+  }
+  // 请求过、回应里却没有的歌：补一条明确的空链接，原因未确认。它们不在上面的再取名单里，不会因此多打请求。
+  for (const mid of songmidList) {
+    if (playUrl[mid]) continue;
+    const missing = sourceOf(mid, {}, '', UNVERIFIED_DEFAULT_DOMAIN, data);
+    sources.set(mid, missing);
+    playUrl[mid] = {
+      url: '',
+      error: '暂无播放链接',
+      restriction: {
+        ...classifyPlaybackRestriction({
+          quality: playbackQualityOf(loggedQuality),
+          authenticated: true,
+          codes: {},
+        }),
+        hint: options.preview ? previewUnavailableHint() : playbackHintOf(undefined, []),
+      },
+      source: publicSourceOf(missing),
+    };
   }
   return { playUrl, sources: [...sources.values()] };
 };

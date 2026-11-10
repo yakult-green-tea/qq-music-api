@@ -147,13 +147,34 @@ const baseline = run(`v${baselineVersion}`, baselineRoot);
 const current = run('current', repo);
 
 const approved = JSON.parse(fs.readFileSync(path.join(__dirname, 'approved.json'), 'utf8'));
+// 播放条目只多了可选的 source（kind、protocol、cdn 三个字段），去掉它之后必须和基准逐字相同。
+const SOURCE_KEYS = ['cdn', 'kind', 'protocol'];
+const onlyPlaySourceAdded = (before, after) => {
+  const playUrl = after?.body?.data?.playUrl;
+  if (!playUrl || typeof playUrl !== 'object') return false;
+  let added = 0;
+  const stripped = {};
+  for (const [mid, entry] of Object.entries(playUrl)) {
+    if (!entry || typeof entry !== 'object') return false;
+    const { source, ...rest } = entry;
+    if (source !== undefined) {
+      if (!source || typeof source !== 'object' || Object.keys(source).sort().join() !== SOURCE_KEYS.join())
+        return false;
+      added += 1;
+    }
+    stripped[mid] = rest;
+  }
+  const restored = { ...after, body: { ...after.body, data: { ...after.body.data, playUrl: stripped } } };
+  return added > 0 && JSON.stringify(restored) === JSON.stringify(before);
+};
 const approvalOf = (testCase, before, after) =>
   approved.find(
     (entry) =>
       (testCase.path === entry.path || testCase.path.startsWith(`${entry.path}/`)) &&
       (!entry.runtime || entry.runtime === testCase.runtime) &&
       (entry.session === undefined || entry.session === testCase.session) &&
-      (!entry.difference || (entry.difference === 'toplist-group-zero' &&
+      (!entry.difference || (entry.difference === 'play-source-field' && onlyPlaySourceAdded(before, after)) ||
+        (entry.difference === 'toplist-group-zero' &&
         testCase.path === '/recommend/toplists' && testCase.scenario === 'ok' &&
         JSON.stringify(after?.body?.groups?.[0]) === JSON.stringify({ id: 0, name: 'Fixture zero', toplists: [{ id: 4, preview: [], title: 'Fixture zero chart' }] }) &&
         JSON.stringify({ ...after, body: { ...after.body, groups: after.body.groups.slice(1) } }) === JSON.stringify(before))) &&

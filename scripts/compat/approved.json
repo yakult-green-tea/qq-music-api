@@ -1,5 +1,13 @@
 [
   {
+    "path": "/getMusicPlay",
+    "baseline": "3.3.6",
+    "since": "3.3.7",
+    "session": true,
+    "difference": "play-source-field",
+    "reason": "带会话取播放链接时，每条从上游来的结果多一个可选的 source；去掉它之后响应和上游请求必须和基准一致"
+  },
+  {
     "path": "/recommend/toplists",
     "baseline": "3.3.5",
     "since": "3.3.6",

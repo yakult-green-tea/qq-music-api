@@ -1186,7 +1186,11 @@ describe('QQ native QR login service', () => {
     await expect(
       harness.service.getMusicPlay(token, 'song-mid', 'flac', 'media-mid'),
     ).resolves.toEqual({
-      'song-mid': { url: 'https://audio.example.test/fixture.flac', error: false },
+      'song-mid': {
+        url: 'https://audio.example.test/fixture.flac',
+        error: false,
+        source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+      },
     });
     await expect(harness.service.getMusicPlay('unknown', 'song-mid', 'flac')).resolves.toBeNull();
     expect(harness.calls).toContain('UrlGetVkey');
@@ -1234,7 +1238,11 @@ describe('QQ native QR login service', () => {
     await expect(
       harness.service.getMusicPlay(token, 'song-mid', 'flac', 'media-mid'),
     ).resolves.toEqual({
-      'song-mid': { url: 'http://dl.stream.qqmusic.qq.com/fixture.flac', error: false },
+      'song-mid': {
+        url: 'http://dl.stream.qqmusic.qq.com/fixture.flac',
+        error: false,
+        source: { kind: 'full', protocol: 'android-vkey', cdn: 'unverified-default' },
+      },
     });
     expect(harness.calls).toContain('GetCdnDispatch');
   });
@@ -1255,6 +1263,7 @@ describe('QQ native QR login service', () => {
       'song-mid': {
         url: 'http://sjy6.stream.qqmusic.qq.com/fixture.flac',
         error: false,
+        source: { kind: 'full', protocol: 'android-vkey', cdn: 'probed' },
       },
     });
     expect(streamUrlProbe).toHaveBeenCalledTimes(1);
@@ -1287,6 +1296,7 @@ describe('QQ native QR login service', () => {
       'song-mid': {
         url: 'https://fast.stream.qqmusic.qq.com/fixture.flac',
         error: false,
+        source: { kind: 'full', protocol: 'android-vkey', cdn: 'probed' },
       },
     });
     expect(streamUrlProbe).toHaveBeenCalledTimes(4);

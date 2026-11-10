@@ -76,17 +76,27 @@ describe('内部的音源描述', () => {
         codes: {},
       },
     ]);
-    expect(playUrl).toEqual({ [A]: { url: `${SIP}${A}.audio`, error: false } });
+    expect(playUrl).toEqual({
+      [A]: {
+        url: `${SIP}${A}.audio`,
+        error: false,
+        source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+      },
+    });
   });
 
-  it('有链接却带着失败的结果码：内部记成不确定，对外照旧', async () => {
+  it('有链接却带着失败的结果码：内部和对外的 source 都记成不确定，链接照旧交出', async () => {
     const { resolve } = harness({
       UrlGetVkey: { sip: [SIP], midurlinfo: [granted(A, { result: 104003, subcode: 1 })] },
     });
     const { playUrl, sources } = await resolve(A);
     expect(sources[0]).toMatchObject({ kind: 'unknown', granted: true });
     expect(sources[0].codes).toEqual({ result: 104003, subcode: 1 });
-    expect(playUrl[A]).toEqual({ url: `${SIP}${A}.audio`, error: false });
+    expect(playUrl[A]).toEqual({
+      url: `${SIP}${A}.audio`,
+      error: false,
+      source: { kind: 'unknown', protocol: 'android-vkey', cdn: 'response-sip' },
+    });
   });
 
   it('试听：记成试听并带 media id，片段起止不填，详情里的 try_begin／try_end 不拿来用', async () => {
@@ -108,7 +118,12 @@ describe('内部的音源描述', () => {
     expect(sources[0]).not.toHaveProperty('previewStartMs');
     expect(sources[0]).not.toHaveProperty('previewEndMs');
     expect(sources[0]).not.toHaveProperty('playableDurationMs');
-    expect(playUrl[A]).toEqual({ url: `${SIP}${A}.audio`, error: false, preview: true });
+    expect(playUrl[A]).toEqual({
+      url: `${SIP}${A}.audio`,
+      error: false,
+      preview: true,
+      source: { kind: 'preview', protocol: 'preview-rs02', cdn: 'response-sip' },
+    });
   });
 
   it('没给链接：granted 是 false，没有地址，谈不上 CDN', async () => {

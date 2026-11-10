@@ -186,7 +186,15 @@ describe.each(['node', 'serverless'] as const)('negative HTTP baselines: %s', (r
           entries.map((item) => [
             item.songmid,
             item.purl
-              ? { url: `https://stream.invalid/${item.purl}`, error: false }
+              ? {
+                  url: `https://stream.invalid/${item.purl}`,
+                  error: false,
+                  source: {
+                    kind: item.result === 0 ? 'full' : 'unknown',
+                    protocol: 'android-vkey',
+                    cdn: 'response-sip',
+                  },
+                }
               : {
                   url: '',
                   error: '暂无播放链接',
@@ -194,6 +202,7 @@ describe.each(['node', 'serverless'] as const)('negative HTTP baselines: %s', (r
                     key: 'url_unavailable',
                     evidence: 'observed-response',
                   }),
+                  source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
                 },
           ]),
         ),
