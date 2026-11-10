@@ -1,0 +1,3998 @@
+{
+  "login/create-qr": [
+    {
+      "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+      "headers": {
+        "User-Agent": "QQMusic 14090008(android 10)"
+      },
+      "body": {
+        "comm": {
+          "ct": 23,
+          "cv": 0,
+          "v": 14090008,
+          "chid": "10003505",
+          "tmeAppID": "qqmusic",
+          "QIMEI": "fixture-qimei-16",
+          "QIMEI36": "fixture-qimei-36",
+          "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+          "udid": "8706c596ffc2ff760ed86675a4e09d95",
+          "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+          "aid": "cda497bd67127643",
+          "os_ver": "10",
+          "phonetype": "MI 6",
+          "devicelevel": "29",
+          "newdevicelevel": "29",
+          "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+          "uid": "fixture-session-uid",
+          "sid": "fixture-session-sid"
+        },
+        "req_0": {
+          "module": "music.login.LoginServer",
+          "method": "CreateQRCode",
+          "param": {
+            "tmeAppID": "qqmusic",
+            "ct": 11,
+            "cv": 14090008
+          }
+        }
+      }
+    }
+  ],
+  "login/exchange-app-qq-account": [
+    {
+      "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+      "headers": {
+        "User-Agent": "QQMusic 14090008(android 10)"
+      },
+      "body": {
+        "comm": {
+          "ct": 11,
+          "cv": 14090008,
+          "v": 14090008,
+          "chid": "10003505",
+          "tmeAppID": "qqmusic",
+          "QIMEI": "fixture-qimei-16",
+          "QIMEI36": "fixture-qimei-36",
+          "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+          "udid": "8706c596ffc2ff760ed86675a4e09d95",
+          "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+          "aid": "cda497bd67127643",
+          "os_ver": "10",
+          "phonetype": "MI 6",
+          "devicelevel": "29",
+          "newdevicelevel": "29",
+          "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+          "uid": "fixture-session-uid",
+          "sid": "fixture-session-sid",
+          "tmeLoginType": 6
+        },
+        "req_0": {
+          "module": "music.login.LoginServer",
+          "method": "Login",
+          "param": {
+            "musicid": 10000,
+            "qrCodeID": "fixture-qr-id",
+            "token": "fixture-qr-token"
+          }
+        }
+      }
+    }
+  ],
+  "login/exchange-app-wechat-account": [
+    {
+      "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+      "headers": {
+        "User-Agent": "QQMusic 14090008(android 10)",
+        "Content-Type": "application/json"
+      },
+      "body": "{\"comm\":{\"ct\":11,\"cv\":14090008,\"v\":14090008,\"chid\":\"10003505\",\"tmeAppID\":\"qqmusic\",\"QIMEI\":\"fixture-qimei-16\",\"QIMEI36\":\"fixture-qimei-36\",\"OpenUDID\":\"8706c596ffc2ff760ed86675a4e09d95\",\"udid\":\"8706c596ffc2ff760ed86675a4e09d95\",\"OpenUDID2\":\"8706c596ffc2ff760ed86675a4e09d95\",\"aid\":\"cda497bd67127643\",\"os_ver\":\"10\",\"phonetype\":\"MI 6\",\"devicelevel\":\"29\",\"newdevicelevel\":\"29\",\"rom\":\"xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys\",\"uid\":\"fixture-session-uid\",\"sid\":\"fixture-session-sid\",\"tmeLoginType\":6},\"req_0\":{\"module\":\"music.login.LoginServer\",\"method\":\"Login\",\"param\":{\"musicid\":1152921504606846999,\"qrCodeID\":\"fixture-qr-id\",\"token\":\"fixture-qr-token\"}}}"
+    }
+  ],
+  "login/exchange-mobile-qq": [
+    {
+      "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+      "headers": {
+        "User-Agent": "QQMusic 14090008(android 10)"
+      },
+      "body": {
+        "comm": {
+          "ct": 11,
+          "cv": 14090008,
+          "v": 14090008,
+          "chid": "10003505",
+          "tmeAppID": "qqmusic",
+          "QIMEI": "fixture-qimei-16",
+          "QIMEI36": "fixture-qimei-36",
+          "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+          "udid": "8706c596ffc2ff760ed86675a4e09d95",
+          "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+          "aid": "cda497bd67127643",
+          "os_ver": "10",
+          "phonetype": "MI 6",
+          "devicelevel": "29",
+          "newdevicelevel": "29",
+          "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+          "uid": "fixture-session-uid",
+          "sid": "fixture-session-sid",
+          "tmeLoginType": 6
+        },
+        "req_0": {
+          "module": "music.login.LoginServer",
+          "method": "Login",
+          "param": {
+            "musicid": 10000,
+            "qrCodeID": "fixture-qr-id",
+            "token": "fixture-qr-token"
+          }
+        }
+      }
+    }
+  ],
+  "login/exchange-wechat": [
+    {
+      "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+      "headers": {
+        "User-Agent": "QQMusic 14090008(android 10)"
+      },
+      "body": {
+        "comm": {
+          "ct": 11,
+          "cv": 14090008,
+          "v": 14090008,
+          "chid": "10003505",
+          "tmeAppID": "qqmusic",
+          "QIMEI": "fixture-qimei-16",
+          "QIMEI36": "fixture-qimei-36",
+          "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+          "udid": "8706c596ffc2ff760ed86675a4e09d95",
+          "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+          "aid": "cda497bd67127643",
+          "os_ver": "10",
+          "phonetype": "MI 6",
+          "devicelevel": "29",
+          "newdevicelevel": "29",
+          "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+          "uid": "fixture-session-uid",
+          "sid": "fixture-session-sid",
+          "tmeLoginType": 1
+        },
+        "req_0": {
+          "module": "music.login.LoginServer",
+          "method": "Login",
+          "param": {
+            "code": "fixture-wechat-code",
+            "strAppid": "wx48db31d50e334801"
+          }
+        }
+      }
+    }
+  ],
+  "login/get-session": [
+    {
+      "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+      "headers": {
+        "User-Agent": "QQMusic 14090008(android 10)"
+      },
+      "body": {
+        "comm": {
+          "ct": 11,
+          "cv": 14090008,
+          "v": 14090008,
+          "chid": "10003505",
+          "tmeAppID": "qqmusic",
+          "QIMEI": "fixture-qimei-16",
+          "QIMEI36": "fixture-qimei-36",
+          "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+          "udid": "8706c596ffc2ff760ed86675a4e09d95",
+          "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+          "aid": "cda497bd67127643",
+          "os_ver": "10",
+          "phonetype": "MI 6",
+          "devicelevel": "29",
+          "newdevicelevel": "29",
+          "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+          "uid": "fixture-session-uid",
+          "sid": "fixture-session-sid"
+        },
+        "req_0": {
+          "module": "music.getSession.session",
+          "method": "GetSession",
+          "param": {
+            "uid": "fixture-session-uid",
+            "vkey": 0,
+            "caller": 0
+          }
+        }
+      }
+    }
+  ],
+  "lyric/with-translation": {
+    "both": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg",
+          "query": {
+            "format": "json",
+            "outCharset": "utf-8",
+            "pcachetime": "1800000000000",
+            "songmid": "fixtureSongMidA1"
+          },
+          "headers": {
+            "host": "c.y.qq.com",
+            "referer": "https://c.y.qq.com/"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "tmeLoginType=-1",
+            "user-agent": "okhttp/3.14.9"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": "1003006",
+              "v": "1003006",
+              "tmeAppID": "qqmusiclight",
+              "nettype": "NETWORK_WIFI",
+              "udid": "0",
+              "uid": "0"
+            },
+            "req_0": {
+              "module": "music.musichallSong.PlayLyricInfo",
+              "method": "GetPlayLyricInfo",
+              "param": {
+                "songMID": "fixtureSongMidA1",
+                "songName": "",
+                "singerName": "",
+                "albumName": "",
+                "interval": 0,
+                "crypt": 0,
+                "ct": 19,
+                "cv": 2111,
+                "lrc_t": 0,
+                "qrc": 0,
+                "qrc_t": 0,
+                "roma": 0,
+                "roma_t": 0,
+                "trans": 1,
+                "trans_t": 0,
+                "type": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/128": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/320": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M800fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M800fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/anonymous": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "query": {
+            "format": "json",
+            "sign": "zzannc1o6o9b4i971602f3554385022046ab796512b7012"
+          },
+          "headers": {
+            "content-type": "application/x-www-form-urlencoded",
+            "host": "u.y.qq.com",
+            "referer": "https://y.qq.com/portal/player.html"
+          },
+          "json": {
+            "req_0": {
+              "module": "vkey.GetVkeyServer",
+              "method": "CgiGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "<process-guid>",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "0",
+                "loginflag": 1,
+                "platform": "20"
+              }
+            },
+            "loginUin": "0",
+            "comm": {
+              "uin": "0",
+              "format": "json",
+              "ct": 24,
+              "cv": 0
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 401,
+      "calls": []
+    }
+  },
+  "play/anonymous-preview": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "query": {
+            "format": "json"
+          },
+          "headers": {
+            "content-type": "application/x-www-form-urlencoded",
+            "host": "u.y.qq.com",
+            "referer": "https://y.qq.com/portal/player.html"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "query": {
+            "format": "json",
+            "sign": "zzannc1o6o9b4i971602f3554385022046ab796512b7012"
+          },
+          "headers": {
+            "content-type": "application/x-www-form-urlencoded",
+            "host": "u.y.qq.com",
+            "referer": "https://y.qq.com/portal/player.html"
+          },
+          "json": {
+            "req_0": {
+              "module": "vkey.GetVkeyServer",
+              "method": "CgiGetVkey",
+              "param": {
+                "filename": [
+                  "RS02FixtureMedia01.mp3"
+                ],
+                "guid": "<process-guid>",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "0",
+                "loginflag": 1,
+                "platform": "20"
+              }
+            },
+            "loginUin": "0",
+            "comm": {
+              "uin": "0",
+              "format": "json",
+              "ct": 24,
+              "cv": 0
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 401,
+      "calls": []
+    }
+  },
+  "play/ape": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "A000fixtureSongMidA1fixtureSongMidA1.ape"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "A000fixtureSongMidA1fixtureSongMidA1.ape"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/best-falls-to-320": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "F000fixtureSongMidA1fixtureSongMidA1.flac"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M800fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "F000fixtureSongMidA1fixtureSongMidA1.flac"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M800fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/flac-media-id": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "F000fixtureSongMidA1FixtureMedia01.flac"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "F000fixtureSongMidA1FixtureMedia01.flac"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/m4a-media-id": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "C400fixtureSongMidA1FixtureMedia01.m4a"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "C400fixtureSongMidA1FixtureMedia01.m4a"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/no-sip-dispatch": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://sjy6.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.audioCdnDispatch.cdnDispatch",
+              "method": "GetCdnDispatch",
+              "param": {
+                "guid": "00000000000040008000000000000001",
+                "uid": "0",
+                "use_new_domain": 1,
+                "use_ipv6": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://fixture.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://dl.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://sjy6.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.audioCdnDispatch.cdnDispatch",
+              "method": "GetCdnDispatch",
+              "param": {
+                "guid": "00000000000040008000000000000001",
+                "uid": "0",
+                "use_new_domain": 1,
+                "use_ipv6": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://fixture.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://dl.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        }
+      ]
+    }
+  },
+  "play/no-sip-every-probe-fails": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://sjy6.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.audioCdnDispatch.cdnDispatch",
+              "method": "GetCdnDispatch",
+              "param": {
+                "guid": "00000000000040008000000000000001",
+                "uid": "0",
+                "use_new_domain": 1,
+                "use_ipv6": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://fixture.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://dl.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://sjy6.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.audioCdnDispatch.cdnDispatch",
+              "method": "GetCdnDispatch",
+              "param": {
+                "guid": "00000000000040008000000000000001",
+                "uid": "0",
+                "use_new_domain": 1,
+                "use_ipv6": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://fixture.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://dl.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        }
+      ]
+    }
+  },
+  "play/no-sip-preferred-host": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://sjy6.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "url": "http://sjy6.stream.qqmusic.qq.com/fixtureSongMidA1.audio",
+          "headers": {
+            "range": "bytes=0-262143"
+          }
+        }
+      ]
+    }
+  },
+  "play/preview": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "RS02FixtureMedia01.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "RS02FixtureMedia01.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/retry-once": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.pf_song_detail_svr",
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/two-songs": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3",
+                  "M500fixtureSongMidB2fixtureSongMidB2.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1",
+                  "fixtureSongMidB2"
+                ],
+                "songtype": [
+                  0,
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3",
+                  "M500fixtureSongMidB2fixtureSongMidB2.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1",
+                  "fixtureSongMidB2"
+                ],
+                "songtype": [
+                  0,
+                  0
+                ],
+                "uin": "10000",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "play/wechat-account": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=1152921504606846999; qqmusic_uin=1152921504606846999; qm_keyst=fixture-private-wechat-key; qqmusic_key=fixture-private-wechat-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "1152921504606846999",
+              "authst": "fixture-private-wechat-key",
+              "tmeLoginType": 1
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "1152921504606846999",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=1152921504606846999; qqmusic_uin=1152921504606846999; qm_keyst=fixture-private-wechat-key; qqmusic_key=fixture-private-wechat-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "1152921504606846999",
+              "authst": "fixture-private-wechat-key",
+              "tmeLoginType": 1
+            },
+            "req_0": {
+              "module": "music.vkey.GetVkey",
+              "method": "UrlGetVkey",
+              "param": {
+                "filename": [
+                  "M500fixtureSongMidA1fixtureSongMidA1.mp3"
+                ],
+                "guid": "00000000000040008000000000000001",
+                "songmid": [
+                  "fixtureSongMidA1"
+                ],
+                "songtype": [
+                  0
+                ],
+                "uin": "1152921504606846999",
+                "ctx": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "search/anonymous-album": {
+    "both": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "tmeLoginType=-1",
+            "user-agent": "okhttp/3.14.9"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": "1003006",
+              "v": "1003006",
+              "tmeAppID": "qqmusiclight",
+              "nettype": "NETWORK_WIFI",
+              "udid": "0",
+              "uid": "0"
+            },
+            "req_0": {
+              "module": "music.search.SearchCgiService",
+              "method": "DoSearchForQQMusicLite",
+              "param": {
+                "search_id": "555555555555555555",
+                "remoteplace": "search.android.keyboard",
+                "query": "fixture",
+                "search_type": 2,
+                "num_per_page": 10,
+                "page_num": 1,
+                "highlight": 0,
+                "nqc_flag": 0,
+                "page_id": 1,
+                "grp": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "search/anonymous-song": {
+    "both": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "tmeLoginType=-1",
+            "user-agent": "okhttp/3.14.9"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": "1003006",
+              "v": "1003006",
+              "tmeAppID": "qqmusiclight",
+              "nettype": "NETWORK_WIFI",
+              "udid": "0",
+              "uid": "0"
+            },
+            "req_0": {
+              "module": "music.search.SearchCgiService",
+              "method": "DoSearchForQQMusicLite",
+              "param": {
+                "search_id": "555555555555555555",
+                "remoteplace": "search.android.keyboard",
+                "query": "fixture",
+                "search_type": 7,
+                "num_per_page": 10,
+                "page_num": 1,
+                "highlight": 0,
+                "nqc_flag": 0,
+                "page_id": 1,
+                "grp": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "search/session-song": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.search.SearchCgiService",
+              "method": "DoSearchForQQMusicLite",
+              "param": {
+                "search_id": "555555555555555555",
+                "remoteplace": "search.android.keyboard",
+                "query": "fixture",
+                "search_type": 0,
+                "num_per_page": 10,
+                "page_num": 1,
+                "highlight": 0,
+                "nqc_flag": 0,
+                "page_id": 1,
+                "grp": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.search.SearchCgiService",
+              "method": "DoSearchForQQMusicLite",
+              "param": {
+                "search_id": "555555555555555555",
+                "remoteplace": "search.android.keyboard",
+                "query": "fixture",
+                "search_type": 0,
+                "num_per_page": 10,
+                "page_num": 1,
+                "highlight": 0,
+                "nqc_flag": 0,
+                "page_id": 1,
+                "grp": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "search/users-session": {
+    "node": {
+      "status": 502,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.search.SearchCgiService",
+              "method": "DoSearchForQQMusicMobile",
+              "param": {
+                "searchid": "555555555555555555",
+                "query": "fixture",
+                "search_type": 8,
+                "num_per_page": 10,
+                "page_num": 1,
+                "highlight": false,
+                "grp": true,
+                "selectors": {},
+                "vec_selectors": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 502,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.search.SearchCgiService",
+              "method": "DoSearchForQQMusicMobile",
+              "param": {
+                "searchid": "555555555555555555",
+                "query": "fixture",
+                "search_type": 8,
+                "num_per_page": 10,
+                "page_num": 1,
+                "highlight": false,
+                "grp": true,
+                "selectors": {},
+                "vec_selectors": []
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "session/daily-songs": {
+    "node": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.srfDissInfo.aiDissInfo",
+              "method": "uniform_get_Dissinfo",
+              "param": {
+                "dirid": 202,
+                "optype": 3,
+                "tag": 1,
+                "userinfo": 0,
+                "pic_dpi": 300
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.srfDissInfo.aiDissInfo",
+              "method": "uniform_get_Dissinfo",
+              "param": {
+                "dirid": 202,
+                "optype": 3,
+                "tag": 1,
+                "userinfo": 0,
+                "pic_dpi": 300
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "session/guess-you-like": {
+    "node": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.radioProxy.MbTrackRadioSvr",
+              "method": "get_radio_track",
+              "param": {
+                "id": 99,
+                "firstplay": 1,
+                "num": 15
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.radioProxy.MbTrackRadioSvr",
+              "method": "get_radio_track",
+              "param": {
+                "id": 99,
+                "firstplay": 1,
+                "num": 15
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "session/mv-url": {
+    "node": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.stream.MvUrlProxy",
+              "method": "GetMvUrls",
+              "param": {
+                "vids": [
+                  "fixturevideo"
+                ],
+                "request_type": 10003,
+                "guid": "88888888888888888888888888888888"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.stream.MvUrlProxy",
+              "method": "GetMvUrls",
+              "param": {
+                "vids": [
+                  "fixturevideo"
+                ],
+                "request_type": 10003,
+                "guid": "88888888888888888888888888888888"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "session/preferences-page": {
+    "both": {
+      "status": 502,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://i.y.qq.com/n2/m/client/preferences_set_v2/index.html",
+          "headers": {
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 QQMusic/14.0"
+          }
+        }
+      ]
+    }
+  },
+  "session/recommend-playlists": {
+    "node": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.playlist.PlaylistSquare",
+              "method": "GetRecommendFeed",
+              "param": {
+                "From": 0,
+                "Size": 25
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.playlist.PlaylistSquare",
+              "method": "GetRecommendFeed",
+              "param": {
+                "From": 0,
+                "Size": 25
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "session/user-albums": {
+    "both": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://c.y.qq.com/fav/fcgi-bin/fcg_get_profile_order_asset.fcg",
+          "query": {
+            "cid": "205360956",
+            "ct": "20",
+            "ein": "19",
+            "format": "json",
+            "reqtype": "2",
+            "sin": "0",
+            "userid": "10000"
+          },
+          "headers": {
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "referer": "https://y.qq.com/"
+          }
+        }
+      ]
+    }
+  },
+  "session/user-detail": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.UserInfo.userInfoServer",
+              "method": "GetLoginUserInfo",
+              "param": {}
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.UserInfo.userInfoServer",
+              "method": "GetLoginUserInfo",
+              "param": {}
+            }
+          }
+        }
+      ]
+    }
+  },
+  "session/user-playlist": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.musicasset.PlaylistBaseRead",
+              "method": "GetPlaylistByUin",
+              "param": {
+                "uin": "10000"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "fixture-qimei-16",
+              "QIMEI36": "fixture-qimei-36",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "uid": "fixture-session-uid",
+              "sid": "fixture-session-sid",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.musicasset.PlaylistFavRead",
+              "method": "CgiGetPlaylistFavInfo",
+              "param": {
+                "uin": "fixture-private-encrypted-uin",
+                "offset": 0,
+                "size": 100
+              }
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.musicasset.PlaylistBaseRead",
+              "method": "GetPlaylistByUin",
+              "param": {
+                "uin": "10000"
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json",
+            "cookie": "uin=10000; qqmusic_uin=10000; qm_keyst=fixture-private-music-key; qqmusic_key=fixture-private-music-key",
+            "user-agent": "QQMusic 14090008(android 10)"
+          },
+          "json": {
+            "comm": {
+              "ct": 11,
+              "cv": 14090008,
+              "v": 14090008,
+              "chid": "10003505",
+              "tmeAppID": "qqmusic",
+              "QIMEI": "",
+              "QIMEI36": "",
+              "OpenUDID": "8706c596ffc2ff760ed86675a4e09d95",
+              "udid": "8706c596ffc2ff760ed86675a4e09d95",
+              "OpenUDID2": "8706c596ffc2ff760ed86675a4e09d95",
+              "aid": "cda497bd67127643",
+              "os_ver": "10",
+              "phonetype": "MI 6",
+              "devicelevel": "29",
+              "newdevicelevel": "29",
+              "rom": "xiaomi/iarim/sagit:10/eomam.200122.001/2429015:user/release-keys",
+              "qq": "10000",
+              "authst": "fixture-private-music-key",
+              "tmeLoginType": 2
+            },
+            "req_0": {
+              "module": "music.musicasset.PlaylistFavRead",
+              "method": "CgiGetPlaylistFavInfo",
+              "param": {
+                "uin": "fixture-private-encrypted-uin",
+                "offset": 0,
+                "size": 100
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "session/wechat-user-albums": {
+    "both": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://c.y.qq.com/fav/fcgi-bin/fcg_get_profile_order_asset.fcg",
+          "query": {
+            "cid": "205360956",
+            "ct": "20",
+            "ein": "19",
+            "format": "json",
+            "reqtype": "2",
+            "sin": "0",
+            "userid": "1152921504606846999"
+          },
+          "headers": {
+            "cookie": "uin=1152921504606846999; qqmusic_uin=1152921504606846999; qm_keyst=fixture-private-wechat-key; qqmusic_key=fixture-private-wechat-key",
+            "referer": "https://y.qq.com/"
+          }
+        }
+      ]
+    }
+  },
+  "web/comment-list": {
+    "both": {
+      "status": 502,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://c.y.qq.com/base/fcgi-bin/fcg_global_comment_h5.fcg",
+          "query": {
+            "biztype": "1",
+            "cid": "205360772",
+            "cmd": "8",
+            "ct": "24",
+            "cv": "10101010",
+            "domain": "qq.com",
+            "format": "json",
+            "lasthotcommentid": "",
+            "needmusiccrit": "0",
+            "outCharset": "utf-8",
+            "pagenum": "0",
+            "pagesize": "25",
+            "reqtype": "2",
+            "topid": "90001"
+          },
+          "headers": {
+            "referer": "https://y.qq.com/"
+          }
+        }
+      ]
+    }
+  },
+  "web/mv-url": {
+    "both": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0
+            },
+            "req_0": {
+              "module": "music.stream.MvUrlProxy",
+              "method": "GetMvUrls",
+              "param": {
+                "vids": [
+                  "fixturevideo"
+                ],
+                "request_type": 10003,
+                "guid": "88888888888888888888888888888888"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "web/radio-categories": {
+    "both": {
+      "status": 502,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0,
+              "uin": 0
+            },
+            "req_0": {
+              "module": "pf.radiosvr",
+              "method": "GetRadiolist",
+              "param": {
+                "uin": "0"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "web/recommend-playlists": {
+    "both": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0
+            },
+            "req_0": {
+              "module": "music.playlist.PlaylistSquare",
+              "method": "GetRecommendFeed",
+              "param": {
+                "From": 0,
+                "Size": 25
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "web/singer-hotsong": {
+    "both": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "query": {
+            "format": "json",
+            "singermid": "fixtureSinger01"
+          },
+          "headers": {
+            "content-type": "application/x-www-form-urlencoded",
+            "host": "u.y.qq.com",
+            "referer": "https://y.qq.com/portal/player.html"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0
+            },
+            "singer": {
+              "method": "get_singer_detail_info",
+              "param": {
+                "sort": 5,
+                "singermid": "fixtureSinger01",
+                "sin": -5,
+                "num": 5
+              },
+              "module": "music.web_singer_info_svr"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "web/song-fav-count": {
+    "both": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0,
+              "uin": 0
+            },
+            "req_0": {
+              "module": "music.musicasset.SongFavRead",
+              "method": "GetSongFansNumberById",
+              "param": {
+                "v_songId": [
+                  90001
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "web/song-info": {
+    "node": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "query": {
+            "format": "json",
+            "g_tk": "1124214810",
+            "hostUin": "0",
+            "inCharset": "utf8",
+            "loginUin": "0",
+            "needNewCode": "0",
+            "notice": "0",
+            "outCharset": "utf-8",
+            "platform": "yqq.json"
+          },
+          "headers": {
+            "content-type": "application/x-www-form-urlencoded",
+            "host": "u.y.qq.com",
+            "referer": "https://y.qq.com/portal/player.html"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0
+            },
+            "songinfo": {
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1",
+                "song_id": ""
+              },
+              "module": "music.pf_song_detail_svr"
+            }
+          }
+        }
+      ]
+    },
+    "serverless": {
+      "status": 200,
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "query": {
+            "format": "json"
+          },
+          "headers": {
+            "content-type": "application/x-www-form-urlencoded",
+            "host": "u.y.qq.com",
+            "referer": "https://y.qq.com/portal/player.html"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0
+            },
+            "songinfo": {
+              "method": "get_song_detail_yqq",
+              "param": {
+                "song_type": 0,
+                "song_mid": "fixtureSongMidA1",
+                "song_id": ""
+              },
+              "module": "music.pf_song_detail_svr"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "web/song-versions": {
+    "both": {
+      "status": 422,
+      "calls": [
+        {
+          "method": "POST",
+          "url": "https://u.y.qq.com/cgi-bin/musicu.fcg",
+          "headers": {
+            "content-type": "application/json"
+          },
+          "json": {
+            "comm": {
+              "ct": 24,
+              "cv": 0,
+              "uin": 0
+            },
+            "req_0": {
+              "module": "music.musichallSong.OtherVersionServer",
+              "method": "GetOtherVersionSongs",
+              "param": {
+                "songid": 90001
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
