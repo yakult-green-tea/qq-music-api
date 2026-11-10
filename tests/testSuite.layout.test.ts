@@ -22,7 +22,7 @@ const FOLIA_ROUTE_TESTS = [
 ];
 
 /**
- * Folia 会调用的路由（folia-major `26c57f9b` 的 qqTransport.ts，41 条），每条对应 test:contracts 里
+ * Folia 会调用的路由（folia-major `950e0209` 的 qqTransport.ts，51 条），每条对应 test:contracts 里
  * 守着它回包形状的测试。Folia 加了新路由，就在这里加一行，并把测试放进 test:contracts。
  * 值是 [测试文件, 文件里要出现的路径写法]；路径是拼出来的才另写。
  */
@@ -45,6 +45,7 @@ const FOLIA_ROUTE_CONTRACTS: Record<string, [string, string?]> = {
   '/radio/tracks': ['tests/radio.routes.test.ts'],
   '/recommend/categories': ['tests/recommend-catalog.routes.test.ts'],
   '/recommend/category-playlists': ['tests/recommend-catalog.routes.test.ts'],
+  '/recommend/feed': ['tests/recommend-feed.routes.test.ts'],
   '/recommend/new-albums': ['tests/recommend-new-albums.routes.test.ts'],
   '/recommend/new-songs': ['tests/recommend-catalog.routes.test.ts'],
   '/recommend/playlists': ['tests/folia.http-contracts.test.ts'],
@@ -55,16 +56,27 @@ const FOLIA_ROUTE_CONTRACTS: Record<string, [string, string?]> = {
   '/song/similar': ['tests/song-relations.routes.test.ts'],
   '/user/album/subscribe': ['tests/album.subscribe.routes.test.ts'],
   '/user/albums': ['tests/folia.http-contracts.test.ts'],
+  '/user/blacklist/add': ['tests/blacklist.write.routes.test.ts'],
   '/user/cloud': ['tests/user-cloud.routes.test.ts'],
   '/user/daily-songs': ['tests/daily-songs.routes.test.ts'],
+  '/user/daily-songs/history': ['tests/daily-history.routes.test.ts'],
+  '/user/daily-songs/history/dates': ['tests/daily-history.routes.test.ts'],
   '/user/detail': ['tests/folia.http-contracts.test.ts'],
   '/user/guess-you-like': ['tests/recommend.routes.test.ts'],
+  '/user/guess-you-like/modes': ['tests/guess-you-like.modes.routes.test.ts'],
+  '/user/guess-you-like/tracks': ['tests/guess-you-like.mode-tracks.routes.test.ts'],
   '/user/liked-songs': ['tests/folia.http-contracts.test.ts'],
+  '/user/listening-rank': ['tests/user.listening-rank.routes.test.ts'],
+  '/user/personal-fm': ['tests/recommend-radar.routes.test.ts'],
   '/user/playlist': ['tests/folia.http-contracts.test.ts'],
   '/user/playlist-detail': ['tests/folia.http-contracts.test.ts'],
   '/user/playlist/create': ['tests/playlist.management.routes.test.ts', '/user/playlist/${'],
   '/user/playlist/subscribe': ['tests/subscriptions.routes.test.ts'],
   '/user/playlist/tracks': ['tests/playlist.track-writes.routes.test.ts'],
+  '/user/recommendation-preferences': ['tests/recommendation.preferences.routes.test.ts'],
+  '/user/recommendation-preferences/update': [
+    'tests/recommendation.preferences.write.routes.test.ts',
+  ],
   '/user/song/like': ['tests/song.like.routes.test.ts'],
   '/user/subscription-status': ['tests/subscriptions.routes.test.ts'],
   '/user/vip': ['tests/user.vip.routes.test.ts'],
@@ -137,7 +149,7 @@ describe('default test suite layout', () => {
 
   it('Folia 用到的每条路由都有 test:contracts 里的测试守着', () => {
     const contracts = packageScripts()['test:contracts'].split(' ');
-    expect(Object.keys(FOLIA_ROUTE_CONTRACTS)).toHaveLength(41);
+    expect(Object.keys(FOLIA_ROUTE_CONTRACTS)).toHaveLength(51);
     for (const [route, [file, needle = route]] of Object.entries(FOLIA_ROUTE_CONTRACTS)) {
       expect({ route, inContracts: contracts.includes(file) }).toEqual({
         route,
