@@ -1,3 +1,4 @@
+import { androidUserAgent } from '../../protocol/clientProfiles';
 import { logger } from '../../util/logger';
 import type { UpstreamPhase } from '../../util/safeError';
 import { type Dictionary, dictionaryOf, identifierOf, numberOf } from '../../util/values';
@@ -89,6 +90,18 @@ export const serializeWithExactIntegers = (value: unknown): string =>
     entry instanceof ExactInteger ? `${EXACT_MARK}${entry.digits}` : entry,
   ).replace(/"\\u0000exact:(\d+)"/g, '$1');
 
+/**
+ * 安卓客户端请求的标头：User-Agent 跟着设备的系统版本，带凭证时再加账号 Cookie。
+ * 登录服务和新路由的上游客户端都用这一份。
+ */
+export const androidRequestHeaders = (
+  device: AndroidDevice,
+  credential?: QqCredential,
+): Record<string, string> => ({
+  'User-Agent': androidUserAgent(device.osRelease),
+  ...(credential ? { Cookie: credentialCookieHeader(credential) } : {}),
+});
+
 export const callMusicu = async (
   http: AuthHttpClient,
   device: AndroidDevice,
@@ -111,7 +124,7 @@ export const callMusicu = async (
     exact ? serializeWithExactIntegers(request) : request,
     {
       headers: {
-        'User-Agent': `QQMusic 14090008(android ${device.osRelease})`,
+        'User-Agent': androidUserAgent(device.osRelease),
         ...(exact ? { 'Content-Type': 'application/json' } : {}),
         ...(credentialCookies ? { Cookie: credentialCookies } : {}),
       },

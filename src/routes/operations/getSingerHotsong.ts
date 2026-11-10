@@ -1,3 +1,4 @@
+import { WEB_ANONYMOUS_COMM } from '../../protocol/clientProfiles';
 import u_common from '../../services/u_common';
 import type { OperationHandler } from './types';
 
@@ -22,7 +23,7 @@ export const getSingerHotsong: OperationHandler = async ({ runtime, queryRaw }) 
         format: 'json',
         singermid,
         data: JSON.stringify({
-          comm: { ct: 24, cv: 0 },
+          comm: WEB_ANONYMOUS_COMM,
           singer: {
             method: 'get_singer_detail_info',
             param: { sort: 5, singermid, sin: (page - 1) * num, num },

@@ -1,3 +1,4 @@
+import { ANDROID_CLIENT } from '../../protocol/clientProfiles';
 import {
   type Dictionary,
   dictionaryOf,
@@ -121,7 +122,7 @@ export const buildConnectPacket = (clientId: string, qrcodeId: string): Buffer =
   const keepAlive = Buffer.allocUnsafe(2);
   keepAlive.writeUInt16BE(45);
   const properties = encodeProperties('pass', [
-    ['tmeAppID', 'qqmusic'],
+    ['tmeAppID', ANDROID_CLIENT.appId],
     ['business', 'management'],
     ['hashTag', qrcodeId],
     ['clientTag', 'management.user'],

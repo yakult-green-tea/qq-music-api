@@ -1,5 +1,11 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
 import {
+  fullFilenameOf,
+  PLAYBACK_FILE_TYPES,
+  playbackFileTypeOf,
+  previewFilenameOf,
+} from '../../protocol/playbackFiles';
+import {
   canLookupPlaybackHint,
   PLAYBACK_HINT_RULES,
   playbackHintOf,
@@ -51,13 +57,8 @@ export const isPreferredStreamDomain = (value: string): boolean => {
   }
 };
 
-export const MUSIC_FILE_TYPES = {
-  m4a: { prefix: 'C400', extension: '.m4a' },
-  128: { prefix: 'M500', extension: '.mp3' },
-  320: { prefix: 'M800', extension: '.mp3' },
-  ape: { prefix: 'A000', extension: '.ape' },
-  flac: { prefix: 'F000', extension: '.flac' },
-} as const;
+/** 文件名规则放在 protocol/playbackFiles；这个名字留给原来的引用。 */
+export const MUSIC_FILE_TYPES = PLAYBACK_FILE_TYPES;
 
 /** One request rarely carries more than a few songs; past this many, failures get the default hint. */
 export const MAX_PLAYBACK_HINT_LOOKUPS = 10;
@@ -89,11 +90,7 @@ const songDetailOf = async (
   }
 };
 
-/**
- * The preview file the official web player asks for when a song only plays as a preview: a single
- * 14-character media id segment, unlike the two-segment full-quality names. Never the songmid.
- */
-export const previewFilenameOf = (mediaId: string): string => `RS02${mediaId}.mp3`;
+export { previewFilenameOf };
 
 /**
  * 试听：每首先查一次单曲详情（并行，最多 `MAX_PLAYBACK_HINT_LOOKUPS` 首，后面的当作查不到），
@@ -230,7 +227,7 @@ export const getAuthenticatedPlayUrls = async (
   }
   if (!songmidList.length && (previewMediaIds || String(quality) === 'ape')) return skipped;
   const qualityKey = String(quality) as keyof typeof MUSIC_FILE_TYPES;
-  const fileType = MUSIC_FILE_TYPES[qualityKey] ?? MUSIC_FILE_TYPES[128];
+  const fileType = playbackFileTypeOf(quality);
   // `globalThis.crypto` is the Web Crypto API global: identical on Node ≥20, Electron, Cloudflare
   // Workers and the Vercel Edge Runtime, unlike `node:crypto`, which the last of those refuses to
   // deploy a bundle importing at all.
@@ -243,12 +240,10 @@ export const getAuthenticatedPlayUrls = async (
     'music.vkey.GetVkey',
     'UrlGetVkey',
     {
-      // filename 一律是两段识别值：`prefix + songmid + media_mid + extension`。media_mid 缺席时
-      // 用 songmid 补上第二段；只送一段的文件名在 vkey server 仍会拿到 purl，但 CDN 端会 403。
       filename: songmidList.map((mid) =>
         previewMediaIds
           ? previewFilenameOf(previewMediaIds.get(mid) as string)
-          : `${fileType.prefix}${mid}${normalizedMediaId || mid}${fileType.extension}`,
+          : fullFilenameOf(fileType, mid, normalizedMediaId),
       ),
       guid,
       songmid: songmidList,
@@ -404,9 +399,7 @@ export const getAuthenticatedPlayUrls = async (
         'music.vkey.GetVkey',
         'UrlGetVkey',
         {
-          filename: retryList.map(
-            (mid) => `${fileType.prefix}${mid}${normalizedMediaId || mid}${fileType.extension}`,
-          ),
+          filename: retryList.map((mid) => fullFilenameOf(fileType, mid, normalizedMediaId)),
           guid,
           songmid: retryList,
           songtype: retryList.map(() => 0),

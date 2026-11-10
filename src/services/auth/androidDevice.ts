@@ -1,3 +1,4 @@
+import { ANDROID_CLIENT } from '../../protocol/clientProfiles';
 import { type Dictionary, identifierOf } from '../../util/values';
 import { Buffer } from './bytes';
 
@@ -30,7 +31,7 @@ export const QIMEI_URL = 'https://api.tencentmusic.com/tme/trpc/proxy';
 // Public Android client protocol constants, not user credentials.
 const QIMEI_SECRET = 'ZdJqM15EeO2zWc08';
 const QIMEI_APP_KEY = '0AND0HD6FE4HY80F';
-export const CHANNEL_ID = '10003505';
+export const CHANNEL_ID = ANDROID_CLIENT.channelId;
 const PACKAGE_ID = 'com.tencent.qqmusic';
 
 export interface AndroidDevice {
@@ -288,7 +289,7 @@ const buildQimeiPayload = (device: AndroidDevice, now = new Date()): Dictionary 
     androidId: device.androidId,
     platformId: 1,
     appKey: QIMEI_APP_KEY,
-    appVersion: '14.9.0.8',
+    appVersion: ANDROID_CLIENT.versionName,
     beaconIdSrc: randomBeaconId(now),
     brand: device.brand,
     channelId: CHANNEL_ID,
@@ -479,11 +480,11 @@ export const buildAndroidComm = (
   credential?: AndroidCommCredential,
   overrides: Dictionary = {},
 ): Dictionary => ({
-  ct: 11,
-  cv: 14090008,
-  v: 14090008,
+  ct: ANDROID_CLIENT.ct,
+  cv: ANDROID_CLIENT.version,
+  v: ANDROID_CLIENT.version,
   chid: CHANNEL_ID,
-  tmeAppID: 'qqmusic',
+  tmeAppID: ANDROID_CLIENT.appId,
   QIMEI: device.qimei ?? '',
   QIMEI36: device.qimei36 ?? '',
   OpenUDID: device.openUdid,

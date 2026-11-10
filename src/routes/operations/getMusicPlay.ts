@@ -1,4 +1,11 @@
+import { WEB_ANONYMOUS_COMM } from '../../protocol/clientProfiles';
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
+import {
+  fullFilenameOf,
+  PLAYBACK_FILE_TYPES,
+  playbackFileTypeOf,
+  previewFilenameOf,
+} from '../../protocol/playbackFiles';
 import {
   type PlaybackHint,
   playbackHintOf,
@@ -15,7 +22,6 @@ import {
   validMediaIdOf,
 } from '../../protocol/previewFile';
 import { apeFileFailureOf, qualityFileRestriction } from '../../protocol/qualityFile';
-import { previewFilenameOf } from '../../services/auth/playback';
 import UCommon from '../../services/UCommon/UCommon';
 import { logger } from '../../util/logger';
 import type { OperationHandler } from './types';
@@ -25,13 +31,6 @@ interface AnonymousPlaybackDefaults {
   guid: string;
 }
 
-const fileType = {
-  m4a: { s: 'C400', e: '.m4a' },
-  128: { s: 'M500', e: '.mp3' },
-  320: { s: 'M800', e: '.mp3' },
-  ape: { s: 'A000', e: '.ape' },
-  flac: { s: 'F000', e: '.flac' },
-};
 interface AnonymousPlayEntry {
   url: string;
   error: string | boolean;
@@ -50,7 +49,7 @@ const anonymousSongDetail = async (songmid: string): Promise<unknown> => {
       params: {
         format: 'json',
         data: JSON.stringify({
-          comm: { ct: 24, cv: 0 },
+          comm: WEB_ANONYMOUS_COMM,
           req_0: {
             module: 'music.pf_song_detail_svr',
             method: 'get_song_detail_yqq',
@@ -153,11 +152,11 @@ export const createGetMusicPlay =
     // 文件守门全部挡下时不打取链接请求，回应只有 playUrl。
     if ((preview || quality === 'ape') && !songmidList.length)
       return { status: 200, headers: {}, body: { data: { playUrl: skipped } } };
-    const fileInfo = fileType[quality as keyof typeof fileType] ?? fileType[128];
+    const fileInfo = playbackFileTypeOf(quality);
     const file = songmidList.map((mid) =>
       preview
         ? previewFilenameOf(previewMediaIds.get(mid) as string)
-        : `${fileInfo.s}${mid}${mediaId || mid}${fileInfo.e}`,
+        : fullFilenameOf(fileInfo, mid, mediaId),
     );
     const data = {
       req_0: {
@@ -174,7 +173,7 @@ export const createGetMusicPlay =
         },
       },
       loginUin: uin,
-      comm: { uin, format: 'json', ct: 24, cv: 0 },
+      comm: { uin, format: 'json', ...WEB_ANONYMOUS_COMM },
     };
     const res = await UCommon({
       method: 'get',
@@ -198,7 +197,7 @@ export const createGetMusicPlay =
     const playUrl: Record<string, AnonymousPlayEntry> = {};
     const loggedQuality = preview
       ? 'preview'
-      : fileInfo === fileType[128]
+      : fileInfo === PLAYBACK_FILE_TYPES[128]
         ? '128'
         : String(quality);
     (midurlinfo === undefined ? [] : midurlinfo).forEach(
