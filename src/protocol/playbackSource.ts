@@ -8,7 +8,7 @@
 import type { ClientProfileId } from './clientProfiles';
 import type { EvidenceLevel } from './evidence';
 import type { PlaybackEntryCodes } from './playbackDiagnostics';
-import type { PlaybackCodec, PlaybackFileInfo } from './playbackFiles';
+import type { EncryptedPlaybackQuality, PlaybackCodec, PlaybackFileInfo } from './playbackFiles';
 import type { PlaybackQuality } from './playbackRestriction';
 
 /** 取播放链接的几种办法。 */
@@ -21,7 +21,7 @@ export type PlaybackProtocolId =
   | 'web-anonymous-vkey'
   /** 用取加密文件的接口要未加密文件。只登记：实测在两个海外出口都没有比现行做法多拿到歌。 */
   | 'evkey-plain'
-  /** 官方手机客户端取加密文件用的接口。还没有实现，也不解密。 */
+  /** 调用方明确要加密文件时才用。 */
   | 'encrypted-evkey';
 
 export type PlaybackProfileId = ClientProfileId;
@@ -33,7 +33,7 @@ export interface PlaybackProtocolInfo {
   requiresSession: boolean;
   /** 要的是未加密文件、试听文件，还是要另外解密才能播的文件。 */
   files: 'plain' | 'preview' | 'encrypted';
-  qualities: readonly (PlaybackQuality | 'preview')[];
+  qualities: readonly (PlaybackQuality | EncryptedPlaybackQuality | 'preview')[];
   /** 这条路能不能拿到可播的链接，目前的证据到哪一级。 */
   evidence: EvidenceLevel;
   implemented: boolean;
@@ -100,13 +100,11 @@ export const PLAYBACK_PROTOCOLS: Readonly<Record<PlaybackProtocolId, PlaybackPro
     profile: 'android',
     requiresSession: true,
     files: 'encrypted',
-    qualities: [],
-    evidence: 'protocol-reference',
-    implemented: false,
+    qualities: ['96', '192', 'flac'],
+    evidence: 'verified-controlled',
+    implemented: true,
     usedByDefault: false,
-    notes:
-      '官方手机客户端用它取加密文件和解密用的密钥，本项目没有实现，也不解密。' +
-      '用同一个接口要未加密文件的情况见 evkey-plain。',
+    notes: '只在独立的加密取链接接口使用。返回加密文件链接和对应字段，不解密。',
   },
 };
 
@@ -161,9 +159,9 @@ export interface PlaybackSource {
   /** 调用方要的音质，原样记下（可能是 best）。 */
   requestedQuality: string;
   /** 这次实际要的是哪一种文件；没取到链接也照记。 */
-  attemptedQuality: PlaybackQuality | 'preview';
+  attemptedQuality: PlaybackQuality | EncryptedPlaybackQuality | 'preview';
   /** 上游给的文件名是哪一种音质；认不出就不填，不拿要的音质顶上。 */
-  deliveredQuality?: PlaybackFileInfo['quality'];
+  deliveredQuality?: PlaybackFileInfo['quality'] | EncryptedPlaybackQuality;
   /** 文件格式，从上游给的文件名推出来的；认不出不填。 */
   codec?: PlaybackCodec;
   /** 有没有加密，同样从文件名推；认不出不填。 */
@@ -230,7 +228,7 @@ export interface PublicPlaybackSource {
   kind: PlaybackSourceKind;
   protocol: PlaybackProtocolId;
   cdn: PlaybackCdnStatus;
-  quality?: PlaybackFileInfo['quality'];
+  quality?: PlaybackSource['deliveredQuality'];
   codec?: PlaybackCodec;
   trial?: { durationMs: number };
 }

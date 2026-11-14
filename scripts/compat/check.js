@@ -88,7 +88,13 @@ const SAMPLES = {
   cid: '205360772', order: 'time', sex: '-100', genre: '-100', index: '-100', isFormat: 'true',
   trans: '1', favoriteOffset: '0', playCount: '1', version: '1', quality: 'best', preview: '1',
 };
-const sampleOf = (field) => SAMPLES[field.key] ?? String(field.defaultValue ?? 'fixture');
+const sampleOf = (field, endpoint) => {
+  if (endpoint.path === '/getEncryptedMusicPlay') {
+    if (field.key === 'songmid') return '0123456789abcd';
+    if (field.key === 'quality') return '192';
+  }
+  return SAMPLES[field.key] ?? String(field.defaultValue ?? 'fixture');
+};
 
 const only = option('--only');
 // 扫码登录要开 MQTT 长连接或依赖二维码状态，由 tests/folia.http-contracts 等测试覆盖，这里不跑。
@@ -102,7 +108,7 @@ const ordered = [...endpoints.values()]
   .sort((a, b) => last(a) - last(b));
 for (const endpoint of ordered) {
   const fields = endpoint.queryParams ?? [];
-  const sampleQuery = new URLSearchParams(fields.map((field) => [field.key, sampleOf(field)]));
+  const sampleQuery = new URLSearchParams(fields.map((field) => [field.key, sampleOf(field, endpoint)]));
   const duplicated = new URLSearchParams(sampleQuery);
   if (fields[0]) duplicated.append(fields[0].key, 'fixture-duplicate');
   const variants = [
@@ -114,7 +120,7 @@ for (const endpoint of ordered) {
   for (const runtime of ['node', 'serverless']) {
     const paths = [endpoint.path];
     if (runtime === 'node' && pathParams.length)
-      paths.push(`${endpoint.path}/${pathParams.map((field) => encodeURIComponent(sampleOf(field))).join('/')}`);
+      paths.push(`${endpoint.path}/${pathParams.map((field) => encodeURIComponent(sampleOf(field, endpoint))).join('/')}`);
     for (const target of paths)
       for (const session of [false, true]) {
         for (const variant of variants)
@@ -198,6 +204,11 @@ const approvalOf = (testCase, before, after) =>
       (!entry.runtime || entry.runtime === testCase.runtime) &&
       (entry.session === undefined || entry.session === testCase.session) &&
       (!entry.difference || (entry.difference === 'play-source-field' && onlyPlaySourceAdded(before, after)) ||
+        (entry.difference === 'encrypted-playback-added' &&
+          testCase.path === entry.path && testCase.method === 'GET' &&
+          before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
+          before.upstream.length === 0 &&
+          (testCase.session ? [200, 400, 502].includes(after?.status) : after?.status === 401)) ||
         (entry.difference === 'toplist-group-zero' &&
         testCase.path === '/recommend/toplists' && testCase.scenario === 'ok' &&
         JSON.stringify(after?.body?.groups?.[0]) === JSON.stringify({ id: 0, name: 'Fixture zero', toplists: [{ id: 4, preview: [], title: 'Fixture zero chart' }] }) &&

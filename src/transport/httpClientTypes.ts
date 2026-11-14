@@ -14,6 +14,8 @@ export interface HttpRequestConfig {
   /** 不给就当 JSON 读；解析不了时交出原文。 */
   responseType?: 'json' | 'text' | 'arraybuffer';
   signal?: AbortSignal;
+  /** 不跟随转址，用于整次请求有明确调用上限的操作。 */
+  followRedirects?: false;
   /** 只有 Node 的 axios 实现会读；fetch 实现用自己的时限。 */
   timeout?: number;
   /** 只有 Node 的 axios 实现会用（探测播放 CDN 时限制读多少字节）；fetch 实现不读。 */

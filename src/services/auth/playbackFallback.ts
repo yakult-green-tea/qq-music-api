@@ -1,3 +1,4 @@
+import { QqApiError } from '../../protocol/errors';
 import type { PlaybackEntryCodes } from '../../protocol/playbackDiagnostics';
 import type { PlaybackProtocolId } from '../../protocol/playbackSource';
 import type { AuthHttpClient } from '../../transport/httpClientTypes';
@@ -128,6 +129,39 @@ export const countingHttpOf = (
     return http.post(url, data, config);
   },
 });
+
+/** 显式加密取链接共用这些限额，超时会终止正在发送的请求。 */
+export const withBoundedPlaybackHttp = async <T>(
+  http: AuthHttpClient,
+  operation: (boundedHttp: AuthHttpClient) => Promise<T>,
+  limits = DEFAULT_PLAYBACK_FALLBACK_LIMITS,
+): Promise<T> => {
+  const budget = new PlaybackRequestBudget(limits, Date.now);
+  const abort = new AbortController();
+  const timeoutError = () => new QqApiError('network', { errorKey: 'network.timeout' });
+  const beforeRequest = () => {
+    if (abort.signal.aborted || budget.remainingMs() <= 0) throw timeoutError();
+    if (!budget.hasRequests()) throw new QqApiError('rate-limited');
+    budget.count();
+    return { signal: abort.signal, followRedirects: false as const };
+  };
+  const bounded: AuthHttpClient = {
+    getCookieHeader: () => http.getCookieHeader(),
+    request: (config) => http.request({ ...config, ...beforeRequest() }),
+    post: (url, data, config) => http.post(url, data, { ...config, ...beforeRequest() }),
+  };
+  const timer = setTimeout(() => abort.abort(), limits.timeoutMs);
+  try {
+    const result = await withinPlaybackDeadline(operation(bounded), budget.remainingMs());
+    if (isPlaybackDeadlineMiss(result) || abort.signal.aborted) throw timeoutError();
+    return result;
+  } catch (error) {
+    if (abort.signal.aborted) throw timeoutError();
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+};
 
 const TIMED_OUT = Symbol('timed-out');
 

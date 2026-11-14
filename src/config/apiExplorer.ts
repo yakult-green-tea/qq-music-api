@@ -805,6 +805,19 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Get playable music URL by song MID; an opaque QR session enables authenticated playback. A missing URL adds restriction (still url_unavailable) and a plain English hint. Authenticated m4a/128 failures may query up to 10 song details: only complete matching features suggest region or membership; unknown features stay unconfirmed. QQ_PLAYBACK_HINTS_ENABLED=0 disables these hints and lookups. WeChat matching features are supported but not yet verified with controlled live tests. ape checks size_ape first (up to 10 songs); no file and failed checks have different hints and optional restriction.failureReason, and neither asks for a URL. preview=1 takes priority, asking for a preview only when size_try is above 0 and a media id is known, marking successful entries preview: true. With a session, a readable detail whose size_try is exactly 0 gets playback.preview-missing (no preview file); other skipped previews get playback.preview-unavailable. quality=best tries flac, then 320, then 128, skipping levels whose size_flac/size_320mp3 is not above 0 (up to 10 detail lookups), and adds quality to each entry with the level actually used; without a readable detail, past the lookup limit, or without a session it asks for 128 directly. With a session, it retries once, in one batched request, the m4a/128 songs (including the last best level) whose final hint is playback.reason-unconfirmed; if the retry still fails or errors, the first result is returned. With a session, every entry the upstream was asked for also carries an optional source: kind (full, preview, or unknown when a URL came with a failing result code), protocol, and cdn (response-sip, probed, unverified-default, or none). Songs missing from the upstream answer get an empty URL with playback.reason-unconfirmed and are not retried; entries for songs that were not requested are dropped.',
   },
+  getEncryptedMusicPlay: {
+    description:
+      'Get an encrypted file link for one song. Requires a session. Supports 96, 192 (default), and flac. Does not support previews or quality fallback. The link and ekey do not establish that a third-party player can play the file.',
+    queryParams: [
+      { key: 'songmid', label: 'Song MID', required: true, placeholder: '0016l2F430zMux' },
+      {
+        key: 'quality',
+        label: 'Quality',
+        defaultValue: '192',
+        description: '96, 192, or flac.',
+      },
+    ],
+  },
   getAlbumInfo: {
     id: 'get-album-info',
     description: 'Get album detail by album MID.',

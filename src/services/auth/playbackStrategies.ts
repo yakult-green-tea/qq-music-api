@@ -1,4 +1,6 @@
 import {
+  ENCRYPTED_PLAYBACK_FILES,
+  type EncryptedPlaybackQuality,
   fullFilenameOf,
   type PlaybackFileType,
   previewFilenameOf,
@@ -39,16 +41,18 @@ export interface PlaybackStrategy {
   ): Promise<Dictionary>;
 }
 
-const urlGetVkey = (
+const playbackRequest = (
   { http, auth, guid, phase }: PlaybackStrategyContext,
   items: readonly PlaybackRequestItem[],
+  module: string,
+  method: string,
 ): Promise<Dictionary> =>
   callMusicu(
     http,
     auth.device,
     phase,
-    'music.vkey.GetVkey',
-    'UrlGetVkey',
+    module,
+    method,
     {
       filename: items.map((item) => item.filename),
       guid,
@@ -59,6 +63,17 @@ const urlGetVkey = (
     },
     auth.credential,
   );
+
+const urlGetVkey: PlaybackStrategy['request'] = (context, items) =>
+  playbackRequest(context, items, 'music.vkey.GetVkey', 'UrlGetVkey');
+
+export const encryptedEvKeyStrategy = (quality: EncryptedPlaybackQuality): PlaybackStrategy => ({
+  id: 'encrypted-evkey',
+  filenameOf: (songmid, mediaId) =>
+    fullFilenameOf(ENCRYPTED_PLAYBACK_FILES[quality], songmid, mediaId),
+  request: (context, items) =>
+    playbackRequest(context, items, 'music.vkey.GetEVkey', 'CgiGetEVkey'),
+});
 
 /** 完整文件：按音质的前缀和扩展名拼两段文件名。 */
 export const androidVKeyStrategy = (fileType: PlaybackFileType): PlaybackStrategy => ({

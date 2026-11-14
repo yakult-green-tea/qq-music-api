@@ -5,6 +5,7 @@ import { addBlacklist, removeBlacklist } from './operations/blacklistWrites';
 import { commentList } from './operations/commentList';
 import { dailyHistoryDates, dailyHistorySongs } from './operations/dailyHistory';
 import { getAlbumInfo } from './operations/getAlbumInfo';
+import { getEncryptedMusicPlay } from './operations/getEncryptedMusicPlay';
 import { getLyricOperation } from './operations/getLyric';
 import { getMusicPlay } from './operations/getMusicPlay';
 import { getOwnedPlaylistSongs } from './operations/getOwnedPlaylistSongs';
@@ -776,6 +777,15 @@ export const routeManifest = [
     category: 'Song',
     handler: getMusicPlay,
     needsSecret: true,
+  },
+  {
+    name: 'getEncryptedMusicPlay',
+    method: 'GET',
+    path: '/getEncryptedMusicPlay',
+    category: 'Song',
+    handler: getEncryptedMusicPlay,
+    needsSecret: true,
+    strictRequest: true,
   },
   {
     name: 'getAlbumInfo',

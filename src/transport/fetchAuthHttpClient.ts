@@ -109,6 +109,12 @@ export const createFetchAuthHttpClient = (
       updateCookieJar(jar, normalizeSetCookies(responseHeaders['set-cookie']));
 
       const location = response.headers.get('location');
+      if (config.followRedirects === false && REDIRECT_STATUSES.has(response.status)) {
+        await response.body?.cancel().catch(() => undefined);
+        throw Object.assign(new Error('QQ auth request rejected a redirect'), {
+          httpStatus: response.status,
+        });
+      }
       if (!REDIRECT_STATUSES.has(response.status) || !location) {
         // The same window the axios client accepts, so a 4xx surfaces as a rejection either way.
         if (response.status < 200 || response.status >= 400)

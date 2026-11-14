@@ -14,6 +14,14 @@ export const PLAYBACK_FILE_TYPES = {
 export type PlaybackFileQuality = keyof typeof PLAYBACK_FILE_TYPES;
 export type PlaybackFileType = (typeof PLAYBACK_FILE_TYPES)[PlaybackFileQuality];
 
+export const ENCRYPTED_PLAYBACK_FILES = {
+  '96': { prefix: 'O4M0', extension: '.mgg', codec: 'mgg' },
+  '192': { prefix: 'O6M0', extension: '.mgg', codec: 'mgg' },
+  flac: { prefix: 'F0M0', extension: '.mflac', codec: 'mflac' },
+} as const;
+
+export type EncryptedPlaybackQuality = keyof typeof ENCRYPTED_PLAYBACK_FILES;
+
 /** 认不出的音质和以前一样退回 128。 */
 export const playbackFileTypeOf = (quality: unknown): PlaybackFileType =>
   PLAYBACK_FILE_TYPES[String(quality) as PlaybackFileQuality] ?? PLAYBACK_FILE_TYPES[128];
@@ -22,8 +30,11 @@ export const playbackFileTypeOf = (quality: unknown): PlaybackFileType =>
  * 完整音质的文件名一律是两段识别值：`前缀 + songmid + media_mid + 扩展名`。没有 media_mid 时用 songmid
  * 补上第二段；只送一段的文件名在取链接时仍会拿到 purl，但 CDN 那边会 403。
  */
-export const fullFilenameOf = (type: PlaybackFileType, songmid: string, mediaId: unknown): string =>
-  `${type.prefix}${songmid}${mediaId || songmid}${type.extension}`;
+export const fullFilenameOf = (
+  type: { prefix: string; extension: string },
+  songmid: string,
+  mediaId: unknown,
+): string => `${type.prefix}${songmid}${mediaId || songmid}${type.extension}`;
 
 /**
  * 试听文件：只有一段 14 个字符的 media id，和完整音质的两段文件名不同。不能拿 songmid 代替。
@@ -31,12 +42,13 @@ export const fullFilenameOf = (type: PlaybackFileType, songmid: string, mediaId:
 export const previewFilenameOf = (mediaId: string): string => `RS02${mediaId}.mp3`;
 
 /** 文件格式，按扩展名记；是从文件名推出来的，没读过文件内容。 */
-export type PlaybackCodec = 'mp3' | 'm4a' | 'flac' | 'ape';
+type PlainPlaybackCodec = 'mp3' | 'm4a' | 'flac' | 'ape';
+export type PlaybackCodec = PlainPlaybackCodec | 'mgg' | 'mflac';
 
 export interface PlaybackFileInfo {
   /** 文件名前缀对应的音质；试听文件是 `preview`。 */
   quality: `${PlaybackFileQuality}` | 'preview';
-  codec: PlaybackCodec;
+  codec: PlainPlaybackCodec;
   /** 这几种前缀都是未加密的文件；官方客户端用的加密文件前缀不在这里，认不出就不填。 */
   encryption: 'none';
 }
@@ -65,7 +77,7 @@ export const playbackFileOfPurl = (purl: string): PlaybackFileInfo | undefined =
   if (!known || known.extension !== match[2]) return undefined;
   return {
     quality: known.quality,
-    codec: known.extension.slice(1) as PlaybackCodec,
+    codec: known.extension.slice(1) as PlainPlaybackCodec,
     encryption: 'none',
   };
 };

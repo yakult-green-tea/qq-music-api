@@ -63,17 +63,22 @@ describe('授权结果和能不能直接播分开记', () => {
 });
 
 describe('取链接的办法和客户端身份', () => {
-  it('EVKey 要明文、要加密文件两条都只登记，不实现、不默认使用', () => {
-    for (const id of ['evkey-plain', 'encrypted-evkey'] as const) {
-      expect(PLAYBACK_PROTOCOLS[id]).toMatchObject({
-        rpc: 'music.vkey.GetEVkey/CgiGetEVkey',
-        implemented: false,
-        usedByDefault: false,
-      });
-      expect(PLAYBACK_PROTOCOLS[id].evidence).not.toBe('verified-controlled');
-    }
-    expect(PLAYBACK_PROTOCOLS['evkey-plain'].files).toBe('plain');
-    expect(PLAYBACK_PROTOCOLS['encrypted-evkey'].files).toBe('encrypted');
+  it('EVKey 明文只登记，加密文件只在独立路由使用', () => {
+    expect(PLAYBACK_PROTOCOLS['evkey-plain']).toMatchObject({
+      rpc: 'music.vkey.GetEVkey/CgiGetEVkey',
+      implemented: false,
+      usedByDefault: false,
+      evidence: 'observed-response',
+      files: 'plain',
+    });
+    expect(PLAYBACK_PROTOCOLS['encrypted-evkey']).toMatchObject({
+      rpc: 'music.vkey.GetEVkey/CgiGetEVkey',
+      implemented: true,
+      usedByDefault: false,
+      evidence: 'verified-controlled',
+      files: 'encrypted',
+      qualities: ['96', '192', 'flac'],
+    });
   });
 
   it('每种身份实际送的 ct／cv 记在一处，和协议常数一致', () => {

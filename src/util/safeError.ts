@@ -12,6 +12,8 @@
 /** `callMusicu` 等协议调用使用的阶段名；不在这里的阶段不会出现在回应或日志中。 */
 export const UPSTREAM_PHASES = [
   'get-music-play',
+  'get-encrypted-music-play',
+  'get-encrypted-play-detail',
   'get-music-play-retry',
   'get-music-play-fallback',
   'get-playback-hint',

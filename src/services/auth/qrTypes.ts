@@ -358,6 +358,11 @@ export interface QrCheckResult extends QrFailureDetails {
 }
 
 export interface QrLoginService {
+  getEncryptedMusicPlay(
+    auth: AuthSession,
+    songmid: string,
+    quality: import('../../protocol/playbackFiles').EncryptedPlaybackQuality,
+  ): Promise<Dictionary>;
   getCapabilities(): RuntimeCapabilities;
   createSession(channel?: QrLoginChannel | LegacyQrLoginChannel): Promise<string>;
   createQr(key: string): Promise<string>;

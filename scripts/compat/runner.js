@@ -102,7 +102,18 @@ const rpcData = (method, param) => {
         sip: ['https://stream.invalid/'],
         midurlinfo: (param?.songmid ?? []).map((songmid) => ({ songmid, purl: 'fixture.mp3' })),
       };
+    case 'CgiGetEVkey':
+      return {
+        midurlinfo: (param?.songmid ?? []).map((songmid, index) => ({
+          songmid,
+          purl: param.filename[index],
+          result: 0,
+          ekey: 'fixture-key',
+        })),
+      };
     case 'get_song_detail_yqq':
+      if (param?.song_mid === '0123456789abcd')
+        return { track_info: { mid: param.song_mid, file: { media_mid: 'abcdefghijklmn' } } };
       return { track_info: SONGS[0] };
     case 'GetAlbumList':
       return { list: [{ album_mid: 'fixture-album', album_name: 'Fixture album' }] };

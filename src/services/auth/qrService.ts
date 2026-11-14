@@ -1,3 +1,4 @@
+import type { EncryptedPlaybackQuality } from '../../protocol/playbackFiles';
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
 import { RequestRejectedError } from '../../util/requestError';
@@ -32,6 +33,7 @@ import {
   createMemoryDeviceContextRepository,
   type DeviceContextStore,
 } from './deviceContextStore';
+import { getEncryptedPlayUrls } from './encryptedPlayback';
 import type { AuthHttpClient } from './httpClient';
 import { QqDeviceBootstrapError, QqProtocolError, QrLoginServiceError } from './musicuProtocol';
 import { getAuthenticatedPlayUrls } from './playback';
@@ -863,6 +865,16 @@ export class QrLoginServiceImpl implements QrLoginService {
           ),
         )
       : null;
+  }
+
+  public getEncryptedMusicPlay(
+    auth: AuthSession,
+    songmid: string,
+    quality: EncryptedPlaybackQuality,
+  ): Promise<Dictionary> {
+    return withCredentialRejectionMapped(() =>
+      getEncryptedPlayUrls(this.http, auth, songmid, quality),
+    );
   }
 
   public async resolveSession(token?: string): Promise<AuthSession | null> {

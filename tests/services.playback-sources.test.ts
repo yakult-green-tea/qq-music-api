@@ -348,16 +348,16 @@ describe('取播放链接的几种办法', () => {
     expect(previewRs02Strategy.filenameOf(A, MEDIA)).toBe(`RS02${MEDIA}.mp3`);
   });
 
-  it('一般请求只会走带会话的完整文件这一条；加密文件那条没有实现', () => {
+  it('一般请求只会走带会话的完整文件这一条，加密文件需要显式请求', () => {
     const used = Object.entries(PLAYBACK_PROTOCOLS)
       .filter(([, info]) => info.usedByDefault)
       .map(([id]) => id);
     expect(used).toEqual(['android-vkey']);
     expect(PLAYBACK_PROTOCOLS['encrypted-evkey']).toMatchObject({
-      implemented: false,
+      implemented: true,
       usedByDefault: false,
       files: 'encrypted',
     });
-    expect(PLAYBACK_PROTOCOLS['encrypted-evkey'].evidence).not.toBe('verified-controlled');
+    expect(PLAYBACK_PROTOCOLS['encrypted-evkey'].evidence).toBe('verified-controlled');
   });
 });

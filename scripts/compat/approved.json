@@ -1,5 +1,12 @@
 [
   {
+    "path": "/getEncryptedMusicPlay",
+    "baseline": "3.3.6",
+    "since": "3.3.7",
+    "difference": "encrypted-playback-added",
+    "reason": "加密文件取链接是独立路由；旧版本不认识，新路由的成功和失败另有双宿主契约"
+  },
+  {
     "path": "/getMusicPlay",
     "baseline": "3.3.6",
     "since": "3.3.7",
