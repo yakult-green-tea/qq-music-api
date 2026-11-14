@@ -35,7 +35,7 @@ export type PlaybackCodec = 'mp3' | 'm4a' | 'flac' | 'ape';
 
 export interface PlaybackFileInfo {
   /** 文件名前缀对应的音质；试听文件是 `preview`。 */
-  quality: PlaybackFileQuality | 'preview';
+  quality: `${PlaybackFileQuality}` | 'preview';
   codec: PlaybackCodec;
   /** 这几种前缀都是未加密的文件；官方客户端用的加密文件前缀不在这里，认不出就不填。 */
   encryption: 'none';
@@ -47,7 +47,7 @@ const FILE_PREFIXES: Readonly<
   ...Object.fromEntries(
     Object.entries(PLAYBACK_FILE_TYPES).map(([quality, type]) => [
       type.prefix,
-      { quality: quality as PlaybackFileQuality, extension: type.extension },
+      { quality: quality as `${PlaybackFileQuality}`, extension: type.extension },
     ]),
   ),
   RS02: { quality: 'preview', extension: '.mp3' },

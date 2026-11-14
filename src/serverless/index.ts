@@ -47,6 +47,7 @@ export type { QqQrRelay, QrEvent } from '../services/auth/qrLogin';
 
 export interface ServerlessEnv {
   QQ_PLAYBACK_HINTS_ENABLED?: string;
+  QQ_PLAYBACK_FALLBACK_ENABLED?: string;
   /** 没有 relay 时手机 QQ 走纯 HTTP 扫码；设 `0` 或 `false` 关掉。 */
   QQ_PTLOGIN_HTTP_ENABLED?: string;
   QQ_SESSION_SECRET?: string;
@@ -156,6 +157,7 @@ const createServiceFor = async (
   return createQrLoginService({
     http: createFetchAuthHttpClient(),
     playbackHintsEnabled: !['0', 'false'].includes(env.QQ_PLAYBACK_HINTS_ENABLED ?? ''),
+    playbackFallbackEnabled: ['1', 'true'].includes(env.QQ_PLAYBACK_FALLBACK_ENABLED ?? ''),
     createSessionHttp: () => createFetchAuthHttpClient(),
     deviceRepository: createMemoryDeviceContextRepository(
       await deriveAndroidDevice(secrets.current),

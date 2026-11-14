@@ -16,6 +16,7 @@ import { classifyPlaybackRestriction, playbackQualityOf } from '../../protocol/p
 import {
   PLAYBACK_PROTOCOLS,
   type PlaybackCdnStatus,
+  type PlaybackProtocolId,
   type PlaybackSource,
   playbackAccessOf,
   playbackPlayabilityOf,
@@ -41,6 +42,16 @@ import { logger } from '../../util/logger';
 import { type Dictionary, dictionaryOf, identifierOf, numberOf, stringOf } from '../../util/values';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
+import {
+  countingHttpOf,
+  isPlaybackDeadlineMiss,
+  PLAYBACK_FALLBACK_CANDIDATES,
+  PLAYBACK_FALLBACK_DISABLED,
+  type PlaybackFallbackOptions,
+  type PlaybackRequestBudget,
+  playbackBudgetOf,
+  withinPlaybackDeadline,
+} from './playbackFallback';
 import { androidVKeyStrategy, previewRs02Strategy } from './playbackStrategies';
 import { type AuthSession, type PlaybackOptions } from './qrTypes';
 import { StreamCdnSelector } from './streamCdnSelector';
@@ -168,6 +179,7 @@ const bestPlayUrls = async (
   songmids: string[],
   mediaId: string | undefined,
   playbackHintsEnabled: boolean,
+  fallback: FallbackRun,
 ): Promise<PlaybackResolution> => {
   const unique = [...new Set(songmids)];
   const looked = unique.slice(0, MAX_PLAYBACK_HINT_LOOKUPS);
@@ -191,6 +203,7 @@ const bestPlayUrls = async (
       mediaId,
       {},
       playbackHintsEnabled,
+      fallback,
     );
     for (const mid of batch) {
       const entry = result.playUrl[mid];
@@ -205,11 +218,15 @@ const bestPlayUrls = async (
   return { playUrl, sources };
 };
 
+/** 备援开着时，这次取链接（quality=best 的几级共用）的预算跟着往下传。 */
+type FallbackRun = PlaybackFallbackOptions & { budget?: PlaybackRequestBudget };
+
 /**
  * 带会话取播放链接。回对外的 `playUrl` 和内部的音源描述；对外只用前者，形状和以前一样。
+ * `fallback` 默认关着（见 playbackFallback）：关着时和没有这个参数一样。
  */
 export const getAuthenticatedPlaybackSources = async (
-  http: AuthHttpClient,
+  upstreamHttp: AuthHttpClient,
   auth: AuthSession,
   streamCdnSelector: StreamCdnSelector,
   songmid: string,
@@ -217,7 +234,12 @@ export const getAuthenticatedPlaybackSources = async (
   mediaId?: string,
   options: PlaybackOptions = {},
   playbackHintsEnabled = true,
+  fallback: FallbackRun = PLAYBACK_FALLBACK_DISABLED,
 ): Promise<PlaybackResolution> => {
+  // 开着才计数：主路径打的上游请求都算进整次的上限；quality=best 往下传的那几级已经包过，不再包一层。
+  const budget = fallback.enabled ? (fallback.budget ?? playbackBudgetOf(fallback)) : undefined;
+  const http = budget && !fallback.budget ? countingHttpOf(upstreamHttp, budget) : upstreamHttp;
+  const run: FallbackRun = budget ? { ...fallback, budget } : fallback;
   const requestedList = songmid
     .split(',')
     .map((value) => value.trim())
@@ -230,6 +252,7 @@ export const getAuthenticatedPlaybackSources = async (
       requestedList,
       mediaId,
       playbackHintsEnabled,
+      run,
     );
   // 试听只要确认有试听文件的歌；确定没有的回「没有试听」，其他的回「试听不可用」，都不去要。
   const preview = options.preview
@@ -360,13 +383,14 @@ export const getAuthenticatedPlaybackSources = async (
     purl: string,
     stream: StreamDomain,
     reply: Dictionary,
+    protocol: PlaybackProtocolId = strategy.id,
   ): PlaybackSource => {
     const codes = playbackEntryCodesOf(item);
     const mediaMid = previewMediaIds?.get(mid) ?? validMediaIdOf(normalizedMediaId);
     const expiration = numberOf(reply.expiration);
     const kind = purl
-      ? playbackSourceKindOf(strategy.id, codes)
-      : strategy.id === 'preview-rs02'
+      ? playbackSourceKindOf(protocol, codes)
+      : protocol === 'preview-rs02'
         ? 'preview'
         : 'full';
     const granted = Boolean(purl);
@@ -374,8 +398,8 @@ export const getAuthenticatedPlaybackSources = async (
     // 文件种类只认上游真的给的文件名；试听长度只用详情宣告的，片段位置不填。
     const file = purl ? playbackFileOfPurl(purl) : undefined;
     const trialDuration =
-      purl && strategy.id === 'preview-rs02' ? preview?.durations.get(mid) : undefined;
-    const deviceProfile = PLAYBACK_PROTOCOLS[strategy.id].profile;
+      purl && protocol === 'preview-rs02' ? preview?.durations.get(mid) : undefined;
+    const deviceProfile = PLAYBACK_PROTOCOLS[protocol].profile;
     return {
       songmid: mid,
       ...(mediaMid ? { mediaMid } : {}),
@@ -385,7 +409,7 @@ export const getAuthenticatedPlaybackSources = async (
       ...(file
         ? { deliveredQuality: file.quality, codec: file.codec, encryption: file.encryption }
         : {}),
-      protocol: strategy.id,
+      protocol,
       deviceProfile,
       client: { ...CLIENT_COMM_OF[deviceProfile] },
       url: purl ? `${stream.base}${purl}` : '',
@@ -517,6 +541,88 @@ export const getAuthenticatedPlaybackSources = async (
       // 第一次的结果已经在 playUrl 里。
     }
   }
+  // 备援（默认关）：主路径和再取一次之后还没链接的歌，交给认得这种失败的候选各试一次。规则见 playbackFallback。
+  if (budget && !options.preview) {
+    let pending = songmidList.filter(
+      (mid) => playUrl[mid] && !stringOf(dictionaryOf(playUrl[mid]).url),
+    );
+    for (const candidate of run.candidates ?? PLAYBACK_FALLBACK_CANDIDATES) {
+      const eligible = pending.filter((mid) =>
+        candidate.appliesTo({
+          quality: String(loggedQuality),
+          codes: sources.get(mid)?.codes ?? {},
+          hintKey:
+            stringOf(dictionaryOf(dictionaryOf(dictionaryOf(playUrl[mid]).restriction).hint).key) ||
+            undefined,
+          loginType: numberOf(auth.credential.loginType),
+        }),
+      );
+      if (!eligible.length) continue;
+      const started = budget.clock();
+      const record = (outcome: string, granted = 0) =>
+        logger.info('playback.fallback-result', {
+          candidate: candidate.id,
+          outcome,
+          songs: eligible.length,
+          granted,
+          elapsedMs: budget.elapsedSince(started),
+        });
+      if (!budget.hasRequests()) {
+        record('skipped-budget');
+        break;
+      }
+      const remaining = budget.remainingMs();
+      if (remaining <= 0) {
+        record('skipped-timeout');
+        break;
+      }
+      budget.count();
+      let reply: Dictionary | undefined;
+      try {
+        const answer = await withinPlaybackDeadline(
+          candidate.strategy.request(
+            { http: upstreamHttp, auth, guid, phase: 'get-music-play-fallback' },
+            eligible.map((mid) => ({
+              songmid: mid,
+              filename: candidate.strategy.filenameOf(mid, normalizedMediaId),
+            })),
+          ),
+          remaining,
+        );
+        if (isPlaybackDeadlineMiss(answer)) {
+          record('timeout');
+          continue;
+        }
+        reply = dictionaryOf(answer);
+      } catch {
+        record('error');
+        continue;
+      }
+      let granted = 0;
+      let invalid = 0;
+      let fallbackDomain: StreamDomain | undefined;
+      for (const entry of Array.isArray(reply.midurlinfo) ? reply.midurlinfo : []) {
+        const item = dictionaryOf(entry);
+        const mid = identifierOf(item.songmid);
+        const purl = stringOf(item.purl);
+        if (!mid || !purl || !eligible.includes(mid) || stringOf(dictionaryOf(playUrl[mid]).url))
+          continue;
+        const file = playbackFileOfPurl(purl);
+        if (file?.quality !== String(loggedQuality) || file.encryption !== 'none') {
+          invalid += 1;
+          continue;
+        }
+        fallbackDomain ??= (await streamDomainOf(reply)) ?? UNVERIFIED_DEFAULT_DOMAIN;
+        const source = sourceOf(mid, item, purl, fallbackDomain, reply, candidate.id);
+        sources.set(mid, source);
+        playUrl[mid] = publicPlayEntryOf(source);
+        granted += 1;
+      }
+      record(granted ? 'granted' : invalid ? 'invalid' : 'refused', granted);
+      pending = pending.filter((mid) => !stringOf(dictionaryOf(playUrl[mid]).url));
+      if (!pending.length) break;
+    }
+  }
   // 请求过、回应里却没有的歌：补一条明确的空链接，原因未确认。它们不在上面的再取名单里，不会因此多打请求。
   for (const mid of songmidList) {
     if (playUrl[mid]) continue;
@@ -549,6 +655,7 @@ export const getAuthenticatedPlayUrls = async (
   mediaId?: string,
   options: PlaybackOptions = {},
   playbackHintsEnabled = true,
+  fallback: PlaybackFallbackOptions = PLAYBACK_FALLBACK_DISABLED,
 ): Promise<Dictionary> =>
   (
     await getAuthenticatedPlaybackSources(
@@ -560,5 +667,6 @@ export const getAuthenticatedPlayUrls = async (
       mediaId,
       options,
       playbackHintsEnabled,
+      fallback,
     )
   ).playUrl;

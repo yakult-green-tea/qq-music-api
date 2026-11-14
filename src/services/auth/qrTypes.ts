@@ -315,6 +315,8 @@ export interface SessionRotation {
 export interface QrLoginDependencies {
   /** 全局停用具体播放提示；不改变播放、授权或重试。默认启用。 */
   playbackHintsEnabled?: boolean;
+  /** 拿不到链接时换办法再试（见 playbackFallback）。默认关；目前也没有登记的候选。 */
+  playbackFallbackEnabled?: boolean;
   http?: AuthHttpClient;
   streamUrlProbe?: StreamUrlProbe;
   /** Builds the per-QR-session client used by the web login channels. */
