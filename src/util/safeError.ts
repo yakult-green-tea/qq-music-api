@@ -181,6 +181,7 @@ const KNOWN_REASONS = new Set([
   'Ptlogin state does not match',
   'Ptlogin upstream HTTP error',
   'QQ auth redirect limit exceeded',
+  'QQ auth request rejected a redirect',
   'QR login is temporarily backed off',
   'QR session cannot create another code',
   'QR session has no upstream QR after createQr()',
