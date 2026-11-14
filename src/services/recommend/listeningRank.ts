@@ -7,8 +7,9 @@ import { createSessionMusicuClient } from './sessionMusicu';
 // src/services/recommend/listeningRank.ts
 //
 // `/user/listening-rank`：本人的听歌排行（ListenReportSvr/GetRank）。只读，不接 uin，
-// 只能读自己的。type 1 日／2 周／3 月／4 年来自 App 抓包；周的边界（自然周或滚动七天）、
-// token 的用途、有没有上限都还没有真账号证据，所以 date 与 token 都原样转交，不替上游解释。
+// 只能读自己的。type 1 日／2 周／3 月／4 年来自 App 抓包。对照 App 画面确认过：本周是从周一算到今天，
+// 年榜是去年 1 月 1 日到 12 月 31 日。token 的用途、有没有上限还没有真账号证据，所以 date 与 token
+// 都原样转交，不替上游解释。
 
 const RANGE_TYPES = { day: 1, week: 2, month: 3, year: 4 } as const;
 type Range = keyof typeof RANGE_TYPES;
@@ -21,7 +22,8 @@ const single = (value: string | string[] | undefined): string | undefined => {
   return value;
 };
 
-// 日、周：YYYYMMDD；月：YYYYMM。只验是真实日期，周要不要落在周一交给上游，年没有样本所以不收。
+// 日、周：YYYYMMDD；月：YYYYMM。只验是真实日期，周要不要落在周一交给上游。年榜固定是去年整年，
+// 带 date 读别的年份没有样本，所以年不收 date。
 const validDate = (range: Range, date: string): boolean => {
   if (range === 'day' || range === 'week') {
     if (!/^\d{8}$/.test(date)) return false;
