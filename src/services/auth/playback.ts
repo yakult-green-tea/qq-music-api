@@ -1,6 +1,8 @@
+import { CLIENT_COMM_OF } from '../../protocol/clientProfiles';
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
 import {
   PLAYBACK_FILE_TYPES,
+  playbackFileOfPurl,
   playbackFileTypeOf,
   previewFilenameOf,
 } from '../../protocol/playbackFiles';
@@ -15,11 +17,14 @@ import {
   PLAYBACK_PROTOCOLS,
   type PlaybackCdnStatus,
   type PlaybackSource,
+  playbackAccessOf,
+  playbackPlayabilityOf,
   playbackSourceKindOf,
   publicPlayEntryOf,
   publicSourceOf,
 } from '../../protocol/playbackSource';
 import {
+  previewDurationMsOf,
   previewFileMissingOf,
   previewMediaIdOf,
   previewUnavailableRestriction,
@@ -121,7 +126,11 @@ const previewMediaIdsOf = async (
   auth: AuthSession,
   songmids: string[],
   mediaId: unknown,
-): Promise<{ mediaIds: Map<string, string>; missing: Set<string> }> => {
+): Promise<{
+  mediaIds: Map<string, string>;
+  missing: Set<string>;
+  durations: Map<string, number>;
+}> => {
   const callerMediaId = validMediaIdOf(mediaId);
   const looked = [...new Set(songmids)].slice(0, MAX_PLAYBACK_HINT_LOOKUPS);
   const details = await Promise.all(
@@ -129,12 +138,16 @@ const previewMediaIdsOf = async (
   );
   const mediaIds = new Map<string, string>();
   const missing = new Set<string>();
+  const durations = new Map<string, number>();
   for (const [index, mid] of looked.entries()) {
     const media = previewMediaIdOf(details[index], callerMediaId);
-    if (media) mediaIds.set(mid, media);
-    else if (previewFileMissingOf(details[index])) missing.add(mid);
+    if (media) {
+      mediaIds.set(mid, media);
+      const duration = previewDurationMsOf(details[index]);
+      if (duration !== undefined) durations.set(mid, duration);
+    } else if (previewFileMissingOf(details[index])) missing.add(mid);
   }
-  return { mediaIds, missing };
+  return { mediaIds, missing, durations };
 };
 
 /** 取链接的结果：对外的 `playUrl`，加上内部用的逐首音源描述（只含真的向上游要过的歌）。 */
@@ -351,24 +364,47 @@ export const getAuthenticatedPlaybackSources = async (
     const codes = playbackEntryCodesOf(item);
     const mediaMid = previewMediaIds?.get(mid) ?? validMediaIdOf(normalizedMediaId);
     const expiration = numberOf(reply.expiration);
+    const kind = purl
+      ? playbackSourceKindOf(strategy.id, codes)
+      : strategy.id === 'preview-rs02'
+        ? 'preview'
+        : 'full';
+    const granted = Boolean(purl);
+    const cdn: PlaybackCdnStatus = purl ? stream.cdn : 'none';
+    // 文件种类只认上游真的给的文件名；试听长度只用详情宣告的，片段位置不填。
+    const file = purl ? playbackFileOfPurl(purl) : undefined;
+    const trialDuration =
+      purl && strategy.id === 'preview-rs02' ? preview?.durations.get(mid) : undefined;
+    const deviceProfile = PLAYBACK_PROTOCOLS[strategy.id].profile;
     return {
       songmid: mid,
       ...(mediaMid ? { mediaMid } : {}),
-      kind: purl
-        ? playbackSourceKindOf(strategy.id, codes)
-        : strategy.id === 'preview-rs02'
-          ? 'preview'
-          : 'full',
+      kind,
       requestedQuality: String(quality),
       attemptedQuality: options.preview ? 'preview' : playbackQualityOf(loggedQuality),
+      ...(file
+        ? { deliveredQuality: file.quality, codec: file.codec, encryption: file.encryption }
+        : {}),
       protocol: strategy.id,
-      profile: PLAYBACK_PROTOCOLS[strategy.id].profile,
+      deviceProfile,
+      client: { ...CLIENT_COMM_OF[deviceProfile] },
       url: purl ? `${stream.base}${purl}` : '',
       ...(expiration !== undefined && expiration > 0
         ? { upstreamExpirationSeconds: expiration }
         : {}),
-      granted: Boolean(purl),
-      cdn: purl ? stream.cdn : 'none',
+      ...(trialDuration !== undefined
+        ? {
+            trial: {
+              durationMs: trialDuration,
+              durationSource: 'upstream-declared' as const,
+              rangeSource: 'unknown' as const,
+            },
+          }
+        : {}),
+      granted,
+      cdn,
+      access: playbackAccessOf({ granted, kind }),
+      playability: playbackPlayabilityOf({ granted, cdn, encryption: file?.encryption }),
       audioVerified: false,
       codes,
     };

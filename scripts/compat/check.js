@@ -147,8 +147,33 @@ const baseline = run(`v${baselineVersion}`, baselineRoot);
 const current = run('current', repo);
 
 const approved = JSON.parse(fs.readFileSync(path.join(__dirname, 'approved.json'), 'utf8'));
-// 播放条目只多了可选的 source（kind、protocol、cdn 三个字段），去掉它之后必须和基准逐字相同。
+// 播放条目只多了可选的 source，去掉它之后必须和基准逐字相同。source 一定有 kind、protocol、cdn，
+// 另外只可能有 quality、codec（认出文件名时）和 trial（只有 durationMs 一个正整数），值都要在下面的范围里。
 const SOURCE_KEYS = ['cdn', 'kind', 'protocol'];
+const SOURCE_VALUES = {
+  kind: ['full', 'preview', 'unknown'],
+  protocol: ['android-vkey', 'preview-rs02', 'web-anonymous-vkey'],
+  cdn: ['response-sip', 'probed', 'unverified-default', 'none'],
+  quality: ['m4a', '128', '320', 'ape', 'flac', 'preview'],
+  codec: ['mp3', 'm4a', 'flac', 'ape'],
+};
+const validSource = (source) => {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return false;
+  const keys = Object.keys(source);
+  if (!SOURCE_KEYS.every((key) => keys.includes(key))) return false;
+  return keys.every((key) => {
+    if (key === 'trial') {
+      const trial = source.trial;
+      return (
+        trial && typeof trial === 'object' && !Array.isArray(trial) &&
+        Object.keys(trial).join() === 'durationMs' &&
+        Number.isSafeInteger(trial.durationMs) && trial.durationMs > 0 &&
+        source.kind === 'preview'
+      );
+    }
+    return SOURCE_VALUES[key]?.includes(source[key]) ?? false;
+  });
+};
 const onlyPlaySourceAdded = (before, after) => {
   const playUrl = after?.body?.data?.playUrl;
   if (!playUrl || typeof playUrl !== 'object') return false;
@@ -158,8 +183,7 @@ const onlyPlaySourceAdded = (before, after) => {
     if (!entry || typeof entry !== 'object') return false;
     const { source, ...rest } = entry;
     if (source !== undefined) {
-      if (!source || typeof source !== 'object' || Object.keys(source).sort().join() !== SOURCE_KEYS.join())
-        return false;
+      if (!validSource(source)) return false;
       added += 1;
     }
     stripped[mid] = rest;

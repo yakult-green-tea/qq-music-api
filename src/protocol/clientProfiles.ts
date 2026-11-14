@@ -47,6 +47,15 @@ export const LITE_ANONYMOUS_COMM = {
   uid: '0',
 };
 
+/** 三种身份实际送的 ct／cv，音源描述记「这次用的是哪一组」时查这里，不另写一份。 */
+export const CLIENT_COMM_OF = {
+  android: { ct: ANDROID_CLIENT.ct, cv: ANDROID_CLIENT.version },
+  web: { ct: WEB_ANONYMOUS_COMM.ct, cv: WEB_ANONYMOUS_COMM.cv },
+  lite: { ct: LITE_ANONYMOUS_COMM.ct, cv: LITE_ANONYMOUS_COMM.cv },
+} as const;
+
+export type ClientProfileId = keyof typeof CLIENT_COMM_OF;
+
 export const LITE_ANONYMOUS_HEADERS = {
   Cookie: 'tmeLoginType=-1',
   'User-Agent': 'okhttp/3.14.9',

@@ -115,7 +115,15 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 试听（%s）', (runtime) => {
         url: `https://stream.invalid/RS02${MEDIA_A}.mp3?vkey=fixture`,
         error: false,
         preview: true,
-        source: { kind: 'preview', protocol: 'preview-rs02', cdn: 'response-sip' },
+        // 3.3.7：认出 RS02 文件名就交实际音质和格式；详情宣告的试听长度（e_30s）一起交，片段位置不交。
+        source: {
+          kind: 'preview',
+          protocol: 'preview-rs02',
+          cdn: 'response-sip',
+          quality: 'preview',
+          codec: 'mp3',
+          trial: { durationMs: 60000 },
+        },
       },
       'fixture-b': PREVIEW_MISSING,
     });

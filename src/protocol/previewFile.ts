@@ -48,6 +48,15 @@ export const previewMediaIdOf = (
   return callerMediaId ?? validMediaIdOf(read(file, 'media_mid'));
 };
 
+/**
+ * 详情宣告的试听长度（`file.e_30s`，毫秒）。实测两首（30 秒、60 秒）都和下载下来的试听文件一样长。
+ * 不是正整数就当没有，不拿 30 秒顶上。
+ */
+export const previewDurationMsOf = (trackInfo: unknown): number | undefined => {
+  const value = integerOf(read(read(trackInfo, 'file'), 'e_30s'));
+  return value !== undefined && value > 0 ? value : undefined;
+};
+
 /** 详情里 `size_try` 正好是 0（整数或纯数字字符串）才算确定没有试听文件；缺字段、负数、读不到都不算。 */
 export const previewFileMissingOf = (trackInfo: unknown): boolean =>
   integerOf(read(read(trackInfo, 'file'), 'size_try')) === 0;

@@ -68,12 +68,15 @@ describe('内部的音源描述', () => {
         requestedQuality: '128',
         attemptedQuality: '128',
         protocol: 'android-vkey',
-        profile: 'android',
+        deviceProfile: 'android',
+        client: { ct: 11, cv: 14090008 },
         url: `${SIP}${A}.audio`,
         granted: true,
         cdn: 'response-sip',
         audioVerified: false,
         codes: {},
+        access: 'full',
+        playability: 'direct',
       },
     ]);
     expect(playUrl).toEqual({
@@ -136,14 +139,128 @@ describe('内部的音源描述', () => {
         requestedQuality: '320',
         attemptedQuality: '320',
         protocol: 'android-vkey',
-        profile: 'android',
+        deviceProfile: 'android',
+        client: { ct: 11, cv: 14090008 },
         url: '',
         granted: false,
         cdn: 'none',
         audioVerified: false,
         codes: { result: 104003, subcode: 1 },
+        access: 'refused',
+        playability: 'unplayable',
       },
     ]);
+  });
+
+  it('上游给的是认得的文件名：内部记实际音质、格式、没加密，对外 source 多交 quality 和 codec', async () => {
+    const purl = `M500${A}${MEDIA}.mp3?guid=g&vkey=v`;
+    const { resolve } = harness({
+      UrlGetVkey: { sip: [SIP], midurlinfo: [{ songmid: A, purl, result: 0, subcode: 1 }] },
+    });
+    const { playUrl, sources } = await resolve(A, 128, MEDIA);
+    expect(sources[0]).toMatchObject({
+      deliveredQuality: '128',
+      codec: 'mp3',
+      encryption: 'none',
+      access: 'full',
+      playability: 'direct',
+    });
+    expect(playUrl[A]).toEqual({
+      url: `${SIP}${purl}`,
+      error: false,
+      source: {
+        kind: 'full',
+        protocol: 'android-vkey',
+        cdn: 'response-sip',
+        quality: '128',
+        codec: 'mp3',
+      },
+    });
+  });
+
+  it('要 flac 却给了 128 的文件名：实际音质照文件名记，不照要的记', async () => {
+    const purl = `M500${A}${A}.mp3`;
+    const { resolve } = harness({ UrlGetVkey: { sip: [SIP], midurlinfo: [granted(A, { purl })] } });
+    const { sources, playUrl } = await resolve(A, 'flac');
+    expect(sources[0]).toMatchObject({ attemptedQuality: 'flac', deliveredQuality: '128' });
+    expect((playUrl[A] as { source: Record<string, unknown> }).source.quality).toBe('128');
+  });
+
+  it('试听：上游宣告的长度（e_30s）记成试听长度，片段起止不填', async () => {
+    const purl = `RS02${MEDIA}.mp3?vkey=v`;
+    const { resolve } = harness({
+      get_song_detail_yqq: {
+        track_info: { file: { size_try: 1, media_mid: MEDIA, e_30s: 60000 } },
+      },
+      UrlGetVkey: { sip: [SIP], midurlinfo: [granted(A, { purl })] },
+    });
+    const { playUrl, sources } = await resolve(A, 128, undefined, true);
+    expect(sources[0].trial).toEqual({
+      durationMs: 60000,
+      durationSource: 'upstream-declared',
+      rangeSource: 'unknown',
+    });
+    expect(playUrl[A]).toEqual({
+      url: `${SIP}${purl}`,
+      error: false,
+      preview: true,
+      source: {
+        kind: 'preview',
+        protocol: 'preview-rs02',
+        cdn: 'response-sip',
+        quality: 'preview',
+        codec: 'mp3',
+        trial: { durationMs: 60000 },
+      },
+    });
+  });
+
+  it.each([
+    undefined,
+    0,
+    -1,
+    '30000x',
+    1.5,
+  ])('试听长度不是正整数（%p）就不记，也不拿 30 秒顶上', async (e30s) => {
+    const { resolve } = harness({
+      get_song_detail_yqq: {
+        track_info: { file: { size_try: 1, media_mid: MEDIA, e_30s: e30s } },
+      },
+      UrlGetVkey: { sip: [SIP], midurlinfo: [granted(A)] },
+    });
+    const { sources, playUrl } = await resolve(A, 128, undefined, true);
+    expect(sources[0]).not.toHaveProperty('trial');
+    expect((playUrl[A] as { source: Record<string, unknown> }).source).not.toHaveProperty('trial');
+  });
+
+  it('试听没给链接：不带试听长度', async () => {
+    const { resolve } = harness({
+      get_song_detail_yqq: {
+        track_info: { file: { size_try: 1, media_mid: MEDIA, e_30s: 30000 } },
+      },
+      UrlGetVkey: { sip: [SIP], midurlinfo: [{ songmid: A, purl: '', result: 104003 }] },
+    });
+    const { sources } = await resolve(A, 128, undefined, true);
+    expect(sources[0]).toMatchObject({ access: 'refused', playability: 'unplayable' });
+    expect(sources[0]).not.toHaveProperty('trial');
+  });
+
+  it('完整文件不带试听长度，就算详情里有 e_30s', async () => {
+    const { resolve } = harness({
+      get_song_detail_yqq: { track_info: { file: { size_flac: 1, e_30s: 30000 } } },
+      UrlGetVkey: { sip: [SIP], midurlinfo: [granted(A)] },
+    });
+    const { sources } = await resolve(A, 'best');
+    expect(sources[0]).not.toHaveProperty('trial');
+  });
+
+  it('CDN 没探测通、用默认地址：拿到授权，但记成 CDN 未验', async () => {
+    const { resolve } = harness(
+      { UrlGetVkey: { sip: [], midurlinfo: [granted(A)] }, GetCdnDispatch: { sip: [] } },
+      false,
+    );
+    const { sources } = await resolve(A);
+    expect(sources[0]).toMatchObject({ access: 'full', playability: 'cdn-unverified' });
   });
 
   it.each([
