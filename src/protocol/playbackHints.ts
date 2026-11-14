@@ -72,6 +72,10 @@ const tupleOf = (track: unknown): string => {
     .map(integer)
     .join('/');
 };
+/**
+ * 能不能去查详情找原因。`subcode` 不是原因码：实测它只跟着文件名段数走（两段一律 1、一段一律 0，成功失败都一样）。
+ * 这里要求 1，是确认这条回应和我们送的两段文件名对得上；回应不完整（例如没带 subcode）就不查，保持「原因尚未确认」。
+ */
 export const canLookupPlaybackHint = (context: PlaybackHintContext): boolean =>
   context.authenticated &&
   ['m4a', '128'].includes(context.quality) &&

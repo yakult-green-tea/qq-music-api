@@ -300,4 +300,26 @@ describe.each(CATALOG_RUNTIMES)('带会话取播放链接的基准（%s）', (ru
     expect(playUrlOf(run.body)[A]).not.toHaveProperty('source');
     expect(vkeyCallsOf(run.calls)).toHaveLength(0);
   });
+
+  // 实测（两个出口、两个账号）：subcode 只跟着文件名段数走，两段一律 1、一段一律 0，成功失败都一样，
+  // 不是原因码。这里固定：完整文件名一律送两段；成功的条目不管 subcode 是几都照常交出。
+  it('subcode 不是原因码：两段文件名照送，带 1 或 0 的成功条目一样交出', async () => {
+    const run = await play(`${A},${B}`, {
+      rpc: {
+        UrlGetVkey: {
+          sip: [SIP],
+          midurlinfo: [
+            { songmid: A, purl: 'a.audio', result: 0, subcode: 1 },
+            { songmid: B, purl: 'b.audio', result: 0, subcode: 0 },
+          ],
+        },
+      },
+    });
+    expect(playUrlOf(run.body)).toEqual({
+      [A]: { url: `${SIP}a.audio`, error: false, source: source('full', 'response-sip') },
+      [B]: { url: `${SIP}b.audio`, error: false, source: source('full', 'response-sip') },
+    });
+    const [call] = vkeyCallsOf(run.calls);
+    expect(call?.param?.filename).toEqual([`M500${A}${A}.mp3`, `M500${B}${B}.mp3`]);
+  });
 });
