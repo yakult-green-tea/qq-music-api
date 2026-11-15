@@ -40,8 +40,15 @@ export const operationRequestOf = (ctx: Context, signal?: AbortSignal): Operatio
 });
 
 export const operationController =
-  (handler: OperationHandler) =>
+  (handler: OperationHandler, abortOnDisconnect = false) =>
   async (ctx: Context): Promise<void> => {
+    if (!abortOnDisconnect) {
+      const result = await handler(operationRequestOf(ctx));
+      ctx.status = result.status;
+      for (const [name, value] of Object.entries(result.headers)) ctx.set(name, value);
+      ctx.body = result.body;
+      return;
+    }
     const abort = new AbortController();
     const close = () => { if (!ctx.res.writableFinished) abort.abort(); };
     ctx.res.once('close', close);

@@ -22,7 +22,7 @@ const nodeAdapters: Partial<Record<RouteName, Controller>> = {
 const controllerOf = (route: (typeof routeManifest)[number]): Controller => {
   const accountWrite = 'accountWrite' in route && route.accountWrite;
   const handler = accountWrite ? protectAccountWrite(route.handler) : route.handler;
-  return nodeAdapters[route.name] ?? operationController(handler);
+  return nodeAdapters[route.name] ?? operationController(handler, route.name === 'getEncryptedMusicPlay');
 };
 
 export default Object.fromEntries(

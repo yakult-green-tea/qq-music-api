@@ -1,4 +1,7 @@
 import { getEncryptedMusicPlay } from '../src/routes/operations/getEncryptedMusicPlay';
+import { operationController } from '../src/controllers/operation';
+import { operationRoute } from '../src/serverless/operationRoute';
+import { EventEmitter } from 'node:events';
 import type { OperationRequest } from '../src/routes/operations/types';
 import { createMemoryAuthSessionRepository, createQrLoginService } from '../src/services/auth/qrLogin';
 import type { AuthHttpClient } from '../src/transport/httpClientTypes';
@@ -30,7 +33,7 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
       token: 'valid-fixture', device: deviceFixture.device, expiresAt: CONTRACT_NOW + 3600000,
       credential: { ...CONTRACT_CREDENTIAL, refresh_key: 'fixture-secret', musickeyCreateTime: CONTRACT_NOW / 1000, keyExpiresIn: 3600 },
     };
-    service = createQrLoginService({ http, now: () => CONTRACT_NOW, authSessionRepository: createMemoryAuthSessionRepository([session]) });
+    service = createQrLoginService({ http, now: () => CONTRACT_NOW, authSessionRepository: createMemoryAuthSessionRepository([session, { ...session, token: 'expired-fixture', expiresAt: CONTRACT_NOW - 1 }]) });
   });
   afterEach(() => { jest.restoreAllMocks(); jest.useRealTimers(); });
 
@@ -40,7 +43,7 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
     expect(send).toHaveBeenCalledTimes(0);
   });
 
-  it.each([undefined, 'invalid-fixture'])('无效会话优先于参数错误', async (token) => {
+  it.each([undefined, 'invalid-fixture', 'expired-fixture'])('无效会话优先于参数错误', async (token) => {
     const result = await call(token, '320');
     expect(result.status).toBe(401);
     expect(send).toHaveBeenCalledTimes(0);
@@ -115,5 +118,29 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
     const second = await call('valid-fixture', '192');
     expect(second.status).toBe(200);
     expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['Login', 'Login', 'get_song_detail_yqq', 'CgiGetEVkey']);
+  });
+
+  it('宿主转接在连接关闭时中止上游并停止后续请求', async () => {
+    send.mockImplementation((config) => new Promise((_resolve, reject) => config.signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })));
+    let abort: () => void;
+    let pending: Promise<unknown>;
+    if (runtime === 'node') {
+      const res = Object.assign(new EventEmitter(), { writableFinished: false });
+      const ctx = { res, method: 'GET', query: { songmid: 'FixtureSong001', quality: '192' }, get: () => 'valid-fixture', set: () => {}, params: {} };
+      const handler = operationController((request) => getEncryptedMusicPlay({ ...request, service: async () => service }), true);
+      pending = handler(ctx as any);
+      abort = () => { res.emit('close'); };
+    } else {
+      const controller = new AbortController();
+      const request = new Request('https://fixture.invalid/getEncryptedMusicPlay?songmid=FixtureSong001&quality=192', { signal: controller.signal });
+      pending = operationRoute(getEncryptedMusicPlay, true)({ request, url: new URL(request.url), params: {}, token: 'valid-fixture', service: async () => service });
+      abort = () => controller.abort();
+    }
+    await flush();
+    expect(send).toHaveBeenCalledTimes(1);
+    abort();
+    await pending;
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].signal.aborted).toBe(true);
   });
 });
