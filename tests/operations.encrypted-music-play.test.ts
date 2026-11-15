@@ -106,7 +106,9 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
     const requested = `${prefix}${mid}${mediaMid}${extension}`;
     const path = `${prefix}${mediaMid}${extension}?vkey=fixture`;
     prepare({
-      midurlinfo: [{ songmid: mid, filename: requested, purl: path, result: 0, subcode: 1, ekey: key }],
+      midurlinfo: [
+        { songmid: mid, filename: requested, purl: path, result: 0, subcode: 1, ekey: key },
+      ],
     });
     upstream.state.songDetails = { [mid]: { file: { media_mid: mediaMid } } };
     const reply = await call(`?songmid=${mid}&quality=${quality}`);
@@ -126,7 +128,16 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
     ['空密钥', `O6M0${media}.mgg`, ''],
   ])('拒绝不可信单段文件名：%s', async (_label, path, entryKey) => {
     prepare({
-      midurlinfo: [{ songmid: mid, filename: filename(), purl: `${path}?vkey=fixture`, result: 0, subcode: 1, ekey: entryKey }],
+      midurlinfo: [
+        {
+          songmid: mid,
+          filename: filename(),
+          purl: `${path}?vkey=fixture`,
+          result: 0,
+          subcode: 1,
+          ekey: entryKey,
+        },
+      ],
     });
     const reply = await call(`?songmid=${mid}`);
     const entry = (reply.body as any).data.playUrl[mid];
