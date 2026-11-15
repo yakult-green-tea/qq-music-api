@@ -10,6 +10,19 @@ describe('Explorer routes', () => {
     jest.restoreAllMocks();
   });
 
+  it('播放接口的说明与字段使用简体中文', async () => {
+    const response = await request(server).get('/explorer/metadata');
+    const endpoints = response.body.endpoints as Array<Record<string, any>>;
+    const normal = endpoints.find((endpoint) => endpoint.name === 'getMusicPlay');
+    const encrypted = endpoints.find((endpoint) => endpoint.name === 'getEncryptedMusicPlay');
+    expect(normal?.description).toContain('播放链接');
+    expect(encrypted?.description).toContain('加密');
+    expect(encrypted?.queryParams.map((field: { label: string }) => field.label)).toEqual([
+      '歌曲 MID',
+      '音质',
+    ]);
+  });
+
   it('应将 /explorer 重定向到静态页面', async () => {
     const loggerSpy = jest.spyOn(logger, 'debug').mockImplementation(() => undefined);
     const response = await request(server).get('/explorer');
