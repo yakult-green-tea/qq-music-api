@@ -82,8 +82,7 @@ export const getEncryptedPlayUrls = (
     );
     const track = dictionaryOf(detail.track_info);
     const mediaMid = validMediaIdOf(dictionaryOf(track.file).media_mid);
-    if (!mediaMid || (track.mid !== undefined && track.mid !== songmid))
-      return unavailable(songmid, quality);
+    if (!mediaMid || track.mid !== songmid) return unavailable(songmid, quality);
 
     const strategy = encryptedEvKeyStrategy(quality);
     const filename = strategy.filenameOf(songmid, mediaMid);
