@@ -66,8 +66,8 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
     ['&quality=96', '96', 'O4M0', '.mgg', 'mgg'],
     ['&quality=flac', 'flac', 'F0M0', '.mflac', 'mflac'],
   ])('返回正确格式和 ekey（%s）', async (query, quality, prefix, extension, codec) => {
-    const path = purl(prefix, extension);
-    prepare({ midurlinfo: [{ songmid: mid, purl: path, ekey: key, result: 0 }] });
+    const path = `${prefix}${media}${extension}?vkey=fixture`;
+    prepare({ midurlinfo: [{ songmid: mid, filename: filename(prefix, extension), purl: path, ekey: key, result: 0, subcode: 1 }] });
     expect(await call(`?songmid=${mid}${query}`)).toEqual({
       status: 200,
       body: {
@@ -96,6 +96,15 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
       module: 'music.vkey.GetEVkey',
       param: { songmid: [mid], filename: [filename(prefix, extension)], songtype: [0], ctx: 0 },
     });
+  });
+
+  it('继续接受双段文件名的链接', async () => {
+    const path = purl();
+    prepare({ midurlinfo: [{ songmid: mid, filename: filename(), purl: path, ekey: key, result: 0 }] });
+    const reply = await call(`?songmid=${mid}`);
+    const entry = (reply.body as any).data.playUrl[mid];
+    expect(entry.url.endsWith(`/${path}`)).toBe(true);
+    expect(entry.source.quality).toBe('192');
   });
 
   it.each([

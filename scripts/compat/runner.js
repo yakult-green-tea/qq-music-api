@@ -106,8 +106,10 @@ const rpcData = (method, param) => {
       return {
         midurlinfo: (param?.songmid ?? []).map((songmid, index) => ({
           songmid,
-          purl: param.filename[index],
+          filename: param.filename[index],
+          purl: `${param.filename[index].slice(0, 4)}abcdefghijklmn${param.filename[index].slice(param.filename[index].lastIndexOf('.'))}?vkey=fixture`,
           result: 0,
+          subcode: 1,
           ekey: 'fixture-key',
         })),
       };
