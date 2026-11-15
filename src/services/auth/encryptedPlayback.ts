@@ -69,8 +69,9 @@ export const getEncryptedPlayUrls = (
   auth: AuthSession,
   songmid: string,
   quality: EncryptedPlaybackQuality,
-): Promise<Dictionary> =>
-  withBoundedPlaybackHttp(http, async (bounded) => {
+  alreadyBounded = false,
+): Promise<Dictionary> => {
+  const operation = async (bounded: AuthHttpClient): Promise<Dictionary> => {
     const detail = await callMusicu(
       bounded,
       auth.device,
@@ -150,4 +151,6 @@ export const getEncryptedPlayUrls = (
     };
     const result = publicPlayEntryOf(source);
     return { [songmid]: { ...result, source: { ...result.source, encryption, ekey } } };
-  });
+  };
+  return alreadyBounded ? operation(http) : withBoundedPlaybackHttp(http, operation);
+};

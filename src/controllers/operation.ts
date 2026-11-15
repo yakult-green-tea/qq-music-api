@@ -12,8 +12,9 @@ import { getAuthToken } from './login';
 const firstOf = (value: string | string[] | undefined): string | undefined =>
   Array.isArray(value) ? value[0] : value;
 
-export const operationRequestOf = (ctx: Context): OperationRequest => ({
+export const operationRequestOf = (ctx: Context, signal?: AbortSignal): OperationRequest => ({
   runtime: 'node',
+  signal,
   unverifiedWritesEnabled: process.env.QQ_UNVERIFIED_WRITES_ENABLED === '1',
   method: ctx.method,
   body: async () => (ctx.request as { body?: unknown }).body,
@@ -41,8 +42,15 @@ export const operationRequestOf = (ctx: Context): OperationRequest => ({
 export const operationController =
   (handler: OperationHandler) =>
   async (ctx: Context): Promise<void> => {
-    const result = await handler(operationRequestOf(ctx));
-    ctx.status = result.status;
-    for (const [name, value] of Object.entries(result.headers)) ctx.set(name, value);
-    ctx.body = result.body;
+    const abort = new AbortController();
+    const close = () => { if (!ctx.res.writableFinished) abort.abort(); };
+    ctx.res.once('close', close);
+    try {
+      const result = await handler(operationRequestOf(ctx, abort.signal));
+      ctx.status = result.status;
+      for (const [name, value] of Object.entries(result.headers)) ctx.set(name, value);
+      ctx.body = result.body;
+    } finally {
+      ctx.res.removeListener('close', close);
+    }
   };

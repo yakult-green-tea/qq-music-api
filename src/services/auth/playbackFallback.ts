@@ -133,16 +133,20 @@ export const countingHttpOf = (
 /** 显式加密取链接共用这些限额，超时会终止正在发送的请求。 */
 export const withBoundedPlaybackHttp = async <T>(
   http: AuthHttpClient,
-  operation: (boundedHttp: AuthHttpClient) => Promise<T>,
+  operation: (boundedHttp: AuthHttpClient, reserve: () => void, signal: AbortSignal) => Promise<T>,
   limits = DEFAULT_PLAYBACK_FALLBACK_LIMITS,
+  externalSignal?: AbortSignal,
 ): Promise<T> => {
   const budget = new PlaybackRequestBudget(limits, Date.now);
   const abort = new AbortController();
   const timeoutError = () => new QqApiError('network', { errorKey: 'network.timeout' });
-  const beforeRequest = () => {
+  const reserve = () => {
     if (abort.signal.aborted || budget.remainingMs() <= 0) throw timeoutError();
     if (!budget.hasRequests()) throw new QqApiError('rate-limited');
     budget.count();
+  };
+  const beforeRequest = () => {
+    reserve();
     return { signal: abort.signal, followRedirects: false as const };
   };
   const bounded: AuthHttpClient = {
@@ -150,16 +154,26 @@ export const withBoundedPlaybackHttp = async <T>(
     request: (config) => http.request({ ...config, ...beforeRequest() }),
     post: (url, data, config) => http.post(url, data, { ...config, ...beforeRequest() }),
   };
-  const timer = setTimeout(() => abort.abort(), limits.timeoutMs);
+  let timedOut = false;
+  const cancel = () => abort.abort();
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    abort.signal.addEventListener('abort', () => reject(timedOut ? timeoutError() : new QqApiError('network', { errorKey: 'network.aborted' })), { once: true });
+  });
+  if (externalSignal?.aborted) cancel();
+  else externalSignal?.addEventListener('abort', cancel, { once: true });
+  const timer = setTimeout(() => { timedOut = true; abort.abort(); }, limits.timeoutMs);
   try {
-    const result = await withinPlaybackDeadline(operation(bounded), budget.remainingMs());
-    if (isPlaybackDeadlineMiss(result) || abort.signal.aborted) throw timeoutError();
+    const result = await Promise.race([
+      interrupted,
+      abort.signal.aborted ? interrupted : operation(bounded, reserve, abort.signal),
+    ]);
     return result;
   } catch (error) {
-    if (abort.signal.aborted) throw timeoutError();
+    if (abort.signal.aborted) throw timedOut ? timeoutError() : new QqApiError('network', { errorKey: 'network.aborted' });
     throw error;
   } finally {
     clearTimeout(timer);
+    externalSignal?.removeEventListener('abort', cancel);
   }
 };
 

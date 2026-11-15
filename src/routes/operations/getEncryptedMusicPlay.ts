@@ -48,13 +48,13 @@ export const getEncryptedMusicPlay: OperationHandler = async (request) => {
       body: { code: 405, message: 'Method not allowed' },
     });
   try {
-    if (!request.token) throw new QqApiError('auth-missing');
-    const service = await request.service();
-    const auth = await service.resolveSession(request.token);
-    if (!auth) throw new QqApiError('auth-missing');
     const songmid = validMediaIdOf(request.queryRaw('songmid'));
     const preview = request.queryRaw('preview');
     const quality = request.queryRaw('quality') ?? '192';
+    if (!request.token) throw new QqApiError('auth-missing');
+    const service = await request.service();
+    const auth = await service.lookupSession(request.token);
+    if (!auth) throw new QqApiError('auth-missing');
     if (
       !songmid ||
       Array.isArray(preview) ||
@@ -64,11 +64,13 @@ export const getEncryptedMusicPlay: OperationHandler = async (request) => {
       !Object.hasOwn(ENCRYPTED_PLAYBACK_FILES, quality)
     )
       throw new QqApiError('input');
-    const playUrl = await service.getEncryptedMusicPlay(
-      auth,
+    const playUrl = await service.getEncryptedMusicPlayWithinBudget(
+      request.token,
       songmid,
       quality as EncryptedPlaybackQuality,
+      request.signal,
     );
+    if (!playUrl) throw new QqApiError('auth-missing');
     return privateResult({ status: 200, headers: {}, body: { data: { playUrl } } });
   } catch (error) {
     return privateResult(failureResponse(error));

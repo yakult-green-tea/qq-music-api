@@ -15,6 +15,7 @@ export type QrRouteService = Pick<QrLoginService, 'createSession' | 'createQr' |
 export type OperationRuntime = 'node' | 'serverless';
 
 export interface OperationRequest {
+  readonly signal?: AbortSignal;
   readonly method?: string;
   /** 新写入路由使用；旧路由不读取正文。 */
   body?(): Promise<unknown>;
