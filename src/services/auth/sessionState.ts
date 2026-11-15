@@ -281,9 +281,10 @@ export const createStoredSessionResolver = (options: {
   const playbackRefreshes = new Map<string, { controller: AbortController; waiters: number; work: Promise<AuthSession | null> }>();
   const refreshRetryAt = new Map<string, number>();
 
-  const refresh = async (token: string, session: AuthSession, refreshCredential = options.refreshCredential): Promise<AuthSession | null> => {
+  const refresh = async (token: string, session: AuthSession, refreshCredential = options.refreshCredential, signal?: AbortSignal): Promise<AuthSession | null> => {
     try {
       const credential = await refreshCredential?.(cloneAuthSession(session));
+      if (signal?.aborted) return null;
       const live = store.get(token);
       // Logout may race an in-flight upstream refresh. Never resurrect a revoked token.
       if (!credential || !live) return null;
@@ -299,6 +300,7 @@ export const createStoredSessionResolver = (options: {
       });
       return store.get(token);
     } catch (error) {
+      if (signal?.aborted) return null;
       // The old musickey is still usable during the early-refresh window. A transient refresh
       // failure must not turn the final hours into an outage, nor hammer upstream per call.
       refreshRetryAt.set(token, options.now() + AUTH_REFRESH_RETRY_MS);
@@ -345,7 +347,7 @@ export const createStoredSessionResolver = (options: {
       let pending = playbackRefreshes.get(token);
       if (!pending) {
         const controller = new AbortController();
-        const work = refresh(token, session, (current) => playback.refresh(current, controller.signal));
+        const work = refresh(token, session, (current) => playback.refresh(current, controller.signal), controller.signal);
         pending = { controller, waiters: 0, work };
         playbackRefreshes.set(token, pending);
         void work.finally(() => { if (playbackRefreshes.get(token)?.work === work) playbackRefreshes.delete(token); });
