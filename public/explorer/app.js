@@ -69,8 +69,6 @@
     elements.endpointComboboxList.classList.toggle('hidden', !isOpen);
   }
 
-  function logRequestLifecycle() {}
-
   function normalizeSearchKeyword(value) {
     return String(value || '')
       .trim()
@@ -648,14 +646,6 @@
       log.id === logId ? Object.assign({}, log, patch) : log,
     );
 
-    const updatedLog = state.requestLogs.find((log) => log.id === logId) || null;
-
-    logRequestLifecycle('update', {
-      logId,
-      patch,
-      requestLogCount: state.requestLogs.length,
-      updatedLog,
-    });
   }
 
   function formatRequestLogDetail(log) {
@@ -785,26 +775,11 @@
 
   function renderRequestLogs() {
     const visibleLogs = getVisibleRequestLogs();
-    const activeLog = ensureActiveLogSelection(visibleLogs);
+    ensureActiveLogSelection(visibleLogs);
 
     renderLogToolbar();
     renderLogList(visibleLogs);
 
-    if (!state.requestLogs.length) {
-      logRequestLifecycle('render-empty', {
-        requestLogCount: 0,
-      });
-      return;
-    }
-
-    logRequestLifecycle('render-detail', {
-      requestLogCount: state.requestLogs.length,
-      visibleLogCount: visibleLogs.length,
-      latestStatus: getLatestRequestLog()?.status,
-      latestDuration: getLatestRequestLog()?.duration,
-      latestEndpointName: getLatestRequestLog()?.endpointName,
-      activeLogId: activeLog?.id || null,
-    });
   }
 
   function handleFilterChange(methodFilter) {
@@ -919,11 +894,6 @@
 
     const missingFields = validateFields(endpoint);
     if (missingFields.length) {
-      logRequestLifecycle('validation-failed', {
-        endpointId: endpoint.id,
-        endpointName: endpoint.name,
-        missingFields,
-      });
       elements.responseMeta.textContent = '请求未发送';
       elements.responsePreview.classList.add('error-text');
       elements.responsePreview.textContent = `缺少必填参数: ${missingFields.join(', ')}`;
@@ -935,11 +905,6 @@
     try {
       payload = buildRequestPayload(endpoint);
     } catch (error) {
-      logRequestLifecycle('payload-invalid', {
-        endpointId: endpoint.id,
-        endpointName: endpoint.name,
-        error: error instanceof Error ? error.message : String(error),
-      });
       elements.responseMeta.textContent = '请求未发送';
       elements.responsePreview.classList.add('error-text');
       elements.responsePreview.textContent = error instanceof Error ? error.message : String(error);
@@ -975,13 +940,6 @@
         options.body = payload.body ? JSON.stringify(payload.body) : undefined;
       }
 
-      logRequestLifecycle('fetch-dispatch', {
-        logId: logEntry.id,
-        method: options.method,
-        url: payload.url,
-        hasBody: Boolean(options.body),
-        headers: options.headers,
-      });
 
       const response = await fetch(payload.url, options);
       const duration = Math.round(performance.now() - startTime);
@@ -1023,12 +981,6 @@
         ...(errorKey === undefined ? {} : { errorKey }),
       });
 
-      logRequestLifecycle('fetch-success', {
-        logId: logEntry.id,
-        status: response.status,
-        duration,
-        responsePreviewLength: responsePreviewText.length,
-      });
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1042,11 +994,6 @@
         duration,
       });
 
-      logRequestLifecycle('fetch-error', {
-        logId: logEntry.id,
-        duration,
-        errorMessage,
-      });
     } finally {
       elements.sendRequestButton.disabled = false;
       elements.sendRequestButton.textContent = '发送请求';
@@ -1055,10 +1002,6 @@
       if (state.activeLogId === logEntry.id) {
         scrollLogItemIntoView(logEntry.id);
       }
-      logRequestLifecycle('send-finish', {
-        logId: logEntry.id,
-        requestLogCount: state.requestLogs.length,
-      });
     }
   }
 
