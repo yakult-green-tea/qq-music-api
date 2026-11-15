@@ -121,7 +121,10 @@ export const getEncryptedPlayUrls = (
       );
     const responseBase = sip.find((url) => !url.hostname.startsWith('ws.')) ?? sip[0];
     const url = streamUrlOf(purl, responseBase?.href ?? PREFERRED_STREAM_DOMAIN);
-    if (!url || url.pathname !== `/${filename}`) return unavailable(songmid, quality, entry);
+    const { prefix, extension } = ENCRYPTED_PLAYBACK_FILES[quality];
+    const shortFilename = `${prefix}${mediaMid}${extension}`;
+    if (!url || (url.pathname !== `/${filename}` && url.pathname !== `/${shortFilename}`))
+      return unavailable(songmid, quality, entry);
 
     const cdn =
       responseBase || /^(?:https?:)?\/\//i.test(purl) ? 'response-sip' : 'unverified-default';
