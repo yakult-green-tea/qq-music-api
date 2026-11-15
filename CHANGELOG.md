@@ -1,4 +1,4 @@
-## 未发布
+## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)
 
 ### 新功能
 
