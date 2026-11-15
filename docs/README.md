@@ -613,7 +613,15 @@ X-QQ-Session: <session>
 
 一次请求一首歌，`songmid` 必须是 14 位字母或数字。`quality` 可选 `96`、`192` 或 `flac`，默认 `192`。未登录返回 401。音质不支持、重复参数或带 `preview=1` 时返回 400。普通播放和试听使用 `/getMusicPlay`。
 
-链接仍按歌曲 MID 放在 `data.playUrl` 里。成功条目的 `source` 带 `protocol: "encrypted-evkey"`、`encryption: "encrypted"`、实际音质 `quality`、格式 `codec`（`mgg` 或 `mflac`）和上游的 `ekey`。上游拒绝时，该条目返回空链接和未确认原因。链接和密钥仅供本次获准使用，请勿公开或记录到日志。
+链接仍按歌曲 MID 放在 `data.playUrl` 里。成功条目的 `source` 带 `protocol: "encrypted-evkey"`、`encryption: "encrypted"`、实际音质 `quality`、格式 `codec`（`mgg` 或 `mflac`）和上游的 `ekey`。上游拒绝时，该条目返回空链接和未确认原因，`restriction.codes` 里带上游给的结果码；这条接口不给地区或会员提示。链接和密钥仅供本次获准使用，请勿公开或记录到日志。
+
+其他规则：
+
+- 响应一律带 `Cache-Control: private, no-store`，请不要缓存。
+- 检查顺序是先登录、后参数：没带会话或会话无效时回 401；带了有效会话但参数不对时回 400，这时不会向上游发任何请求。
+- 每次请求从开始找上游起，最多等 15 秒，超时回 `502`、`errorKey: network.timeout`；上游让跳转的链接不会跟着走。
+- 这条接口不会替你续期会话。Node 部署里如果别的请求正在续期，它会等那次结果（仍在 15 秒内）；需要续期时，请照常调用其他接口或 `POST /login/refresh`。
+- 调用方中途断开或取消请求时，服务会停止这次还没发出的上游请求。
 
 > [!IMPORTANT]
 > 1. 取到加密文件链接或密钥字段，只说明上游返回了这些数据。能否下载完整文件、能否完整播放，需要分别验证。
