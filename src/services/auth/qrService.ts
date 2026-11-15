@@ -1,4 +1,5 @@
 import type { EncryptedPlaybackQuality } from '../../protocol/playbackFiles';
+import { QqApiError } from '../../protocol/errors';
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
 import { RequestRejectedError } from '../../util/requestError';
@@ -887,7 +888,7 @@ export class QrLoginServiceImpl implements QrLoginService {
     this.cleanup();
     if (this.sessionResolver.lookup) return this.sessionResolver.lookup(token);
     if (this.sessionResolver.mode === 'sealed') return this.sessionResolver.resolve(token);
-    throw new Error('Session resolver cannot check a session without refreshing');
+    throw new QqApiError('unexpected');
   }
 
   public getEncryptedMusicPlayWithinBudget(

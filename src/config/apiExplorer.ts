@@ -802,6 +802,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     ],
   },
   getMusicPlay: {
+    // An authenticated unconfirmed m4a/128 result retries once; the visible description is Chinese.
     description:
       '按歌曲 MID 获取播放链接，扫码会话可用于登录播放。没有链接时返回 restriction 和英文提示。带会话的 m4a/128 失败时最多查 10 首歌曲详情，只有特征完整匹配才提示地区或会员限制；原因不明则保留未确认提示。设置 QQ_PLAYBACK_HINTS_ENABLED=0 可关闭提示和查询。微信账号的匹配特征尚未经过受控实测。ape 会先查 size_ape（最多 10 首），没有文件和查询失败的提示不同，可带 restriction.failureReason，两种情况都不取链接。preview=1 优先：size_try 大于 0 且有媒体标识才取试听，成功时标记 preview: true；带会话且详情中的 size_try 恰好为 0 时返回 playback.preview-missing，其他跳过的试听返回 playback.preview-unavailable。quality=best 依次尝试 flac、320、128，size_flac 或 size_320mp3 不大于 0 的级别跳过（最多查 10 首详情），每项的 quality 表示实际使用的音质；详情不可读、超过查询上限或没有会话时直接取 128。带会话时，最终提示为 playback.reason-unconfirmed 的 m4a/128 歌曲（含 best 的最后一级）会合并重试一次；重试失败或出错则保留第一次结果。带会话且向上游请求过的歌曲可带 source，包含 kind（full、preview，或结果码失败但有链接时的 unknown）、protocol 和 cdn（response-sip、probed、unverified-default 或 none）。上游漏掉的歌曲返回空链接和 playback.reason-unconfirmed，不重试；没有请求过的歌曲会丢弃。',
   },

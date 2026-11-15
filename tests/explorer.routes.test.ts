@@ -16,6 +16,7 @@ describe('Explorer routes', () => {
     const normal = endpoints.find((endpoint) => endpoint.name === 'getMusicPlay');
     const encrypted = endpoints.find((endpoint) => endpoint.name === 'getEncryptedMusicPlay');
     expect(normal?.description).toContain('播放链接');
+    expect(normal?.description).toContain('重试一次');
     expect(encrypted?.description).toContain('加密');
     expect(encrypted?.queryParams.map((field: { label: string }) => field.label)).toEqual([
       '歌曲 MID',
