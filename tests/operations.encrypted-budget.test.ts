@@ -1,6 +1,7 @@
 import { getEncryptedMusicPlay } from '../src/routes/operations/getEncryptedMusicPlay';
 import { operationController } from '../src/controllers/operation';
 import { operationRoute } from '../src/serverless/operationRoute';
+import { createSealedSessionResolver } from '../src/serverless/sealedResolver';
 import { EventEmitter } from 'node:events';
 import type { OperationRequest } from '../src/routes/operations/types';
 import {
@@ -10,7 +11,7 @@ import {
 import type { AuthHttpClient } from '../src/transport/httpClientTypes';
 import { logger } from '../src/util/logger';
 import deviceFixture from './fixtures/contracts/device-v1.json';
-import { CONTRACT_CREDENTIAL, CONTRACT_NOW } from './helpers/contractUpstream';
+import { CONTRACT_CREDENTIAL, CONTRACT_NOW, CONTRACT_SECRET } from './helpers/contractUpstream';
 
 describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）', (runtime) => {
   const send = jest.fn();
@@ -102,6 +103,72 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
   const flush = async () => {
     for (let i = 0; i < 20; i++) await Promise.resolve();
   };
+
+  it('提前更新期间只用现有凭证取链接，不主动更新', async () => {
+    send.mockImplementation((config) => Promise.resolve(response(replyFor(methodOf(config)))));
+    const result = await call('valid-fixture', '192');
+    expect(result.status).toBe(200);
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual([
+      'get_song_detail_yqq', 'CgiGetEVkey',
+    ]);
+    const usesOldCredential = send.mock.calls.every(([config]) =>
+      String(config.headers?.Cookie ?? '').includes(CONTRACT_CREDENTIAL.musickey),
+    );
+    expect(usesOldCredential).toBe(true);
+  });
+
+  it('等待旧路由正在进行的更新，然后使用新凭证', async () => {
+    const freshKey = 'fixture-fresh-credential';
+    let finish: (value: unknown) => void = () => {};
+    send.mockImplementation((config) => methodOf(config) === 'Login'
+      ? new Promise((resolve) => { finish = resolve; })
+      : Promise.resolve(response(replyFor(methodOf(config)))));
+    const oldCall = service.resolveSession('valid-fixture');
+    await flush();
+    const encrypted = call('valid-fixture', '192');
+    await flush();
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['Login']);
+    finish(response({ ...CONTRACT_CREDENTIAL, musickey: freshKey }));
+    await oldCall;
+    expect((await encrypted).status).toBe(200);
+    const usesNewCredential = send.mock.calls.slice(1).every(([config]) => String(config.headers?.Cookie ?? '').includes(freshKey));
+    expect(usesNewCredential).toBe(true);
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['Login', 'get_song_detail_yqq', 'CgiGetEVkey']);
+  });
+
+  it.each(['取消', '超时'] as const)('等待旧路由更新时%s，不中止更新或丢弃新凭证', async (mode) => {
+    jest.useFakeTimers({ now: CONTRACT_NOW });
+    const freshKey = 'fixture-fresh-credential';
+    let finish: (value: unknown) => void = () => {};
+    send.mockImplementation((config) => methodOf(config) === 'Login'
+      ? new Promise((resolve) => { finish = resolve; })
+      : Promise.resolve(response(replyFor(methodOf(config)))));
+    const oldCall = service.resolveSession('valid-fixture');
+    await flush();
+    const controller = new AbortController();
+    const encrypted = call('valid-fixture', '192', controller.signal);
+    await flush();
+    if (mode === '取消') controller.abort();
+    else await jest.advanceTimersByTimeAsync(15_000);
+    const result = await encrypted;
+    expect(result.body).toMatchObject({ errorKey: mode === '取消' ? 'network.aborted' : 'network.timeout' });
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['Login']);
+    expect(send.mock.calls[0][0].signal?.aborted ?? false).toBe(false);
+    finish(response({ ...CONTRACT_CREDENTIAL, musickey: freshKey }));
+    await oldCall;
+    const stored = await service.lookupSession('valid-fixture');
+    expect(stored?.credential.musickey === freshKey).toBe(true);
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['Login']);
+  });
+
+  it('封存会话在提前更新期间也能正常取链接', async () => {
+    const resolver = createSealedSessionResolver({ secrets: { current: CONTRACT_SECRET }, now: () => CONTRACT_NOW });
+    const token = await resolver.issue({ device: deviceFixture.device, credential: { ...CONTRACT_CREDENTIAL, refresh_key: 'fixture-secret', musickeyCreateTime: CONTRACT_NOW / 1000, keyExpiresIn: 3600 }, expiresAt: CONTRACT_NOW + 3600000 });
+    service = createQrLoginService({ http, sessionResolver: resolver, now: () => CONTRACT_NOW });
+    send.mockImplementation((config) => Promise.resolve(response(replyFor(methodOf(config)))));
+    expect((await call(token, '192')).status).toBe(200);
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['get_song_detail_yqq', 'CgiGetEVkey']);
+  });
 
   it('更新和取链接共用十五秒，更新请求不跟随转址', async () => {
     jest.useFakeTimers({ now: CONTRACT_NOW });
