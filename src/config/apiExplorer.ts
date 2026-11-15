@@ -803,18 +803,18 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getMusicPlay: {
     description:
-      'Get playable music URL by song MID; an opaque QR session enables authenticated playback. A missing URL adds restriction (still url_unavailable) and a plain English hint. Authenticated m4a/128 failures may query up to 10 song details: only complete matching features suggest region or membership; unknown features stay unconfirmed. QQ_PLAYBACK_HINTS_ENABLED=0 disables these hints and lookups. WeChat matching features are supported but not yet verified with controlled live tests. ape checks size_ape first (up to 10 songs); no file and failed checks have different hints and optional restriction.failureReason, and neither asks for a URL. preview=1 takes priority, asking for a preview only when size_try is above 0 and a media id is known, marking successful entries preview: true. With a session, a readable detail whose size_try is exactly 0 gets playback.preview-missing (no preview file); other skipped previews get playback.preview-unavailable. quality=best tries flac, then 320, then 128, skipping levels whose size_flac/size_320mp3 is not above 0 (up to 10 detail lookups), and adds quality to each entry with the level actually used; without a readable detail, past the lookup limit, or without a session it asks for 128 directly. With a session, it retries once, in one batched request, the m4a/128 songs (including the last best level) whose final hint is playback.reason-unconfirmed; if the retry still fails or errors, the first result is returned. With a session, every entry the upstream was asked for also carries an optional source: kind (full, preview, or unknown when a URL came with a failing result code), protocol, and cdn (response-sip, probed, unverified-default, or none). Songs missing from the upstream answer get an empty URL with playback.reason-unconfirmed and are not retried; entries for songs that were not requested are dropped.',
+      '按歌曲 MID 获取播放链接，扫码会话可用于登录播放。没有链接时返回 restriction 和英文提示。带会话的 m4a/128 失败时最多查 10 首歌曲详情，只有特征完整匹配才提示地区或会员限制；原因不明则保留未确认提示。设置 QQ_PLAYBACK_HINTS_ENABLED=0 可关闭提示和查询。微信账号的匹配特征尚未经过受控实测。ape 会先查 size_ape（最多 10 首），没有文件和查询失败的提示不同，可带 restriction.failureReason，两种情况都不取链接。preview=1 优先：size_try 大于 0 且有媒体标识才取试听，成功时标记 preview: true；带会话且详情中的 size_try 恰好为 0 时返回 playback.preview-missing，其他跳过的试听返回 playback.preview-unavailable。quality=best 依次尝试 flac、320、128，size_flac 或 size_320mp3 不大于 0 的级别跳过（最多查 10 首详情），每项的 quality 表示实际使用的音质；详情不可读、超过查询上限或没有会话时直接取 128。带会话时，最终提示为 playback.reason-unconfirmed 的 m4a/128 歌曲（含 best 的最后一级）会合并重试一次；重试失败或出错则保留第一次结果。带会话且向上游请求过的歌曲可带 source，包含 kind（full、preview，或结果码失败但有链接时的 unknown）、protocol 和 cdn（response-sip、probed、unverified-default 或 none）。上游漏掉的歌曲返回空链接和 playback.reason-unconfirmed，不重试；没有请求过的歌曲会丢弃。',
   },
   getEncryptedMusicPlay: {
     description:
-      'Get an encrypted file link for one song. Requires a session. Supports 96, 192 (default), and flac. Does not support previews or quality fallback. The link and ekey do not establish that a third-party player can play the file.',
+      '获取单首歌的加密文件链接，需要登录会话。支持 96、192（默认）和 flac，不支持试听或音质回退。拿到链接和 ekey 不代表播放器一定能播放。',
     queryParams: [
-      { key: 'songmid', label: 'Song MID', required: true, placeholder: '0016l2F430zMux' },
+      { key: 'songmid', label: '歌曲 MID', required: true, placeholder: '0016l2F430zMux' },
       {
         key: 'quality',
-        label: 'Quality',
+        label: '音质',
         defaultValue: '192',
-        description: '96, 192, or flac.',
+        description: '可选 96、192 或 flac。',
       },
     ],
   },
