@@ -133,7 +133,7 @@ export const countingHttpOf = (
 /** 显式加密取链接共用这些限额，超时会终止正在发送的请求。 */
 export const withBoundedPlaybackHttp = async <T>(
   http: AuthHttpClient,
-  operation: (boundedHttp: AuthHttpClient, reserve: () => void, signal: AbortSignal) => Promise<T>,
+  operation: (boundedHttp: AuthHttpClient) => Promise<T>,
   limits = DEFAULT_PLAYBACK_FALLBACK_LIMITS,
   externalSignal?: AbortSignal,
 ): Promise<T> => {
@@ -175,7 +175,7 @@ export const withBoundedPlaybackHttp = async <T>(
   try {
     const result = await Promise.race([
       interrupted,
-      abort.signal.aborted ? interrupted : operation(bounded, reserve, abort.signal),
+      abort.signal.aborted ? interrupted : operation(bounded),
     ]);
     return result;
   } catch (error) {

@@ -1,5 +1,4 @@
 import { logger } from '../../util/logger';
-import { QqApiError } from '../../protocol/errors';
 import { isDictionary, stringOf } from '../../util/values';
 import { isAndroidDevice } from './androidDevice';
 import { Buffer } from './bytes';
@@ -278,21 +277,11 @@ export const createStoredSessionResolver = (options: {
 }): SessionResolver => {
   const store = createAuthSessionStore(options.repository, options.now);
   const refreshes = new Map<string, Promise<AuthSession | null>>();
-  const playbackRefreshes = new Map<
-    string,
-    { controller: AbortController; waiters: number; work: Promise<AuthSession | null> }
-  >();
   const refreshRetryAt = new Map<string, number>();
 
-  const refresh = async (
-    token: string,
-    session: AuthSession,
-    refreshCredential = options.refreshCredential,
-    signal?: AbortSignal,
-  ): Promise<AuthSession | null> => {
+  const refresh = async (token: string, session: AuthSession): Promise<AuthSession | null> => {
     try {
-      const credential = await refreshCredential?.(cloneAuthSession(session));
-      if (signal?.aborted) return null;
+      const credential = await options.refreshCredential?.(cloneAuthSession(session));
       const live = store.get(token);
       // Logout may race an in-flight upstream refresh. Never resurrect a revoked token.
       if (!credential || !live) return null;
@@ -308,7 +297,6 @@ export const createStoredSessionResolver = (options: {
       });
       return store.get(token);
     } catch (error) {
-      if (signal?.aborted) return null;
       // The old musickey is still usable during the early-refresh window. A transient refresh
       // failure must not turn the final hours into an outage, nor hammer upstream per call.
       refreshRetryAt.set(token, options.now() + AUTH_REFRESH_RETRY_MS);
@@ -347,49 +335,7 @@ export const createStoredSessionResolver = (options: {
   return {
     mode: 'stored',
     lookup: async (token) => (token ? store.get(token) : null),
-    resolveForPlayback: async (token, playback) => {
-      const session = store.get(token);
-      if (!session) return null;
-      if (
-        !options.refreshCredential ||
-        !shouldRefreshStoredCredential(session.credential, options.now()) ||
-        (refreshRetryAt.get(token) ?? 0) > options.now()
-      )
-        return session;
-      playback.reserve();
-      let pending = playbackRefreshes.get(token);
-      if (!pending) {
-        const controller = new AbortController();
-        const work = refresh(
-          token,
-          session,
-          (current) => playback.refresh(current, controller.signal),
-          controller.signal,
-        );
-        pending = { controller, waiters: 0, work };
-        playbackRefreshes.set(token, pending);
-        void work.finally(() => {
-          if (playbackRefreshes.get(token)?.work === work) playbackRefreshes.delete(token);
-        });
-      }
-      const shared = pending;
-      shared.waiters++;
-      let cancel = () => {};
-      const aborted = new Promise<never>((_resolve, reject) => {
-        cancel = () => reject(new QqApiError('network', { errorKey: 'network.aborted' }));
-        if (playback.signal.aborted) cancel();
-        else playback.signal.addEventListener('abort', cancel, { once: true });
-      });
-      try {
-        return await Promise.race([shared.work, aborted]);
-      } finally {
-        playback.signal.removeEventListener('abort', cancel);
-        if (--shared.waiters === 0 && playbackRefreshes.get(token) === shared) {
-          playbackRefreshes.delete(token);
-          shared.controller.abort();
-        }
-      }
-    },
+    awaitExistingRefresh: async (token) => refreshes.get(token) ?? store.get(token),
     issue: async (session) => {
       const token = options.randomBytes(32).toString('hex');
       store.set({ ...session, token });
