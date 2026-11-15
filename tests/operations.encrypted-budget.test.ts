@@ -109,7 +109,8 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
     const result = await call('valid-fixture', '192');
     expect(result.status).toBe(200);
     expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual([
-      'get_song_detail_yqq', 'CgiGetEVkey',
+      'get_song_detail_yqq',
+      'CgiGetEVkey',
     ]);
     const usesOldCredential = send.mock.calls.every(([config]) =>
       String(config.headers?.Cookie ?? '').includes(CONTRACT_CREDENTIAL.musickey),
@@ -120,9 +121,13 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
   it('等待旧路由正在进行的更新，然后使用新凭证', async () => {
     const freshKey = 'fixture-fresh-credential';
     let finish: (value: unknown) => void = () => {};
-    send.mockImplementation((config) => methodOf(config) === 'Login'
-      ? new Promise((resolve) => { finish = resolve; })
-      : Promise.resolve(response(replyFor(methodOf(config)))));
+    send.mockImplementation((config) =>
+      methodOf(config) === 'Login'
+        ? new Promise((resolve) => {
+            finish = resolve;
+          })
+        : Promise.resolve(response(replyFor(methodOf(config)))),
+    );
     const oldCall = service.resolveSession('valid-fixture');
     await flush();
     const encrypted = call('valid-fixture', '192');
@@ -131,18 +136,69 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
     finish(response({ ...CONTRACT_CREDENTIAL, musickey: freshKey }));
     await oldCall;
     expect((await encrypted).status).toBe(200);
-    const usesNewCredential = send.mock.calls.slice(1).every(([config]) => String(config.headers?.Cookie ?? '').includes(freshKey));
+    const usesNewCredential = send.mock.calls
+      .slice(1)
+      .every(([config]) => String(config.headers?.Cookie ?? '').includes(freshKey));
     expect(usesNewCredential).toBe(true);
-    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['Login', 'get_song_detail_yqq', 'CgiGetEVkey']);
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual([
+      'Login',
+      'get_song_detail_yqq',
+      'CgiGetEVkey',
+    ]);
+  });
+
+  it('普通播放发起更新时，加密播放等待且只发一次更新', async () => {
+    const freshKey = 'fixture-fresh-credential';
+    let finish: (value: unknown) => void = () => {};
+    send.mockImplementation((config) => {
+      const method = methodOf(config);
+      if (method === 'Login')
+        return new Promise((resolve) => {
+          finish = resolve;
+        });
+      if (method === 'UrlGetVkey')
+        return Promise.resolve(
+          response({
+            sip: ['https://stream.invalid/'],
+            midurlinfo: [{ songmid: 'FixtureSong001', purl: 'fixture.mp3', result: 0 }],
+          }),
+        );
+      return Promise.resolve(response(replyFor(method)));
+    });
+    const normal = service.getMusicPlay('valid-fixture', 'FixtureSong001', '128');
+    await flush();
+    const encrypted = call('valid-fixture', '192');
+    await flush();
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['Login']);
+    expect(send.mock.calls[0][0].followRedirects).toBeUndefined();
+    finish(response({ ...CONTRACT_CREDENTIAL, musickey: freshKey }));
+    expect(await normal).not.toBeNull();
+    expect((await encrypted).status).toBe(200);
+    const calls = send.mock.calls.map(([config]) => methodOf(config));
+    expect(calls.filter((method) => method === 'Login')).toHaveLength(1);
+    expect(calls.filter((method) => method === 'UrlGetVkey')).toHaveLength(1);
+    const encryptedCalls = send.mock.calls.filter(([config]) =>
+      ['get_song_detail_yqq', 'CgiGetEVkey'].includes(methodOf(config)),
+    );
+    expect(encryptedCalls).toHaveLength(2);
+    const usesNewCredential = encryptedCalls.every(([config]) =>
+      String(config.headers?.Cookie ?? '').includes(freshKey),
+    );
+    expect(usesNewCredential).toBe(true);
+    expect(encryptedCalls.every(([config]) => config.followRedirects === false)).toBe(true);
   });
 
   it.each(['取消', '超时'] as const)('等待旧路由更新时%s，不中止更新或丢弃新凭证', async (mode) => {
     jest.useFakeTimers({ now: CONTRACT_NOW });
     const freshKey = 'fixture-fresh-credential';
     let finish: (value: unknown) => void = () => {};
-    send.mockImplementation((config) => methodOf(config) === 'Login'
-      ? new Promise((resolve) => { finish = resolve; })
-      : Promise.resolve(response(replyFor(methodOf(config)))));
+    send.mockImplementation((config) =>
+      methodOf(config) === 'Login'
+        ? new Promise((resolve) => {
+            finish = resolve;
+          })
+        : Promise.resolve(response(replyFor(methodOf(config)))),
+    );
     const oldCall = service.resolveSession('valid-fixture');
     await flush();
     const controller = new AbortController();
@@ -151,7 +207,9 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
     if (mode === '取消') controller.abort();
     else await jest.advanceTimersByTimeAsync(15_000);
     const result = await encrypted;
-    expect(result.body).toMatchObject({ errorKey: mode === '取消' ? 'network.aborted' : 'network.timeout' });
+    expect(result.body).toMatchObject({
+      errorKey: mode === '取消' ? 'network.aborted' : 'network.timeout',
+    });
     expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['Login']);
     expect(send.mock.calls[0][0].signal?.aborted ?? false).toBe(false);
     finish(response({ ...CONTRACT_CREDENTIAL, musickey: freshKey }));
@@ -162,12 +220,27 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
   });
 
   it('封存会话在提前更新期间也能正常取链接', async () => {
-    const resolver = createSealedSessionResolver({ secrets: { current: CONTRACT_SECRET }, now: () => CONTRACT_NOW });
-    const token = await resolver.issue({ device: deviceFixture.device, credential: { ...CONTRACT_CREDENTIAL, refresh_key: 'fixture-secret', musickeyCreateTime: CONTRACT_NOW / 1000, keyExpiresIn: 3600 }, expiresAt: CONTRACT_NOW + 3600000 });
+    const resolver = createSealedSessionResolver({
+      secrets: { current: CONTRACT_SECRET },
+      now: () => CONTRACT_NOW,
+    });
+    const token = await resolver.issue({
+      device: deviceFixture.device,
+      credential: {
+        ...CONTRACT_CREDENTIAL,
+        refresh_key: 'fixture-secret',
+        musickeyCreateTime: CONTRACT_NOW / 1000,
+        keyExpiresIn: 3600,
+      },
+      expiresAt: CONTRACT_NOW + 3600000,
+    });
     service = createQrLoginService({ http, sessionResolver: resolver, now: () => CONTRACT_NOW });
     send.mockImplementation((config) => Promise.resolve(response(replyFor(methodOf(config)))));
     expect((await call(token, '192')).status).toBe(200);
-    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['get_song_detail_yqq', 'CgiGetEVkey']);
+    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual([
+      'get_song_detail_yqq',
+      'CgiGetEVkey',
+    ]);
   });
 
   it('等待已有更新和取链接共用十五秒，取链接不跟随转址', async () => {
