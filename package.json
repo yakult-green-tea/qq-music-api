@@ -1,6 +1,6 @@
 {
   "name": "@yakult-green-tea/qq-music-api",
-  "version": "3.3.6",
+  "version": "3.3.7",
   "description": "非官方的 QQ 音乐 API，支持扫码登录、个人音乐库和播放链接，可以独立部署，也可以嵌入 Node.js、Electron 或 Serverless。",
   "main": "dist/src/app.js",
   "types": "./types/root.d.ts",
