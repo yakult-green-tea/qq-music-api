@@ -27,7 +27,7 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
     });
   };
   const prepare = (reply: Record<string, unknown>) => {
-    upstream.state.songDetails = { [mid]: { file: { media_mid: media } } };
+    upstream.state.songDetails = { [mid]: { mid, file: { media_mid: media } } };
     upstream.state.rpcReplies = { CgiGetEVkey: { data: reply } };
   };
   const rpcs = () => upstream.calls.flatMap(({ rpc }) => rpc);
@@ -110,7 +110,7 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
         { songmid: mid, filename: requested, purl: path, result: 0, subcode: 1, ekey: key },
       ],
     });
-    upstream.state.songDetails = { [mid]: { file: { media_mid: mediaMid } } };
+    upstream.state.songDetails = { [mid]: { mid, file: { media_mid: mediaMid } } };
     const reply = await call(`?songmid=${mid}&quality=${quality}`);
     const entry = (reply.body as any).data.playUrl[mid];
     const matchesUrl = entry.url === `http://sjy6.stream.qqmusic.qq.com/${path}`;
@@ -171,6 +171,21 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
     });
     expect(JSON.stringify(reply)).not.toContain(key);
     expect(rpcs().map((rpc) => rpc.method)).toEqual(['get_song_detail_yqq', 'CgiGetEVkey']);
+  });
+
+  it.each([
+    ['缺少歌曲标识', undefined, media],
+    ['歌曲标识不相符', 'foreignfixture', media],
+    ['链接媒体标识不相符', mid, 'foreignfixture'],
+  ])('歌曲详情必须核对身份：%s', async (_label, detailMid, pathMedia) => {
+    prepare({
+      midurlinfo: [{ songmid: mid, filename: filename(), purl: `O6M0${pathMedia}.mgg`, result: 0, ekey: key }],
+    });
+    upstream.state.songDetails = { [mid]: { ...(detailMid === undefined ? {} : { mid: detailMid }), file: { media_mid: media } } };
+    const reply = await call(`?songmid=${mid}`);
+    const entry = (reply.body as any).data.playUrl[mid];
+    expect(entry.url === '').toBe(true);
+    if (detailMid !== mid) expect(entry.restriction.codes).toBeUndefined();
   });
 
   it('没有可信 media_mid 就不猜文件名', async () => {
