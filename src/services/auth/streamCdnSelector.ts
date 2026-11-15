@@ -68,7 +68,8 @@ interface CachedSelection {
 
 export class StreamCdnSelector {
   private cached: CachedSelection | null = null;
-  private selecting: Promise<string | null> | null = null;
+  // 正在进行的探测按候选地址分开记：候选不一样的请求不能拿别人的结果。
+  private readonly selecting = new Map<string, Promise<string | null>>();
 
   public constructor(
     private readonly probe: StreamUrlProbe,
@@ -84,12 +85,15 @@ export class StreamCdnSelector {
     if (bases.length === 0 || !purl) return null;
     if (this.cached && this.cached.expiresAt > this.now() && bases.includes(this.cached.base))
       return this.cached.base;
-    if (this.selecting) return this.selecting;
+    const key = bases.join('|');
+    const pending = this.selecting.get(key);
+    if (pending) return pending;
 
-    this.selecting = this.measure(bases, purl, refreshAfterMs).finally(() => {
-      this.selecting = null;
+    const started = this.measure(bases, purl, refreshAfterMs).finally(() => {
+      this.selecting.delete(key);
     });
-    return this.selecting;
+    this.selecting.set(key, started);
+    return started;
   }
 
   // Measures candidates concurrently so a throttled fallback cannot serially delay playback.

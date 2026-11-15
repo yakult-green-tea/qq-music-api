@@ -102,7 +102,11 @@ it('播放模块保留逐曲失败和原音质文件名', async () => {
     'fixture-media',
   );
   expect(result).toEqual({
-    [CONTRACT_SONGS[0].mid]: { url: 'https://stream.invalid/fixture.flac', error: false },
+    [CONTRACT_SONGS[0].mid]: {
+      url: 'https://stream.invalid/fixture.flac',
+      error: false,
+      source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+    },
     [CONTRACT_SONGS[1].mid]: {
       url: '',
       error: '暂无播放链接',
@@ -112,6 +116,7 @@ it('播放模块保留逐曲失败和原音质文件名', async () => {
         codes: { result: 104003 },
         hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
       },
+      source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
     },
   });
   // 原因还没有验证过的规则，不为挑提示多查单曲详情。

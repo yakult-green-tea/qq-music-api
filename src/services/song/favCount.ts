@@ -1,3 +1,4 @@
+import { WEB_ANONYMOUS_COMM_WITH_UIN } from '../../protocol/clientProfiles';
 import { QqApiError } from '../../protocol/errors';
 import { createMusicuClient } from '../../protocol/musicu';
 import { createFetchTransport } from '../../transport/fetch';
@@ -19,7 +20,7 @@ export const songFavCountResult = async (raw: unknown) => {
     const ids = source.map(songIdOf);
     const client = createMusicuClient({
       http: createFetchTransport(),
-      comm: { ct: 24, cv: 0, uin: 0 },
+      comm: WEB_ANONYMOUS_COMM_WITH_UIN,
       maxRetries: 0,
     });
     const data = await client.execute({

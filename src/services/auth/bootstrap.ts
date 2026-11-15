@@ -1,3 +1,4 @@
+import { ANDROID_CLIENT, ANDROID_QR_CREATE_COMM } from '../../protocol/clientProfiles';
 import { logger } from '../../util/logger';
 import {
   type Dictionary,
@@ -164,12 +165,12 @@ export const createNativeQr = async (http: AuthHttpClient, device: AndroidDevice
     'music.login.LoginServer',
     'CreateQRCode',
     {
-      tmeAppID: 'qqmusic',
-      ct: 11,
-      cv: 14090008,
+      tmeAppID: ANDROID_CLIENT.appId,
+      ct: ANDROID_CLIENT.ct,
+      cv: ANDROID_CLIENT.version,
     },
     undefined,
-    { ct: 23, cv: 0 },
+    { ...ANDROID_QR_CREATE_COMM },
   );
   const qrcodeId = stringOf(data.qrcodeID);
   const encoded = stringOf(data.qrcode).split(',').at(-1) ?? '';

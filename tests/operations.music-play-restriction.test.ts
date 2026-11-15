@@ -57,6 +57,22 @@ const EXPECTED_PLAY_URL = {
   },
 };
 
+/** 带会话时每条从上游来的结果多一个 source；匿名路径没有。 */
+const EXPECTED_SESSION_PLAY_URL = {
+  'fixture-a': {
+    ...EXPECTED_PLAY_URL['fixture-a'],
+    source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+  },
+  'fixture-b': {
+    ...EXPECTED_PLAY_URL['fixture-b'],
+    source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
+  },
+  'fixture-c': {
+    ...EXPECTED_PLAY_URL['fixture-c'],
+    source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
+  },
+};
+
 describe.each(CATALOG_RUNTIMES)('/getMusicPlay 的 restriction（%s）', (runtime) => {
   const upstream = useSessionUpstream(runtime);
   beforeEach(() => jest.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(uuid));
@@ -70,7 +86,7 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 的 restriction（%s）', (runtim
       await upstream.options(),
     );
     expect(legs.operation.status).toBe(200);
-    expect(legs.operation.body).toEqual({ data: { playUrl: EXPECTED_PLAY_URL } });
+    expect(legs.operation.body).toEqual({ data: { playUrl: EXPECTED_SESSION_PLAY_URL } });
     expect(JSON.stringify(legs.operation.body)).not.toContain('fixture-private');
     expect(legs.host).toEqual(legs.operation);
     expect(
@@ -91,7 +107,13 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 的 restriction（%s）', (runtim
     );
     expect(legs.operation.body).toEqual({
       data: {
-        playUrl: { 'fixture-a': { url: 'https://stream.invalid/fixture.mp3', error: false } },
+        playUrl: {
+          'fixture-a': {
+            url: 'https://stream.invalid/fixture.mp3',
+            error: false,
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+          },
+        },
       },
     });
   });

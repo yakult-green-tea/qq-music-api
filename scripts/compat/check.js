@@ -88,7 +88,13 @@ const SAMPLES = {
   cid: '205360772', order: 'time', sex: '-100', genre: '-100', index: '-100', isFormat: 'true',
   trans: '1', favoriteOffset: '0', playCount: '1', version: '1', quality: 'best', preview: '1',
 };
-const sampleOf = (field) => SAMPLES[field.key] ?? String(field.defaultValue ?? 'fixture');
+const sampleOf = (field, endpoint) => {
+  if (endpoint.path === '/getEncryptedMusicPlay') {
+    if (field.key === 'songmid') return '0123456789abcd';
+    if (field.key === 'quality') return '192';
+  }
+  return SAMPLES[field.key] ?? String(field.defaultValue ?? 'fixture');
+};
 
 const only = option('--only');
 // 扫码登录要开 MQTT 长连接或依赖二维码状态，由 tests/folia.http-contracts 等测试覆盖，这里不跑。
@@ -102,7 +108,7 @@ const ordered = [...endpoints.values()]
   .sort((a, b) => last(a) - last(b));
 for (const endpoint of ordered) {
   const fields = endpoint.queryParams ?? [];
-  const sampleQuery = new URLSearchParams(fields.map((field) => [field.key, sampleOf(field)]));
+  const sampleQuery = new URLSearchParams(fields.map((field) => [field.key, sampleOf(field, endpoint)]));
   const duplicated = new URLSearchParams(sampleQuery);
   if (fields[0]) duplicated.append(fields[0].key, 'fixture-duplicate');
   const variants = [
@@ -114,7 +120,7 @@ for (const endpoint of ordered) {
   for (const runtime of ['node', 'serverless']) {
     const paths = [endpoint.path];
     if (runtime === 'node' && pathParams.length)
-      paths.push(`${endpoint.path}/${pathParams.map((field) => encodeURIComponent(sampleOf(field))).join('/')}`);
+      paths.push(`${endpoint.path}/${pathParams.map((field) => encodeURIComponent(sampleOf(field, endpoint))).join('/')}`);
     for (const target of paths)
       for (const session of [false, true]) {
         for (const variant of variants)
@@ -147,13 +153,63 @@ const baseline = run(`v${baselineVersion}`, baselineRoot);
 const current = run('current', repo);
 
 const approved = JSON.parse(fs.readFileSync(path.join(__dirname, 'approved.json'), 'utf8'));
+// 播放条目只多了可选的 source，去掉它之后必须和基准逐字相同。source 一定有 kind、protocol、cdn，
+// 另外只可能有 quality、codec（认出文件名时）和 trial（只有 durationMs 一个正整数），值都要在下面的范围里。
+const SOURCE_KEYS = ['cdn', 'kind', 'protocol'];
+const SOURCE_VALUES = {
+  kind: ['full', 'preview', 'unknown'],
+  protocol: ['android-vkey', 'preview-rs02', 'web-anonymous-vkey'],
+  cdn: ['response-sip', 'probed', 'unverified-default', 'none'],
+  quality: ['m4a', '128', '320', 'ape', 'flac', 'preview'],
+  codec: ['mp3', 'm4a', 'flac', 'ape'],
+};
+const validSource = (source) => {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return false;
+  const keys = Object.keys(source);
+  if (!SOURCE_KEYS.every((key) => keys.includes(key))) return false;
+  return keys.every((key) => {
+    if (key === 'trial') {
+      const trial = source.trial;
+      return (
+        trial && typeof trial === 'object' && !Array.isArray(trial) &&
+        Object.keys(trial).join() === 'durationMs' &&
+        Number.isSafeInteger(trial.durationMs) && trial.durationMs > 0 &&
+        source.kind === 'preview'
+      );
+    }
+    return SOURCE_VALUES[key]?.includes(source[key]) ?? false;
+  });
+};
+const onlyPlaySourceAdded = (before, after) => {
+  const playUrl = after?.body?.data?.playUrl;
+  if (!playUrl || typeof playUrl !== 'object') return false;
+  let added = 0;
+  const stripped = {};
+  for (const [mid, entry] of Object.entries(playUrl)) {
+    if (!entry || typeof entry !== 'object') return false;
+    const { source, ...rest } = entry;
+    if (source !== undefined) {
+      if (!validSource(source)) return false;
+      added += 1;
+    }
+    stripped[mid] = rest;
+  }
+  const restored = { ...after, body: { ...after.body, data: { ...after.body.data, playUrl: stripped } } };
+  return added > 0 && JSON.stringify(restored) === JSON.stringify(before);
+};
 const approvalOf = (testCase, before, after) =>
   approved.find(
     (entry) =>
       (testCase.path === entry.path || testCase.path.startsWith(`${entry.path}/`)) &&
       (!entry.runtime || entry.runtime === testCase.runtime) &&
       (entry.session === undefined || entry.session === testCase.session) &&
-      (!entry.difference || (entry.difference === 'toplist-group-zero' &&
+      (!entry.difference || (entry.difference === 'play-source-field' && onlyPlaySourceAdded(before, after)) ||
+        (entry.difference === 'encrypted-playback-added' &&
+          testCase.path === entry.path && testCase.method === 'GET' &&
+          before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
+          before.upstream.length === 0 &&
+          (testCase.session ? [200, 400, 502].includes(after?.status) : after?.status === 401)) ||
+        (entry.difference === 'toplist-group-zero' &&
         testCase.path === '/recommend/toplists' && testCase.scenario === 'ok' &&
         JSON.stringify(after?.body?.groups?.[0]) === JSON.stringify({ id: 0, name: 'Fixture zero', toplists: [{ id: 4, preview: [], title: 'Fixture zero chart' }] }) &&
         JSON.stringify({ ...after, body: { ...after.body, groups: after.body.groups.slice(1) } }) === JSON.stringify(before))) &&

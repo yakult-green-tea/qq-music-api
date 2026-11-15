@@ -1,3 +1,5 @@
+import type { EncryptedPlaybackQuality } from '../../protocol/playbackFiles';
+import { QqApiError } from '../../protocol/errors';
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
 import { RequestRejectedError } from '../../util/requestError';
@@ -32,9 +34,11 @@ import {
   createMemoryDeviceContextRepository,
   type DeviceContextStore,
 } from './deviceContextStore';
+import { getEncryptedPlayUrls } from './encryptedPlayback';
 import type { AuthHttpClient } from './httpClient';
 import { QqDeviceBootstrapError, QqProtocolError, QrLoginServiceError } from './musicuProtocol';
 import { getAuthenticatedPlayUrls } from './playback';
+import { withBoundedPlaybackHttp } from './playbackFallback';
 import { logQqCookies, logWechatQr } from './qrDiagnostics';
 import { createQqQrDriver, createWechatQrDriver } from './qrDrivers';
 import {
@@ -90,6 +94,7 @@ import {
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。
 
 export const QR_TTL_MS = 3 * 60 * 1000;
+export const ENCRYPTED_PLAYBACK_LIMITS = { maxRequests: 16, timeoutMs: 15_000 };
 
 /** Every failure cools the next QR down by the same amount; repeated failures never double it. */
 export const QR_COOLDOWN_MS = 15 * 1000;
@@ -114,6 +119,7 @@ const isRateLimitedFailure = (details: QrFailureDetails): boolean =>
 export class QrLoginServiceImpl implements QrLoginService {
   private readonly http: AuthHttpClient;
   private readonly playbackHintsEnabled: boolean;
+  private readonly playbackFallbackEnabled: boolean;
   private readonly streamCdnSelector: StreamCdnSelector;
   private readonly createSessionHttp: () => AuthHttpClient;
   private readonly now: () => number;
@@ -139,6 +145,7 @@ export class QrLoginServiceImpl implements QrLoginService {
   public constructor(dependencies: QrLoginDependencies) {
     this.http = dependencies.http ?? unavailableHttpClient();
     this.playbackHintsEnabled = dependencies.playbackHintsEnabled !== false;
+    this.playbackFallbackEnabled = dependencies.playbackFallbackEnabled === true;
     this.streamCdnSelector = new StreamCdnSelector(
       dependencies.streamUrlProbe ?? createStreamUrlProbe(this.http),
       dependencies.now ?? Date.now,
@@ -857,13 +864,53 @@ export class QrLoginServiceImpl implements QrLoginService {
             mediaId,
             options,
             this.playbackHintsEnabled,
+            { enabled: this.playbackFallbackEnabled },
           ),
         )
       : null;
   }
 
+  public getEncryptedMusicPlay(
+    auth: AuthSession,
+    songmid: string,
+    quality: EncryptedPlaybackQuality,
+  ): Promise<Dictionary> {
+    return withCredentialRejectionMapped(() =>
+      getEncryptedPlayUrls(this.http, auth, songmid, quality),
+    );
+  }
+
   public async resolveSession(token?: string): Promise<AuthSession | null> {
     return this.authFor(token);
+  }
+
+  public async lookupSession(token?: string): Promise<AuthSession | null> {
+    this.cleanup();
+    if (this.sessionResolver.lookup) return this.sessionResolver.lookup(token);
+    if (this.sessionResolver.mode === 'sealed') return this.sessionResolver.resolve(token);
+    throw new QqApiError('unexpected');
+  }
+
+  public getEncryptedMusicPlayWithinBudget(
+    token: string,
+    songmid: string,
+    quality: EncryptedPlaybackQuality,
+    signal?: AbortSignal,
+  ): Promise<Dictionary | null> {
+    return withBoundedPlaybackHttp(
+      this.http,
+      async (bounded) => {
+        const auth = this.sessionResolver.awaitExistingRefresh
+          ? await this.sessionResolver.awaitExistingRefresh(token)
+          : await this.lookupSession(token);
+        if (!auth) return null;
+        return withCredentialRejectionMapped(() =>
+          getEncryptedPlayUrls(bounded, auth, songmid, quality, true),
+        );
+      },
+      ENCRYPTED_PLAYBACK_LIMITS,
+      signal,
+    );
   }
 
   /**

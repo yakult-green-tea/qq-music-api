@@ -1,3 +1,4 @@
+import { WEB_ANONYMOUS_COMM } from '../../protocol/clientProfiles';
 import { getLegacyHttpTransport } from '../../services/httpTransport';
 import u_common from '../../services/u_common';
 import type { OperationHandler } from './types';
@@ -20,7 +21,7 @@ export const getSongInfo: OperationHandler = async ({ runtime, params, queryRaw 
       : {}),
     format: 'json',
     data: JSON.stringify({
-      comm: { ct: 24, cv: 0 },
+      comm: WEB_ANONYMOUS_COMM,
       songinfo: {
         method: 'get_song_detail_yqq',
         param: { song_type: 0, song_mid, song_id },

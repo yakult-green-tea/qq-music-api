@@ -59,6 +59,10 @@ export const createAuthHttpClient = (
       updateCookieJar(jar, normalizeSetCookies(response.headers['set-cookie']));
 
       const location = response.headers.location;
+      if (config.followRedirects === false && REDIRECT_STATUSES.has(response.status))
+        throw Object.assign(new Error('QQ auth request rejected a redirect'), {
+          httpStatus: response.status,
+        });
       if (!REDIRECT_STATUSES.has(response.status) || !location) return response;
       if (redirectCount === MAX_REDIRECTS) throw new Error('QQ auth redirect limit exceeded');
 

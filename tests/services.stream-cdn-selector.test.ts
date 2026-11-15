@@ -47,4 +47,39 @@ describe('StreamCdnSelector', () => {
       selector.select(['https://ws.stream.qqmusic.qq.com/'], 'fixture.flac?vkey=signed'),
     ).resolves.toBeNull();
   });
+
+  it('keeps concurrent selections for different candidate sets apart', async () => {
+    const release: Array<() => void> = [];
+    const probe = jest.fn<ReturnType<StreamUrlProbe>, Parameters<StreamUrlProbe>>(
+      (url) =>
+        new Promise((resolve) => {
+          release.push(() =>
+            resolve(url.includes('second.stream') ? null : { bytes: 1024, elapsedMs: 10 }),
+          );
+        }),
+    );
+    const selector = new StreamCdnSelector(probe);
+
+    const first = selector.select(['https://first.stream.qqmusic.qq.com/'], 'a.mp3?vkey=one');
+    const second = selector.select(['https://second.stream.qqmusic.qq.com/'], 'b.mp3?vkey=two');
+    for (const done of release) done();
+
+    await expect(first).resolves.toBe('https://first.stream.qqmusic.qq.com/');
+    await expect(second).resolves.toBeNull();
+    expect(probe).toHaveBeenCalledTimes(2);
+  });
+
+  it('shares one in-flight measurement between concurrent selections of the same candidates', async () => {
+    const probe = jest.fn(async () => ({ bytes: 1024, elapsedMs: 10 }));
+    const selector = new StreamCdnSelector(probe);
+    const candidates = ['https://fast.stream.qqmusic.qq.com/'];
+
+    const results = await Promise.all([
+      selector.select(candidates, 'a.mp3?vkey=one'),
+      selector.select(candidates, 'b.mp3?vkey=two'),
+    ]);
+
+    expect(results).toEqual([candidates[0], candidates[0]]);
+    expect(probe).toHaveBeenCalledTimes(1);
+  });
 });

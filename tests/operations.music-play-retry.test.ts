@@ -34,7 +34,11 @@ const vkeyReply = (mids: string[], granted: string[] = []): Reply => ({
     ),
   },
 });
-const ok = (mid: string) => ({ url: `https://stream.invalid/${mid}.audio`, error: false });
+const ok = (mid: string) => ({
+  url: `https://stream.invalid/${mid}.audio`,
+  error: false,
+  source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+});
 const failed = (hint: string) => ({
   url: '',
   error: '暂无播放链接',
@@ -44,6 +48,7 @@ const failed = (hint: string) => ({
     codes: { result: 104003, subcode: 1 },
     hint: { key: hint, message: expect.any(String) },
   },
+  source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
 });
 /** 海外被挡的完整详情特征（地区提示规则）。 */
 const REGION_DETAIL = { action: { switch: 1, msgid: 23, alert: 0 }, pay: { pay_play: 0 } };

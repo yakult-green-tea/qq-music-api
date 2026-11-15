@@ -1,3 +1,4 @@
+import { LITE_ANONYMOUS_COMM, LITE_ANONYMOUS_HEADERS } from '../../protocol/clientProfiles';
 import { QqApiError } from '../../protocol/errors';
 import { createMusicuClient, type MusicuDescriptor } from '../../protocol/musicu';
 import { createFetchTransport } from '../../transport/fetch';
@@ -31,20 +32,9 @@ const LIST_KEYS: Record<SearchType, string> = {
 };
 const REMOTE_PLACE = 'search.android.keyboard';
 
-/**
- * 精简版客户端的匿名身份：只放协议需要的应用与版本常数，不带任何设备指纹。
- * 标头里的 `tmeLoginType=-1` 表示未登录。
- */
-export const ANONYMOUS_LITE_COMM = {
-  ct: 11,
-  cv: '1003006',
-  v: '1003006',
-  tmeAppID: 'qqmusiclight',
-  nettype: 'NETWORK_WIFI',
-  udid: '0',
-  uid: '0',
-};
-export const ANONYMOUS_LITE_HEADERS = { Cookie: 'tmeLoginType=-1', 'User-Agent': 'okhttp/3.14.9' };
+/** 精简版客户端的匿名身份放在 protocol/clientProfiles；这两个名字留给原来的引用。 */
+export const ANONYMOUS_LITE_COMM = LITE_ANONYMOUS_COMM;
+export const ANONYMOUS_LITE_HEADERS = LITE_ANONYMOUS_HEADERS;
 
 const DEFAULT_LIMIT = 10;
 /** 实测验证过一页 10 与 20 条；更大的没有验证过。 */

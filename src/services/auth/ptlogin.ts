@@ -1,3 +1,4 @@
+import { WEB_ANONYMOUS_COMM } from '../../protocol/clientProfiles';
 import { credentialExpiryAt } from './credentialExpiry';
 import type { QqCredential } from './qrTypes';
 
@@ -373,7 +374,7 @@ export const exchangePtloginCredential = async (
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: JSON.stringify({
-        comm: { g_tk: 5381, platform: 'yqq', ct: 24, cv: 0 },
+        comm: { g_tk: 5381, platform: 'yqq', ...WEB_ANONYMOUS_COMM },
         req: { module: 'QQConnectLogin.LoginServer', method: 'QQLogin', param: { code: codes[0] } },
       }),
     },

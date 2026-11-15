@@ -239,6 +239,10 @@ export const createSealedSessionResolver = (options: {
   return {
     mode: 'sealed',
     issue: async (session) => sealFor(session.credential, session.expiresAt, now()),
+    lookup: async (token) => {
+      const payload = await open(token);
+      return payload && token ? sessionOf(token, payload) : null;
+    },
     resolve: async (token) => {
       const payload = await open(token);
       return payload && token ? sessionOf(token, payload) : null;

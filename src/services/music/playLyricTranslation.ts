@@ -1,6 +1,6 @@
+import { LITE_ANONYMOUS_COMM, LITE_ANONYMOUS_HEADERS } from '../../protocol/clientProfiles';
 import { createMusicuClient, type MusicuDescriptor } from '../../protocol/musicu';
 import { createFetchTransport } from '../../transport/fetch';
-import { ANONYMOUS_LITE_COMM, ANONYMOUS_LITE_HEADERS } from '../search/search';
 
 // src/services/music/playLyricTranslation.ts
 //
@@ -60,8 +60,8 @@ export const playLyricTranslation = async (songmid: string): Promise<string | un
   try {
     return await createMusicuClient({
       http: createFetchTransport(),
-      comm: ANONYMOUS_LITE_COMM,
-      headers: ANONYMOUS_LITE_HEADERS,
+      comm: LITE_ANONYMOUS_COMM,
+      headers: LITE_ANONYMOUS_HEADERS,
       timeoutMs: TIMEOUT_MS,
       maxRetries: 0,
     }).execute(translationRequest(songmid));

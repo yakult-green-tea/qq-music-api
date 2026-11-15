@@ -264,7 +264,13 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     expect(result.status).toBe(200);
     expect(result.body).toEqual({
       data: {
-        playUrl: { 'fixture-song-a': { url: 'https://stream.invalid/fixture.mp3', error: false } },
+        playUrl: {
+          'fixture-song-a': {
+            url: 'https://stream.invalid/fixture.mp3',
+            error: false,
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+          },
+        },
       },
     });
     expect(mockUpstream.calls).toContainEqual(
@@ -276,6 +282,36 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
         }),
       }),
     );
+  });
+
+  it.each([
+    ['多回别的歌曲', false, true],
+    ['完全漏掉歌曲', false, false],
+    ['试听多回别的歌曲', true, true],
+    ['试听完全漏掉歌曲', true, false],
+  ])('旧播放读取按请求的歌曲返回空链接：%s', async (_label, preview, foreign) => {
+    mockUpstream.state.songDetails = {
+      'fixture-song-a': {
+        mid: 'fixture-song-a',
+        file: { size_try: 100, media_mid: 'MediaFixtureA1' },
+      },
+    };
+    mockUpstream.state.vkeyReplyItems = foreign
+      ? [{ songmid: 'fixture-song-b', purl: 'fixture.mp3', result: 0 }]
+      : [];
+    const result = await call(`/getMusicPlay/fixture-song-a${preview ? '?preview=1' : ''}`, {
+      token,
+    });
+    const playUrl = result.body.data.playUrl;
+    const selected = playUrl['fixture-song-a'] ?? Object.values(playUrl)[0];
+    expect(result.status).toBe(200);
+    expect(Object.keys(playUrl)).toEqual(['fixture-song-a']);
+    expect(selected).toMatchObject({
+      url: '',
+      restriction: {
+        hint: { key: preview ? 'playback.preview-unavailable' : 'playback.reason-unconfirmed' },
+      },
+    });
   });
 
   // 开发日志：取不到链接的那几首各记一条，只带白名单里的安全整数；回应只多可选的 restriction。
@@ -306,7 +342,11 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     expect(result.body).toEqual({
       data: {
         playUrl: {
-          'fixture-song-a': { url: 'https://stream.invalid/fixture.mp3', error: false },
+          'fixture-song-a': {
+            url: 'https://stream.invalid/fixture.mp3',
+            error: false,
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'response-sip' },
+          },
           'fixture-song-b': {
             url: '',
             error: '暂无播放链接',
@@ -316,6 +356,7 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
               codes: { result: 104003, errtype: 3, code: 0 },
               hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
             },
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
           },
           'fixture-song-c': {
             url: '',
@@ -325,6 +366,7 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
               evidence: 'observed-response',
               hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
             },
+            source: { kind: 'full', protocol: 'android-vkey', cdn: 'none' },
           },
         },
       },

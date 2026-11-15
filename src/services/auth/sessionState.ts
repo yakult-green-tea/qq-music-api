@@ -334,6 +334,8 @@ export const createStoredSessionResolver = (options: {
 
   return {
     mode: 'stored',
+    lookup: async (token) => (token ? store.get(token) : null),
+    awaitExistingRefresh: async (token) => refreshes.get(token) ?? store.get(token),
     issue: async (session) => {
       const token = options.randomBytes(32).toString('hex');
       store.set({ ...session, token });

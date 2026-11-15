@@ -1,7 +1,9 @@
+import { WEB_ANONYMOUS_COMM, WEB_ANONYMOUS_COMM_WITH_UIN } from '../../protocol/clientProfiles';
 import { createMusicuClient } from '../../protocol/musicu';
 import { createFetchTransport, type FetchExecutor } from '../../transport/fetch';
 import { buildAndroidComm } from '../auth/androidDevice';
-import { type AuthSession, credentialCookieHeader } from '../auth/qrLogin';
+import { androidRequestHeaders } from '../auth/musicuProtocol';
+import type { AuthSession } from '../auth/qrLogin';
 
 // src/services/recommend/sessionMusicu.ts
 //
@@ -17,9 +19,6 @@ export interface SessionMusicuOptions {
   maxRetries?: number;
 }
 
-/** 匿名请求用网页端的 comm，和曲库路由一样；2026-10 实测推荐歌单匿名可读。 */
-const ANONYMOUS_COMM = { ct: 24, cv: 0 };
-
 export const createSessionMusicuClient = (
   session: AuthSession | null,
   options: SessionMusicuOptions = {},
@@ -28,16 +27,14 @@ export const createSessionMusicuClient = (
   if (!session)
     return createMusicuClient({
       http,
-      comm: options.anonymousUin === 0 ? { ...ANONYMOUS_COMM, uin: 0 } : ANONYMOUS_COMM,
+      // 匿名请求用网页端的 comm，和曲库路由一样；2026-10 实测推荐歌单匿名可读。
+      comm: options.anonymousUin === 0 ? WEB_ANONYMOUS_COMM_WITH_UIN : WEB_ANONYMOUS_COMM,
     });
   // 和既有的带凭证请求同一套 comm、User-Agent 与 Cookie。
   return createMusicuClient({
     http,
     comm: buildAndroidComm(session.device, session.credential),
-    headers: {
-      'User-Agent': `QQMusic 14090008(android ${session.device.osRelease})`,
-      Cookie: credentialCookieHeader(session.credential),
-    },
+    headers: androidRequestHeaders(session.device, session.credential),
     maxRetries: options.maxRetries,
   });
 };
