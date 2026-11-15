@@ -99,6 +99,41 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
   });
 
   it.each([
+    ['96', 'O4M0', '.mgg', 'mgg', media],
+    ['192', 'O6M0', '.mgg', 'mgg', mid],
+    ['flac', 'F0M0', '.mflac', 'mflac', media],
+  ])('接受单段文件名（%s）', async (quality, prefix, extension, codec, mediaMid) => {
+    const requested = `${prefix}${mid}${mediaMid}${extension}`;
+    const path = `${prefix}${mediaMid}${extension}?vkey=fixture`;
+    prepare({
+      midurlinfo: [{ songmid: mid, filename: requested, purl: path, result: 0, subcode: 1, ekey: key }],
+    });
+    upstream.state.songDetails = { [mid]: { file: { media_mid: mediaMid } } };
+    const reply = await call(`?songmid=${mid}&quality=${quality}`);
+    const entry = (reply.body as any).data.playUrl[mid];
+    const matchesUrl = entry.url === `http://sjy6.stream.qqmusic.qq.com/${path}`;
+    expect(matchesUrl).toBe(true);
+    expect(entry.source).toMatchObject({ quality, codec, cdn: 'unverified-default' });
+    expect(entry.source.ekey === key).toBe(true);
+  });
+
+  it.each([
+    ['其他音质前缀', `O4M0${media}.mgg`, key],
+    ['歌曲标识代替媒体标识', `O6M0${mid}.mgg`, key],
+    ['其他扩展名', `O6M0${media}.mflac`, key],
+    ['其他媒体标识', 'O6M0foreignfixture.mgg', key],
+    ['外部主机', `https://external.invalid/O6M0${media}.mgg`, key],
+    ['空密钥', `O6M0${media}.mgg`, ''],
+  ])('拒绝不可信单段文件名：%s', async (_label, path, entryKey) => {
+    prepare({
+      midurlinfo: [{ songmid: mid, filename: filename(), purl: `${path}?vkey=fixture`, result: 0, subcode: 1, ekey: entryKey }],
+    });
+    const reply = await call(`?songmid=${mid}`);
+    const entry = (reply.body as any).data.playUrl[mid];
+    expect(entry.url === '').toBe(true);
+  });
+
+  it.each([
     { result: 104003 },
     { result: undefined },
     { songmid: 'fixture-foreign' },
