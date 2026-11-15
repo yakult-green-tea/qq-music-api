@@ -69,9 +69,7 @@
     elements.endpointComboboxList.classList.toggle('hidden', !isOpen);
   }
 
-  function logRequestLifecycle(stage, details) {
-    console.log(`[explorer.request-log] ${stage}`, details);
-  }
+  function logRequestLifecycle() {}
 
   function normalizeSearchKeyword(value) {
     return String(value || '')
@@ -167,13 +165,11 @@
 
   function buildLogSearchText(log) {
     return [
-      log.endpointName,
-      log.method,
-      log.url,
+      log.route,
       getStatusLabel(log.status),
       getLogStatusText(log),
-      log.errorMessage,
-      log.responsePreview,
+      log.code,
+      log.errorKey,
     ]
       .join(' ')
       .toLowerCase();
@@ -185,13 +181,11 @@
     }
 
     const errorCount = state.requestLogs.filter((log) => getLogVisualState(log.status) === 'error').length;
-    const latestLog = state.requestLogs[0];
-
-    return `共 ${state.requestLogs.length} 条日志 · 失败 ${errorCount} 条 · 最近 ${formatTimestamp(latestLog.timestamp)}`;
+    return `共 ${state.requestLogs.length} 条日志 · 失败 ${errorCount} 条`;
   }
 
   function getLogPreviewText(log) {
-    const sourceText = log.errorMessage || log.responsePreview || '(empty)';
+    const sourceText = [log.code, log.errorKey].filter((value) => value !== undefined).join(' ') || '(无错误码)';
     const compactText = sourceText
       .split('\n')
       .map((line) => line.trim())
@@ -638,28 +632,13 @@
     resetResponsePanel();
   }
 
-  function createLogEntry(endpoint, payload) {
+  function createLogEntry(endpoint) {
     const logEntry = {
       id: `log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-      timestamp: new Date().toISOString(),
-      endpointId: endpoint.id,
-      endpointName: endpoint.name,
-      method: endpoint.method,
-      url: payload.url,
-      requestBody: payload.bodyText || '',
+      route: endpoint.path.split('?')[0],
       status: 'pending',
       duration: null,
-      responsePreview: '请求进行中...',
-      errorMessage: '',
     };
-
-    logRequestLifecycle('create', {
-      activeEndpointId: state.activeEndpointId,
-      endpointId: endpoint.id,
-      endpointName: endpoint.name,
-      method: endpoint.method,
-      url: payload.url,
-    });
 
     return logEntry;
   }
@@ -680,20 +659,11 @@
   }
 
   function formatRequestLogDetail(log) {
-    const responseLabel = log.errorMessage ? 'Error' : 'Response';
-
     return [
-      `${getLogStatusEmoji(log)} ${log.method} ${log.endpointName}`,
-      `时间: ${formatFullTimestamp(log.timestamp)}`,
+      `${getLogStatusEmoji(log)} ${log.route}`,
       `状态: ${getLogStatusText(log)}`,
       `耗时: ${formatDuration(log.duration)}`,
-      `URL: ${log.url}`,
-      '',
-      'Request Body',
-      log.requestBody || '(empty)',
-      '',
-      responseLabel,
-      log.errorMessage || log.responsePreview || '(empty)',
+      `错误码: ${getLogPreviewText(log)}`,
     ].join('\n');
   }
 
@@ -732,19 +702,19 @@
     title.className = 'log-item-title';
 
     const methodBadge = document.createElement('span');
-    methodBadge.className = `log-method-badge ${String(log.method).toLowerCase()}`;
-    methodBadge.textContent = log.method;
+    methodBadge.className = 'log-method-badge';
+    methodBadge.textContent = getLogStatusEmoji(log);
 
     const titleText = document.createElement('span');
     titleText.className = 'log-item-title-text';
-    titleText.textContent = log.endpointName;
+    titleText.textContent = log.route;
 
     title.appendChild(methodBadge);
     title.appendChild(titleText);
 
     const time = document.createElement('span');
     time.className = 'log-item-time';
-    time.textContent = formatTimestamp(log.timestamp);
+    time.textContent = '';
 
     header.appendChild(title);
     header.appendChild(time);
@@ -766,7 +736,7 @@
 
     const urlPreview = document.createElement('span');
     urlPreview.className = 'log-item-url';
-    urlPreview.textContent = getLogUrlPreview(log.url);
+    urlPreview.textContent = getLogUrlPreview(log.route);
 
     footer.appendChild(statusBadge);
     footer.appendChild(duration);
@@ -976,7 +946,7 @@
       return;
     }
 
-    const logEntry = createLogEntry(endpoint, payload);
+    const logEntry = createLogEntry(endpoint);
     const startTime = performance.now();
 
     state.requestLogs.unshift(logEntry);
@@ -1031,11 +1001,26 @@
       elements.responsePreview.classList.remove('error-text');
       elements.responsePreview.textContent = responsePreviewText;
 
+      const safeErrorKeys = new Set([
+        'input.invalid', 'auth.required', 'feature.unavailable', 'auth.credential-invalid',
+        'upstream.rate-limited', 'upstream.http', 'upstream.gateway-rejected', 'upstream.unknown',
+        'resource.not-found', 'upstream.invalid-response', 'internal.unexpected',
+        'auth.device-limit', 'auth.account-restricted', 'auth.account-banned', 'auth.account-binding',
+        'auth.login-rejected', 'auth.rate-limited', 'network.dns', 'network.refused', 'network.reset',
+        'network.timeout', 'network.aborted', 'network.unknown', 'search.rejected',
+        'recommendation.rejected', 'playlist.anonymous-unreadable', 'playlist.not-found',
+        'playlist.authentication-unverified', 'playlist.already-applied', 'playlist.write-rejected',
+        'album.endpoint-unavailable',
+      ]);
+      const code = typeof parsedBody === 'object' && parsedBody !== null && Number.isSafeInteger(parsedBody.code)
+        ? parsedBody.code : undefined;
+      const errorKey = typeof parsedBody === 'object' && parsedBody !== null && safeErrorKeys.has(parsedBody.errorKey)
+        ? parsedBody.errorKey : undefined;
       updateLogEntry(logEntry.id, {
         status: response.status,
         duration,
-        responsePreview: responsePreviewText,
-        errorMessage: '',
+        ...(code === undefined ? {} : { code }),
+        ...(errorKey === undefined ? {} : { errorKey }),
       });
 
       logRequestLifecycle('fetch-success', {
@@ -1055,8 +1040,6 @@
       updateLogEntry(logEntry.id, {
         status: 'error',
         duration,
-        responsePreview: '',
-        errorMessage,
       });
 
       logRequestLifecycle('fetch-error', {
