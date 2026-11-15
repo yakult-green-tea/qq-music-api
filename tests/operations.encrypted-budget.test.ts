@@ -170,7 +170,7 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
     expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual(['get_song_detail_yqq', 'CgiGetEVkey']);
   });
 
-  it('更新和取链接共用十五秒，更新请求不跟随转址', async () => {
+  it('等待已有更新和取链接共用十五秒，取链接不跟随转址', async () => {
     jest.useFakeTimers({ now: CONTRACT_NOW });
     send.mockImplementation((config) => {
       if (methodOf(config) === 'Login')
@@ -183,11 +183,14 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
         }),
       );
     });
+    const oldCall = service.resolveSession('valid-fixture');
+    await flush();
     const pending = call('valid-fixture', '192');
     await flush();
-    expect(send.mock.calls[0][0].followRedirects).toBe(false);
     await jest.advanceTimersByTimeAsync(10_000);
+    await oldCall;
     expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0].followRedirects).toBe(false);
     await jest.advanceTimersByTimeAsync(5_000);
     const result = await pending;
     expect(result.status).toBe(502);
@@ -215,7 +218,7 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
     expect(send.mock.calls[0][0].signal.aborted).toBe(true);
   });
 
-  it('共享更新时一方取消不打断另一方', async () => {
+  it('多个加密请求等待旧更新时一方取消不打断另一方', async () => {
     let complete: (value: unknown) => void = () => {};
     send.mockImplementation((config) =>
       methodOf(config) === 'Login'
@@ -225,47 +228,20 @@ describe.each(['node', 'serverless'] as const)('加密播放整次预算（%s）
         : Promise.resolve(response(replyFor(methodOf(config)))),
     );
     const cancel = new AbortController();
+    const oldCall = service.resolveSession('valid-fixture');
+    await flush();
     const first = call('valid-fixture', '192', cancel.signal);
     const second = call('valid-fixture', '192');
     await flush();
     expect(send).toHaveBeenCalledTimes(1);
     cancel.abort();
     expect((await first).body).toMatchObject({ errorKey: 'network.aborted' });
-    expect(send.mock.calls[0][0].signal.aborted).toBe(false);
+    expect(send.mock.calls[0][0].signal?.aborted ?? false).toBe(false);
     complete(response(CONTRACT_CREDENTIAL));
+    await oldCall;
     const result = await second;
     expect(result.status).toBe(200);
     expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual([
-      'Login',
-      'get_song_detail_yqq',
-      'CgiGetEVkey',
-    ]);
-  });
-
-  it('所有等待者取消后，下一次请求仍可更新会话', async () => {
-    send.mockImplementationOnce(
-      (config) =>
-        new Promise((_resolve, reject) =>
-          config.signal.addEventListener('abort', () => reject(new Error('cancelled')), {
-            once: true,
-          }),
-        ),
-    );
-    send.mockImplementation((config) =>
-      Promise.resolve(
-        response(methodOf(config) === 'Login' ? CONTRACT_CREDENTIAL : replyFor(methodOf(config))),
-      ),
-    );
-    const cancel = new AbortController();
-    const first = call('valid-fixture', '192', cancel.signal);
-    await flush();
-    cancel.abort();
-    await first;
-    await flush();
-    const second = await call('valid-fixture', '192');
-    expect(second.status).toBe(200);
-    expect(send.mock.calls.map(([config]) => methodOf(config))).toEqual([
-      'Login',
       'Login',
       'get_song_detail_yqq',
       'CgiGetEVkey',
