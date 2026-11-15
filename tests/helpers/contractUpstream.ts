@@ -84,11 +84,13 @@ export const createContractUpstream = () => {
       case 'UrlGetVkey':
         return {
           sip: ['https://stream.invalid/'],
-          midurlinfo: state.vkeyReplyItems ?? param.songmid.map((songmid: string) => ({
-            songmid,
-            purl: 'fixture.mp3',
-            ...state.vkeyItems[songmid],
-          })),
+          midurlinfo:
+            state.vkeyReplyItems ??
+            param.songmid.map((songmid: string) => ({
+              songmid,
+              purl: 'fixture.mp3',
+              ...state.vkeyItems[songmid],
+            })),
         };
       case 'get_song_detail_yqq':
         return { track_info: state.songDetails[param.song_mid] ?? CONTRACT_SONGS[0] };

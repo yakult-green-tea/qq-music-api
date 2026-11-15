@@ -291,17 +291,26 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     ['试听完全漏掉歌曲', true, false],
   ])('旧播放读取按请求的歌曲返回空链接：%s', async (_label, preview, foreign) => {
     mockUpstream.state.songDetails = {
-      'fixture-song-a': { mid: 'fixture-song-a', file: { size_try: 100, media_mid: 'MediaFixtureA1' } },
+      'fixture-song-a': {
+        mid: 'fixture-song-a',
+        file: { size_try: 100, media_mid: 'MediaFixtureA1' },
+      },
     };
-    mockUpstream.state.vkeyReplyItems = foreign ? [{ songmid: 'fixture-song-b', purl: 'fixture.mp3', result: 0 }] : [];
-    const result = await call(`/getMusicPlay/fixture-song-a${preview ? '?preview=1' : ''}`, { token });
+    mockUpstream.state.vkeyReplyItems = foreign
+      ? [{ songmid: 'fixture-song-b', purl: 'fixture.mp3', result: 0 }]
+      : [];
+    const result = await call(`/getMusicPlay/fixture-song-a${preview ? '?preview=1' : ''}`, {
+      token,
+    });
     const playUrl = result.body.data.playUrl;
     const selected = playUrl['fixture-song-a'] ?? Object.values(playUrl)[0];
     expect(result.status).toBe(200);
     expect(Object.keys(playUrl)).toEqual(['fixture-song-a']);
     expect(selected).toMatchObject({
       url: '',
-      restriction: { hint: { key: preview ? 'playback.preview-unavailable' : 'playback.reason-unconfirmed' } },
+      restriction: {
+        hint: { key: preview ? 'playback.preview-unavailable' : 'playback.reason-unconfirmed' },
+      },
     });
   });
 

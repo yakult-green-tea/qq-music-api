@@ -157,11 +157,21 @@ export const withBoundedPlaybackHttp = async <T>(
   let timedOut = false;
   const cancel = () => abort.abort();
   const interrupted = new Promise<never>((_resolve, reject) => {
-    abort.signal.addEventListener('abort', () => reject(timedOut ? timeoutError() : new QqApiError('network', { errorKey: 'network.aborted' })), { once: true });
+    abort.signal.addEventListener(
+      'abort',
+      () =>
+        reject(
+          timedOut ? timeoutError() : new QqApiError('network', { errorKey: 'network.aborted' }),
+        ),
+      { once: true },
+    );
   });
   if (externalSignal?.aborted) cancel();
   else externalSignal?.addEventListener('abort', cancel, { once: true });
-  const timer = setTimeout(() => { timedOut = true; abort.abort(); }, limits.timeoutMs);
+  const timer = setTimeout(() => {
+    timedOut = true;
+    abort.abort();
+  }, limits.timeoutMs);
   try {
     const result = await Promise.race([
       interrupted,
@@ -169,7 +179,8 @@ export const withBoundedPlaybackHttp = async <T>(
     ]);
     return result;
   } catch (error) {
-    if (abort.signal.aborted) throw timedOut ? timeoutError() : new QqApiError('network', { errorKey: 'network.aborted' });
+    if (abort.signal.aborted)
+      throw timedOut ? timeoutError() : new QqApiError('network', { errorKey: 'network.aborted' });
     throw error;
   } finally {
     clearTimeout(timer);

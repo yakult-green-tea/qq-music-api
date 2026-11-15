@@ -50,7 +50,9 @@ export const operationController =
       return;
     }
     const abort = new AbortController();
-    const close = () => { if (!ctx.res.writableFinished) abort.abort(); };
+    const close = () => {
+      if (!ctx.res.writableFinished) abort.abort();
+    };
     ctx.res.once('close', close);
     try {
       const result = await handler(operationRequestOf(ctx, abort.signal));

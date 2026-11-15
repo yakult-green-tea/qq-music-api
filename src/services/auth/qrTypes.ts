@@ -293,11 +293,14 @@ export interface SessionResolver {
   issue(session: Omit<AuthSession, 'token'>): Promise<string>;
   resolve(token: string | undefined): Promise<AuthSession | null>;
   lookup?(token: string | undefined): Promise<AuthSession | null>;
-  resolveForPlayback?(token: string, options: {
-    signal: AbortSignal;
-    reserve: () => void;
-    refresh: (session: AuthSession, signal: AbortSignal) => Promise<QqCredential>;
-  }): Promise<AuthSession | null>;
+  resolveForPlayback?(
+    token: string,
+    options: {
+      signal: AbortSignal;
+      reserve: () => void;
+      refresh: (session: AuthSession, signal: AbortSignal) => Promise<QqCredential>;
+    },
+  ): Promise<AuthSession | null>;
   revoke(token: string): Promise<void>;
   cleanup?(): void;
   useRepository?(repository: AuthSessionRepository): void;
@@ -370,7 +373,12 @@ export interface QrLoginService {
     quality: import('../../protocol/playbackFiles').EncryptedPlaybackQuality,
   ): Promise<Dictionary>;
   lookupSession(token?: string): Promise<AuthSession | null>;
-  getEncryptedMusicPlayWithinBudget(token: string, songmid: string, quality: import('../../protocol/playbackFiles').EncryptedPlaybackQuality, signal?: AbortSignal): Promise<Dictionary | null>;
+  getEncryptedMusicPlayWithinBudget(
+    token: string,
+    songmid: string,
+    quality: import('../../protocol/playbackFiles').EncryptedPlaybackQuality,
+    signal?: AbortSignal,
+  ): Promise<Dictionary | null>;
   getCapabilities(): RuntimeCapabilities;
   createSession(channel?: QrLoginChannel | LegacyQrLoginChannel): Promise<string>;
   createQr(key: string): Promise<string>;

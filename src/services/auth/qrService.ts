@@ -890,25 +890,43 @@ export class QrLoginServiceImpl implements QrLoginService {
     throw new Error('Session resolver cannot check a session without refreshing');
   }
 
-  public getEncryptedMusicPlayWithinBudget(token: string, songmid: string, quality: EncryptedPlaybackQuality, signal?: AbortSignal): Promise<Dictionary | null> {
-    return withBoundedPlaybackHttp(this.http, async (bounded, reserve, budgetSignal) => {
-      const auth = this.sessionResolver.resolveForPlayback
-        ? await this.sessionResolver.resolveForPlayback(token, {
-            signal: budgetSignal,
-            reserve,
-            refresh: (session, sharedSignal) => {
-              const sharedHttp: AuthHttpClient = {
-                getCookieHeader: () => this.http.getCookieHeader(),
-                request: (config) => this.http.request({ ...config, signal: sharedSignal, followRedirects: false }),
-                post: (url, data, config) => this.http.post(url, data, { ...config, signal: sharedSignal, followRedirects: false }),
-              };
-              return refreshLoginCredential(sharedHttp, session.device, session.credential);
-            },
-          })
-        : await this.lookupSession(token);
-      if (!auth) return null;
-      return withCredentialRejectionMapped(() => getEncryptedPlayUrls(bounded, auth, songmid, quality, true));
-    }, ENCRYPTED_PLAYBACK_LIMITS, signal);
+  public getEncryptedMusicPlayWithinBudget(
+    token: string,
+    songmid: string,
+    quality: EncryptedPlaybackQuality,
+    signal?: AbortSignal,
+  ): Promise<Dictionary | null> {
+    return withBoundedPlaybackHttp(
+      this.http,
+      async (bounded, reserve, budgetSignal) => {
+        const auth = this.sessionResolver.resolveForPlayback
+          ? await this.sessionResolver.resolveForPlayback(token, {
+              signal: budgetSignal,
+              reserve,
+              refresh: (session, sharedSignal) => {
+                const sharedHttp: AuthHttpClient = {
+                  getCookieHeader: () => this.http.getCookieHeader(),
+                  request: (config) =>
+                    this.http.request({ ...config, signal: sharedSignal, followRedirects: false }),
+                  post: (url, data, config) =>
+                    this.http.post(url, data, {
+                      ...config,
+                      signal: sharedSignal,
+                      followRedirects: false,
+                    }),
+                };
+                return refreshLoginCredential(sharedHttp, session.device, session.credential);
+              },
+            })
+          : await this.lookupSession(token);
+        if (!auth) return null;
+        return withCredentialRejectionMapped(() =>
+          getEncryptedPlayUrls(bounded, auth, songmid, quality, true),
+        );
+      },
+      ENCRYPTED_PLAYBACK_LIMITS,
+      signal,
+    );
   }
 
   /**

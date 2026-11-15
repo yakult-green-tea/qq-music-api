@@ -67,7 +67,18 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
     ['&quality=flac', 'flac', 'F0M0', '.mflac', 'mflac'],
   ])('返回正确格式和 ekey（%s）', async (query, quality, prefix, extension, codec) => {
     const path = `${prefix}${media}${extension}?vkey=fixture`;
-    prepare({ midurlinfo: [{ songmid: mid, filename: filename(prefix, extension), purl: path, ekey: key, result: 0, subcode: 1 }] });
+    prepare({
+      midurlinfo: [
+        {
+          songmid: mid,
+          filename: filename(prefix, extension),
+          purl: path,
+          ekey: key,
+          result: 0,
+          subcode: 1,
+        },
+      ],
+    });
     expect(await call(`?songmid=${mid}${query}`)).toEqual({
       status: 200,
       body: {
@@ -100,7 +111,9 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
 
   it('继续接受双段文件名的链接', async () => {
     const path = purl();
-    prepare({ midurlinfo: [{ songmid: mid, filename: filename(), purl: path, ekey: key, result: 0 }] });
+    prepare({
+      midurlinfo: [{ songmid: mid, filename: filename(), purl: path, ekey: key, result: 0 }],
+    });
     const reply = await call(`?songmid=${mid}`);
     const entry = (reply.body as any).data.playUrl[mid];
     expect(entry.url.endsWith(`/${path}`)).toBe(true);
@@ -188,9 +201,13 @@ describe.each(CATALOG_RUNTIMES)('加密取链接（%s）', (runtime) => {
     ['链接媒体标识不相符', mid, 'foreignfixture'],
   ])('歌曲详情必须核对身份：%s', async (_label, detailMid, pathMedia) => {
     prepare({
-      midurlinfo: [{ songmid: mid, filename: filename(), purl: `O6M0${pathMedia}.mgg`, result: 0, ekey: key }],
+      midurlinfo: [
+        { songmid: mid, filename: filename(), purl: `O6M0${pathMedia}.mgg`, result: 0, ekey: key },
+      ],
     });
-    upstream.state.songDetails = { [mid]: { ...(detailMid === undefined ? {} : { mid: detailMid }), file: { media_mid: media } } };
+    upstream.state.songDetails = {
+      [mid]: { ...(detailMid === undefined ? {} : { mid: detailMid }), file: { media_mid: media } },
+    };
     const reply = await call(`?songmid=${mid}`);
     const entry = (reply.body as any).data.playUrl[mid];
     expect(entry.url === '').toBe(true);
