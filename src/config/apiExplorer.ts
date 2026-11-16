@@ -350,6 +350,17 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
     ],
   },
+  getFavoriteMvs: {
+    description:
+      'Your favorite MVs. Requires login. The upstream has no paging: more only repeats its hasmore flag, there is no next page to read.',
+    queryParams: [
+      {
+        key: 'page',
+        label: 'Page',
+        description: 'Optional; only 1 is accepted.',
+      },
+    ],
+  },
   getUserLikedSongs: {
     description: "Get the authenticated user's built-in liked songs.",
     queryParams: [

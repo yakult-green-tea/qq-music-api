@@ -410,6 +410,7 @@ POST /login/refresh
 | --- | --- |
 | `/user/playlist` | 自建与收藏歌单 |
 | `/user/playlist-detail` | 本人歌单详情，包含不公开歌单 |
+| `/user/mvs` | 本人收藏的 MV |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1051,6 +1052,18 @@ GET /recommend/autoplay?songids=90001,90002&limit=20
 响应为 `{ code: 200, songs: [...] }`，曲目格式和 `/song/similar` 一样。返回几首由上游决定，实测给 1 首种子也会回 50 首；没有推荐时 `songs` 是空数组，有条目却一首都读不出来回 `502`。它和 `/song/similar` 是两个不同的上游接口，用途也不同：这个是放完后接着放，相似歌曲是找风格相近的歌。
 
 缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `retcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 17. 收藏的 MV
+
+```text
+GET /user/mvs
+```
+
+需要有效会话，只读当前登录账号。上游没有分页参数，`page` 只能省略或写 `1`。
+
+响应为 `{ code: 200, mvs: [...], total, more }`。每条 MV 有 `vid`、`mid`、`name`、`cover`、`singers`，上游给了才带 `duration`、`playCount`、`publishDate`、`time`（收藏时间，保留上游数值，不推断单位）。上传者的账号和昵称不返回。`total` 是上游给的总数，读不出来时为 `null`；`more` 只是照抄上游的 `hasmore`，本接口没有下一页可读，不要拿它去翻页。
+
+没有收藏时 `mvs` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

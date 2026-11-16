@@ -78,6 +78,8 @@ export const UPSTREAM_OPERATIONS = [
   'song.genre',
   /** 播完自动接歌（`AutoPlayServer.GetAutoPlayList`），要登录。 */
   'recommend.autoplay',
+  /** 收藏的 MV（`MVFavRead.getMyFavMV`），要登录。 */
+  'user.favorite-mvs',
   /** 刷歌模式（`TrackRelationServer.GetRadarSong`），有会话就带凭证。 */
   'recommend.radar',
   /** 新碟地区清单（`get_new_album_area`），匿名。 */
@@ -322,6 +324,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
       'song.related-playlists',
     ],
     '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
+  ),
+  ...credentialRejected(
+    ['user.favorite-mvs'],
+    '收藏 MV 要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['recommend.autoplay'],
