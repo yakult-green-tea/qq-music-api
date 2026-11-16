@@ -186,9 +186,11 @@ const onlyFlagsAdded = (before, after, flags) => {
   if (!features || typeof features !== 'object' || !Array.isArray(flags) || !flags.length) return false;
   const stripped = JSON.parse(JSON.stringify(after));
   for (const flag of flags) {
-    const [group, name] = flag.split('.');
+    // 「group.name」表示新加的 true；「group.name=false」表示新加、但还没开放的 false。
+    const [path, value = 'true'] = flag.split('=');
+    const [group, name] = path.split('.');
     if (before?.body?.data?.features?.[group]?.[name] !== undefined) return false;
-    if (stripped.body.data.features[group]?.[name] !== true) return false;
+    if (stripped.body.data.features[group]?.[name] !== (value === 'true')) return false;
     delete stripped.body.data.features[group][name];
   }
   return JSON.stringify(stripped) === JSON.stringify(before);
@@ -228,6 +230,12 @@ const approvalOf = (testCase, before, after) =>
           before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
           before.upstream.length === 0 &&
           (testCase.session ? [200, 400, 401, 502].includes(after?.status) : after?.status === 401)) ||
+        (entry.difference === 'new-gated-write-route' &&
+          testCase.path === entry.path &&
+          before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
+          before.upstream.length === 0 &&
+          [400, 401, 405, 415, 501].includes(after?.status) &&
+          after.upstream.length === 0) ||
         (entry.difference === 'capability-flags-added' &&
           testCase.path === entry.path && onlyFlagsAdded(before, after, entry.flags)) ||
         (entry.difference === 'toplist-group-zero' &&
