@@ -166,6 +166,8 @@ export const UPSTREAM_OPERATIONS = [
   'library.favorite-albums',
   /** 带会话取播放链接（`UrlGetVkey`）。 */
   'playback.authenticated-url',
+  /** 相似歌曲接歌（`AutoPlayServer.GetRadioSimilarSongs`），要登录。 */
+  'recommend.autoplay-similar',
 ] as const;
 
 export type UpstreamOperation = (typeof UPSTREAM_OPERATIONS)[number];
@@ -344,6 +346,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['recommend.autoplay'],
     '播完自动接歌要登录，沿用相似歌曲的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['recommend.autoplay-similar'],
+    '相似歌曲接歌要登录，沿用相似歌曲的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['song.genre'],

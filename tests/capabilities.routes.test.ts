@@ -65,6 +65,7 @@ const expectedFeatures = (node: boolean) => ({
     getSimilarSongs: true,
     getAutoplaySongs: true,
     getRelatedPlaylists: true,
+    getAutoplaySimilarSongs: true,
   },
   radio: { getRadioList: true, getRadioTracks: true },
   singers: {

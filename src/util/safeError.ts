@@ -102,6 +102,7 @@ export const UPSTREAM_PHASES = [
   'get-song-batch',
   'get-radio-categories',
   'get-comment-list',
+  'get-autoplay-similar',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

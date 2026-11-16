@@ -350,6 +350,18 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
     ],
   },
+  getAutoplaySimilar: {
+    description:
+      'Songs similar to one song, the way the official app continues playback. Requires login. Not the same upstream as /song/similar or /recommend/autoplay.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Song ID',
+        description: 'One numeric song id (not the mid).',
+        required: true,
+      },
+    ],
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',

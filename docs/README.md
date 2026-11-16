@@ -401,6 +401,7 @@ POST /login/refresh
 | `/radio/recommendation-tracks` | 普通官方雷达批次 | 是 |
 | `/song/similar` | 相似歌曲 | 是 |
 | `/recommend/autoplay` | 播完自动接歌 | 是 |
+| `/recommend/autoplay/similar` | 按一首歌接相似的歌 | 是 |
 | `/song/related-playlists` | 包含指定歌曲的相关歌单 | 是 |
 | `/song/genre` | 歌曲流派 | 是 |
 
@@ -1100,6 +1101,18 @@ GET /user/playlist/updates
 服务不知道你上次看这些歌单的时间，所以一律按「从来没看过」去问；`newSongCount` 是上游在这个条件下给的数字，确切怎么算的还没有验证，请当作提示，不要当成精确的新歌数量。上游回了没问过的歌单会被丢掉。
 
 没有收藏或没有更新时 `playlists` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）、格式异常和网络失败回 `502`，任何一步失败都不会给出部分结果。回应带 `Cache-Control: private, no-store`。
+
+### 20. 相似歌曲接歌
+
+```text
+GET /recommend/autoplay/similar?id=90001
+```
+
+需要有效会话。`id` 必填，是一个正整数 songid，不能传 MID、多个 id 或重复参数。
+
+响应为 `{ code: 200, songs: [...] }`，曲目格式和 `/song/similar` 一样，实测一次回 3 首。它对应官方 App 里按一首歌接相似歌曲的播放方式，和 `/song/similar`（找风格相近的歌）、`/recommend/autoplay`（放完后接着放）是三个不同的上游接口，结果不能互相替代。
+
+没有相似的歌时 `songs` 是空数组；有条目却一首都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `retcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

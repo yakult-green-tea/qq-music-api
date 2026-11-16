@@ -85,3 +85,35 @@ export const autoplayResult = async (
     return failureResult('get-autoplay', error);
   }
 };
+
+// `/recommend/autoplay/similar`：按一首歌接相似的歌。实测（2026-11，带会话）官方 App 送
+// `AutoPlayServer.GetRadioSimilarSongs { vecSong: [一首], amount: 3, from: 4 }`，回 3 首 `{ track }` 和一个标题，
+// 标题不交出。和 `/song/similar`（TrackRelationServer）、`/recommend/autoplay` 都是不同的上游。
+const similarList = (seed: number): MusicuDescriptor<Dictionary> => ({
+  module: 'music.recommend.AutoPlayServer',
+  method: 'GetRadioSimilarSongs',
+  param: { vecSong: [seed], amount: 3, from: 4 },
+  readOnly: true,
+  operation: 'recommend.autoplay-similar',
+  decode: decodeDictionary,
+});
+
+/** 只收一首种子；没有相似的歌回 200 空数组，有条目却读不出来回 502。 */
+export const similarAutoplayResult = async (
+  session: AuthSession | null,
+  rawId: unknown,
+  options: SessionMusicuOptions = {},
+): Promise<NewRouteResult> => {
+  try {
+    if (!session) throw new QqApiError('auth-missing');
+    const seed = songIdOf(rawId);
+    const rows = rowsOf(
+      await createSessionMusicuClient(session, options).execute(similarList(seed)),
+    );
+    const songs = rows.map(toTrack).filter((item) => item !== null);
+    if (rows.length && !songs.length) throw new QqApiError('invalid-response');
+    return okResult({ songs });
+  } catch (error) {
+    return failureResult('get-autoplay-similar', error);
+  }
+};

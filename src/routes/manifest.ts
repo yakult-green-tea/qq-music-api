@@ -1,5 +1,6 @@
 import { albumSubscribe } from './operations/albumSubscribe';
 import { allPlaylistCategories } from './operations/allPlaylistCategories';
+import { getAutoplaySimilar } from './operations/autoplaySimilar';
 import { getBlacklist, getBlacklistStyleOptions } from './operations/blacklistReads';
 import { addBlacklist, removeBlacklist } from './operations/blacklistWrites';
 import { commentList } from './operations/commentList';
@@ -534,6 +535,15 @@ export const routeManifest = [
     path: '/user/playlist/updates',
     category: 'User',
     handler: getPlaylistUpdates,
+    needsSecret: true,
+  },
+  {
+    name: 'getAutoplaySimilar',
+    strictRequest: true,
+    method: 'GET',
+    path: '/recommend/autoplay/similar',
+    category: 'Recommend',
+    handler: getAutoplaySimilar,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。
