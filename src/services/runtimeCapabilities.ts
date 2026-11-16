@@ -49,6 +49,7 @@ const featuresFor = () => ({
     searchArtists: true,
     getHotSearches: true,
     getSearchSuggestions: true,
+    getHotSearchCategories: true,
   },
   lyrics: { getLyrics: true, getChorusRanges: false },
   recommendations: {

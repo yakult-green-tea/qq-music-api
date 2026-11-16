@@ -44,6 +44,7 @@ const expectedFeatures = (node: boolean) => ({
     searchArtists: true,
     getHotSearches: true,
     getSearchSuggestions: true,
+    getHotSearchCategories: true,
   },
   lyrics: { getLyrics: true, getChorusRanges: false },
   recommendations: {

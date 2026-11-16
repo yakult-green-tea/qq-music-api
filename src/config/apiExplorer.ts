@@ -362,6 +362,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getHotSearchCategories: {
+    description:
+      'Hot searches grouped the way the official app shows them. Requires login. The number of groups can differ between accounts.',
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',

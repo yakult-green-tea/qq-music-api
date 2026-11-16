@@ -402,6 +402,7 @@ POST /login/refresh
 | `/song/similar` | 相似歌曲 | 是 |
 | `/recommend/autoplay` | 播完自动接歌 | 是 |
 | `/recommend/autoplay/similar` | 按一首歌接相似的歌 | 是 |
+| `/search/hot/categories` | 按分类的热搜 | 是 |
 | `/song/related-playlists` | 包含指定歌曲的相关歌单 | 是 |
 | `/song/genre` | 歌曲流派 | 是 |
 
@@ -1113,6 +1114,18 @@ GET /recommend/autoplay/similar?id=90001
 响应为 `{ code: 200, songs: [...] }`，曲目格式和 `/song/similar` 一样，实测一次回 3 首。它对应官方 App 里按一首歌接相似歌曲的播放方式，和 `/song/similar`（找风格相近的歌）、`/recommend/autoplay`（放完后接着放）是三个不同的上游接口，结果不能互相替代。
 
 没有相似的歌时 `songs` 是空数组；有条目却一首都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `retcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 21. 按分类的热搜
+
+```text
+GET /search/hot/categories
+```
+
+需要有效会话，没有业务参数。
+
+响应为 `{ code: 200, categories: [{ key, name, nameEn, hotkeys }] }`，分类照官方 App 的显示顺序排列。`hotkeys` 里每个词的格式和 `/search/hot` 一样：`{ keyword, title?, description? }`。广告、功能入口和推荐词不返回。不同账号看到的分类数可能不一样（实测免费账号 5 个、绿钻账号 6 个），这里只照实际回的给，不代表和会员等级有关。
+
+没有分类时 `categories` 是空数组；分类里一个关键字都读不出来的会跳过，全部都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

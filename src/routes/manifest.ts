@@ -19,6 +19,7 @@ import { getUserAlbums } from './operations/getUserAlbums';
 import { getUserLikedSongs } from './operations/getUserLikedSongs';
 import { getUserPlaylist } from './operations/getUserPlaylist';
 import { getGuessYouLikeModes } from './operations/guessYouLikeModes';
+import { getHotSearchCategories } from './operations/hotCategories';
 import { getListeningRank } from './operations/listeningRank';
 import { loginChannels } from './operations/loginChannels';
 import { loginRefresh } from './operations/loginRefresh';
@@ -544,6 +545,15 @@ export const routeManifest = [
     path: '/recommend/autoplay/similar',
     category: 'Recommend',
     handler: getAutoplaySimilar,
+    needsSecret: true,
+  },
+  {
+    name: 'getHotSearchCategories',
+    strictRequest: true,
+    method: 'GET',
+    path: '/search/hot/categories',
+    category: 'Search',
+    handler: getHotSearchCategories,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

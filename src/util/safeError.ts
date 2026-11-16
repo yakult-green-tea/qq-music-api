@@ -103,6 +103,7 @@ export const UPSTREAM_PHASES = [
   'get-radio-categories',
   'get-comment-list',
   'get-autoplay-similar',
+  'get-hot-search-categories',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

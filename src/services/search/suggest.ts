@@ -1,6 +1,7 @@
 import { QqApiError } from '../../protocol/errors';
 import type { MusicuDescriptor } from '../../protocol/musicu';
 import { type Dictionary, dictionaryOf, isDictionary } from '../../util/values';
+import type { AuthSession } from '../auth/qrLogin';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
 import { keywordOf, searchIdOf } from './search';
@@ -40,7 +41,7 @@ const HOT_SEARCHES: MusicuDescriptor<Dictionary> = {
 };
 
 /** 关键字去掉头尾空白；标题、说明只在是非空文字时给。跳转链接不给。 */
-const toHotkey = (entry: unknown): Dictionary | null => {
+export const toHotkey = (entry: unknown): Dictionary | null => {
   const item = dictionaryOf(entry);
   const keyword = textOf(item.query)?.trim();
   if (keyword === undefined) return null;
@@ -109,5 +110,71 @@ export const searchSuggestionsResult = async (
     return okResult({ keyword, suggestions });
   } catch (error) {
     return failureResult('get-search-suggestions', error);
+  }
+};
+
+// `/search/hot/categories`：按分类的热搜，要登录。实测（2026-11，带会话）：
+// `HotkeyService.GetHotkeyAllBusinessForQQMusicMobile` 的 `map_business_hotkey` 以业务键分组，每组有
+// `tabname_cn`、`tabname_en`、`show_order` 和 `vec_hotkey`；广告、功能入口、推荐词不交出。
+// 每个词沿用 `/search/hot` 的格式。不同账号的分组数可能不同，只照实际回的给，不推断原因。
+const hotCategories = (): MusicuDescriptor<Dictionary> => ({
+  module: 'music.musicsearch.HotkeyService',
+  method: 'GetHotkeyAllBusinessForQQMusicMobile',
+  param: {
+    from: '1,',
+    start: '0',
+    searchid: searchIdOf(),
+    need_allhotkey: 1,
+    need_reckey: 1,
+    need_track_info: 1,
+    default_key: [],
+    history_query: [],
+    custom_flag: '',
+  },
+  readOnly: true,
+  operation: 'search.hot-categories',
+  decode: decodeDictionary,
+});
+
+const orderOf = (value: unknown): number =>
+  typeof value === 'number' && Number.isSafeInteger(value) ? value : Number.MAX_SAFE_INTEGER;
+
+/** 没有分组回 200 空数组；有分组却一个关键字都读不出来回 502。 */
+export const hotCategoriesResult = async (
+  session: AuthSession | null,
+  options: SessionMusicuOptions = {},
+): Promise<NewRouteResult> => {
+  try {
+    if (!session) throw new QqApiError('auth-missing');
+    const data = await createSessionMusicuClient(session, options).execute(hotCategories());
+    const map = data.map_business_hotkey;
+    if (map !== null && map !== undefined && !isDictionary(map))
+      throw new QqApiError('invalid-response');
+    const entries = Object.entries(isDictionary(map) ? map : {});
+    const categories = entries
+      .map(([key, value]) => {
+        const group = dictionaryOf(value);
+        const hotkeys = (Array.isArray(group.vec_hotkey) ? group.vec_hotkey : [])
+          .map(toHotkey)
+          .filter(Boolean);
+        return hotkeys.length
+          ? {
+              order: orderOf(group.show_order),
+              category: {
+                key,
+                name: textOf(group.tabname_cn) ?? '',
+                nameEn: textOf(group.tabname_en) ?? '',
+                hotkeys,
+              },
+            }
+          : null;
+      })
+      .filter((item) => item !== null)
+      .sort((a, b) => a.order - b.order || a.category.key.localeCompare(b.category.key))
+      .map((item) => item.category);
+    if (entries.length && !categories.length) throw new QqApiError('invalid-response');
+    return okResult({ categories });
+  } catch (error) {
+    return failureResult('get-hot-search-categories', error);
   }
 };
