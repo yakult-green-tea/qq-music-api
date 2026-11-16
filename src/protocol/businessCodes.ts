@@ -170,6 +170,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.autoplay-similar',
   /** 按分类的热搜（`HotkeyService.GetHotkeyAllBusinessForQQMusicMobile`），要登录。 */
   'search.hot-categories',
+  /** 音乐力等级（`SoundPowerSvr.QueryLevelDetailPage`），要登录。 */
+  'user.sound-power',
 ] as const;
 
 export type UpstreamOperation = (typeof UPSTREAM_OPERATIONS)[number];
@@ -356,6 +358,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['search.hot-categories'],
     '按分类的热搜要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.sound-power'],
+    '音乐力要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['song.genre'],

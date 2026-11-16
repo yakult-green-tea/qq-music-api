@@ -5,7 +5,7 @@ export type BackendRuntime = 'node' | 'serverless';
 // These flags describe implemented backend methods, independent of login or upstream availability.
 // Keep client-only predicates and diagnostics out of this declaration.
 const featuresFor = () => ({
-  user: { getVip: true },
+  user: { getVip: true, getSoundPower: true },
   playlistManagement: { createPlaylist: true, renamePlaylist: true, deletePlaylist: true },
   auth: {
     getLoginStatus: true,

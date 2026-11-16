@@ -89,6 +89,7 @@ import { songLike } from './operations/songLike';
 import { songReplacement } from './operations/songReplacement';
 import { songVersions } from './operations/songVersions';
 import { sortedCategoryPlaylists } from './operations/sortedCategoryPlaylists';
+import { getSoundPower } from './operations/soundPower';
 import { playlistSubscribe, subscriptionStatus } from './operations/subscriptions';
 import type { OperationHandler } from './operations/types';
 import { userCloud } from './operations/userCloud';
@@ -554,6 +555,15 @@ export const routeManifest = [
     path: '/search/hot/categories',
     category: 'Search',
     handler: getHotSearchCategories,
+    needsSecret: true,
+  },
+  {
+    name: 'getSoundPower',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/sound-power',
+    category: 'User',
+    handler: getSoundPower,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

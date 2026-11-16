@@ -415,6 +415,7 @@ POST /login/refresh
 | `/user/mvs` | 本人收藏的 MV |
 | `/user/recent-plays` | 云端最近播放（只读） |
 | `/user/playlist/updates` | 收藏的歌单里哪些有新歌 |
+| `/user/sound-power` | 本人的音乐力等级 |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1126,6 +1127,18 @@ GET /search/hot/categories
 响应为 `{ code: 200, categories: [{ key, name, nameEn, hotkeys }] }`，分类照官方 App 的显示顺序排列。`hotkeys` 里每个词的格式和 `/search/hot` 一样：`{ keyword, title?, description? }`。广告、功能入口和推荐词不返回。不同账号看到的分类数可能不一样（实测免费账号 5 个、绿钻账号 6 个），这里只照实际回的给，不代表和会员等级有关。
 
 没有分类时 `categories` 是空数组；分类里一个关键字都读不出来的会跳过，全部都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 22. 音乐力等级
+
+```text
+GET /user/sound-power
+```
+
+需要有效会话，没有业务参数，只读当前登录账号。
+
+响应为 `{ code: 200, level, name, icon, value, currentValue, nextValue, reachedMaxLevel, medalCount, todayListenSeconds }`：`level` 是等级数字，`name`、`icon` 是等级称号和图标；`value`、`currentValue`、`nextValue` 是音乐力数值和升级进度；`reachedMaxLevel` 表示是否已经到最高级（不是最高等级的数字）；`medalCount` 是勋章数；`todayListenSeconds` 是今天的听歌秒数（北京时间切日）。读不出来的数字字段会省略，`reachedMaxLevel` 遇到没见过的值也会省略。权益清单、跳转链接、昵称和头像不返回。
+
+没有等级资料回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 
