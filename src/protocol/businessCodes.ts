@@ -176,6 +176,8 @@ export const UPSTREAM_OPERATIONS = [
   'user.friend-rank',
   /** 本人歌手榜（`UserProfileSettingSvr.GetProfileReportDetail`），要登录。 */
   'user.singer-rank',
+  /** 本人勋章馆分页（`MedalHallHomepageSrv.GetHomepageTabDetail`），要登录。 */
+  'user.medals',
 ] as const;
 
 export type UpstreamOperation = (typeof UPSTREAM_OPERATIONS)[number];
@@ -374,6 +376,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['user.singer-rank'],
     '歌手榜要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.medals'],
+    '勋章馆要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['song.genre'],

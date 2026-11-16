@@ -26,6 +26,7 @@ import { loginChannels } from './operations/loginChannels';
 import { loginRefresh } from './operations/loginRefresh';
 import { loginStatus } from './operations/loginStatus';
 import { logout } from './operations/logout';
+import { getMedals } from './operations/medals';
 import {
   getCommentCount,
   getHotComments,
@@ -584,6 +585,15 @@ export const routeManifest = [
     path: '/user/singer-rank',
     category: 'User',
     handler: getSingerRank,
+    needsSecret: true,
+  },
+  {
+    name: 'getMedals',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/medals',
+    category: 'User',
+    handler: getMedals,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

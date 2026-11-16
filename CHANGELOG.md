@@ -12,6 +12,7 @@
 - 新增 `/user/sound-power`：登录后读自己的音乐力等级、升级进度、勋章数和今天的听歌秒数。能力声明多了 `user.getSoundPower`。
 - 新增 `/user/friend-rank`：登录后读好友听歌日榜的第一页，包括每位好友的听歌秒数、获赞数和名次，以及自己的名次。能力声明多了 `user.getFriendRank`。
 - 新增 `/user/singer-rank`：登录后读自己的歌手榜，可以选今年、全部、本月或去年。能力声明多了 `user.getSingerRank`。
+- 新增 `/user/medals`：登录后按分页读自己的勋章馆（乐迷、畅听、限定、珍爱守护、书迷、好友、幸运盲盒、会员尊享、里程碑）。能力声明多了 `user.getMedals`。
 
 ## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)
 

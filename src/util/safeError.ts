@@ -107,6 +107,7 @@ export const UPSTREAM_PHASES = [
   'get-sound-power',
   'get-friend-rank',
   'get-singer-rank',
+  'get-medals',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

@@ -385,6 +385,19 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getMedals: {
+    description:
+      'One tab of your medal hall. Requires login. The list also contains medals you have not earned yet.',
+    queryParams: [
+      {
+        key: 'tab',
+        label: 'Tab',
+        description:
+          'fans, listening, limited, guardian, books, friends, blind-box, vip or milestones.',
+        required: true,
+      },
+    ],
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',

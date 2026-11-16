@@ -418,6 +418,7 @@ POST /login/refresh
 | `/user/sound-power` | 本人的音乐力等级 |
 | `/user/friend-rank` | 好友听歌日榜（第一页） |
 | `/user/singer-rank` | 本人的歌手榜 |
+| `/user/medals` | 本人勋章馆的一个分页 |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1165,6 +1166,18 @@ GET /user/singer-rank?range=year
 响应为 `{ code: 200, range, singers: [{ mid, name, avatar, rank, change, playCount, share }] }`。`rank` 是名次，`change` 是名次变化（可能是负数），`playCount` 是这段时间听这位歌手的次数，`share` 是占比的数值，原样返回。读不出来的数字字段会省略。实测一次最多 30 位。年龄、流派、BPM 这些其他统计不在这个接口里。
 
 还没有歌手时 `singers` 是空数组；没有歌手资料或有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 25. 勋章馆
+
+```text
+GET /user/medals?tab=listening
+```
+
+需要有效会话，只读当前登录账号。`tab` 必填，对应官方 App 勋章馆的分页：`fans`（乐迷）、`listening`（畅听）、`limited`（限定）、`guardian`（珍爱守护）、`books`（书迷）、`friends`（好友）、`blind-box`（幸运盲盒）、`vip`（会员尊享）、`milestones`（里程碑）；其他值回 `400`。
+
+响应为 `{ code: 200, tab, modules: [{ id, name, more, medals }] }`，`medals` 每条是 `{ id?, name, icon, level?, obtainedAt?, isNew? }`。列表里也包括还没拿到的勋章，所以数量会比 App 上显示的「已获得」多；`obtainedAt` 只在有取得时间时才给，按原样返回字符串。部分分页的勋章没有 `id`。`more` 表示这个模块还有没列出来的勋章，本接口不往下读，也没有下一页。跳转链接和提示文字不返回，分页里的子分类以后再看。
+
+分页是空的时 `modules` 是空数组；没有分页资料或有模块却一个都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 
