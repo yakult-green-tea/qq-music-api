@@ -439,6 +439,9 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       'Add 1-100 songs to, or remove them from, your liked songs in one call. Off by default: the trusted host must set QQ_UNVERIFIED_WRITES_ENABLED=1. Only songs whose state differs are written, once, then read back.',
     bodyExample: { songs: [{ id: 90001, mid: 'fixtureSongMid', type: 0 }], liked: true },
   },
+  getBusinessCard: {
+    description: 'Read the music business card of the current account. Requires login.',
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',

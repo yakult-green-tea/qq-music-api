@@ -184,6 +184,8 @@ export const UPSTREAM_OPERATIONS = [
   'user.liked-categories',
   /** 社交：关注的歌手、关注的人、粉丝（`concern.RelationList`）和好友（`homepage.Friendship.GetFriendList`），要登录。 */
   'user.social',
+  /** 本人音乐名片（`HomepageShareSvr.GetMusicBusinessCard`），要登录。 */
+  'user.business-card',
 ] as const;
 
 export type UpstreamOperation = (typeof UPSTREAM_OPERATIONS)[number];
@@ -398,6 +400,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['user.social'],
     '社交读取要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这几个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.business-card'],
+    '音乐名片要登录，沿用本人资料接口的凭证错误分类。这几个错误码未在本接口单独实测',
   ),
   ...credentialRejected(
     ['song.genre'],

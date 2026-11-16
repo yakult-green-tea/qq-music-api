@@ -112,6 +112,7 @@ export const UPSTREAM_PHASES = [
   'get-liked-categories',
   'get-social',
   'song-like-batch',
+  'get-business-card',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

@@ -21,6 +21,7 @@
 
 - 补充排行榜往期的读法：周榜期别是 `YYYY_WW`、日榜是 `YYYY-MM-DD`，带过去的期别就能读往期。
 - 新增 `POST /user/song/like/batch`：一次把 1–100 首歌加进或移出「我喜欢」，只写状态不同的歌并读回确认。真账号验证前默认关闭，可信宿主设 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能用；能力声明 `mutations.likeSongsBatch` 为 `false`。`/user/song/like` 不变。
+- 新增 `/user/business-card`，登录后读取自己的音乐名片，返回昵称、头像、标签和喜欢的歌曲。能力声明新增 `user.getBusinessCard`。
 
 ## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)
 

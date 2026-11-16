@@ -13,6 +13,7 @@
       "recommendations.getAutoplaySimilarSongs",
       "search.getHotSearchCategories",
       "user.getSoundPower",
+      "user.getBusinessCard",
       "user.getFriendRank",
       "user.getSingerRank",
       "user.getMedals",
@@ -46,6 +47,13 @@
     "since": "3.3.8",
     "difference": "new-session-route",
     "reason": "新增要登录的只读接口（音乐力等级）；旧版不存在，没会话必须回 401，带会话只能是 200、400、401 或 502"
+  },
+  {
+    "path": "/user/business-card",
+    "baseline": "3.3.7",
+    "since": "3.3.8",
+    "difference": "new-session-route",
+    "reason": "新增要登录的只读接口（音乐名片）。旧版不存在，没会话必须回 401，带会话只能回 200、400、401 或 502"
   },
   {
     "path": "/user/friend-rank",

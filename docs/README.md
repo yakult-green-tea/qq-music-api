@@ -416,6 +416,7 @@ POST /login/refresh
 | `/user/recent-plays` | 云端最近播放（只读） |
 | `/user/playlist/updates` | 收藏的歌单里哪些有新歌 |
 | `/user/sound-power` | 本人的音乐力等级 |
+| `/user/business-card` | 当前登录账号的音乐名片 |
 | `/user/friend-rank` | 好友听歌日榜（第一页） |
 | `/user/singer-rank` | 本人的歌手榜 |
 | `/user/medals` | 本人勋章馆的一个分页 |
@@ -1258,6 +1259,20 @@ Content-Type: application/json
 - 写入和读回都只送一次，不会自动重送。写入之后出错时，错误回应会带 `writeAttempted: true`、`verified: false`、`retryable: false`，请重新读状态确认，不要直接重送。
 
 缺少、无效或过期会话回 `401`；核对、读状态或写入时的业务拒绝回 `502`，不会清掉会话（和 `/user/song/like` 一致）。回应带 `Cache-Control: private, no-store`。
+
+### 30. 音乐名片
+
+```text
+GET /user/business-card
+```
+
+需要有效会话，只读当前登录账号，没有业务参数。响应为 `{ code: 200, nick, avatar, tags, musicTags, favoriteSongs }`。
+
+- `tags`、`musicTags` 的条目格式是 `{ name, icon, type? }`。
+- `favoriteSongs` 的条目格式是 `{ id, title, subtitle, cover }`。`id` 保留上游给的字符串格式。
+- 没有标签或喜欢的歌曲时，返回对应的空数组。分享二维码地址不返回。
+
+缺少、无效或过期会话回 `401`。Serverless 未配置 `QQ_SESSION_SECRET` 时回 `501`。上游错误或响应格式异常回 `502`。响应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

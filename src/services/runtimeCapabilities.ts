@@ -16,6 +16,7 @@ const featuresFor = () => ({
     getFollowingUsers: true,
     getFollowers: true,
     getFriends: true,
+    getBusinessCard: true,
   },
   playlistManagement: { createPlaylist: true, renamePlaylist: true, deletePlaylist: true },
   auth: {

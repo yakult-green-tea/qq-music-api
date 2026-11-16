@@ -3,6 +3,7 @@ import { allPlaylistCategories } from './operations/allPlaylistCategories';
 import { getAutoplaySimilar } from './operations/autoplaySimilar';
 import { getBlacklist, getBlacklistStyleOptions } from './operations/blacklistReads';
 import { addBlacklist, removeBlacklist } from './operations/blacklistWrites';
+import { getBusinessCard } from './operations/businessCard';
 import { commentList } from './operations/commentList';
 import { dailyHistoryDates, dailyHistorySongs } from './operations/dailyHistory';
 import { getFavoriteMvs } from './operations/favoriteMvs';
@@ -576,6 +577,15 @@ export const routeManifest = [
     path: '/user/sound-power',
     category: 'User',
     handler: getSoundPower,
+    needsSecret: true,
+  },
+  {
+    name: 'getBusinessCard',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/business-card',
+    category: 'User',
+    handler: getBusinessCard,
     needsSecret: true,
   },
   {
