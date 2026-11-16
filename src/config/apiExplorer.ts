@@ -350,6 +350,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
     ],
   },
+  getPlaylistUpdates: {
+    description:
+      'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',
+  },
   getRecentPlays: {
     description:
       'Your cloud play history, read only. One type per call; the upstream has no paging and total only counts this answer.',

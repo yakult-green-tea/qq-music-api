@@ -71,6 +71,7 @@ export const UPSTREAM_PHASES = [
   'get-autoplay',
   'get-favorite-mvs',
   'get-recent-plays',
+  'get-playlist-updates',
   'get-toplists',
   'get-toplist',
   'search',

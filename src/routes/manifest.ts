@@ -45,6 +45,7 @@ import {
 } from './operations/officialRadio';
 import { playlistCreate, playlistDelete, playlistRename } from './operations/playlistManagement';
 import { playlistTracks } from './operations/playlistTracks';
+import { getPlaylistUpdates } from './operations/playlistUpdates';
 import { qrCancel } from './operations/qrCancel';
 import { qrCheck } from './operations/qrCheck';
 import { qrCreate } from './operations/qrCreate';
@@ -524,6 +525,15 @@ export const routeManifest = [
     path: '/user/recent-plays',
     category: 'User',
     handler: getRecentPlays,
+    needsSecret: true,
+  },
+  {
+    name: 'getPlaylistUpdates',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/playlist/updates',
+    category: 'User',
+    handler: getPlaylistUpdates,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

@@ -412,6 +412,7 @@ POST /login/refresh
 | `/user/playlist-detail` | 本人歌单详情，包含不公开歌单 |
 | `/user/mvs` | 本人收藏的 MV |
 | `/user/recent-plays` | 云端最近播放（只读） |
+| `/user/playlist/updates` | 收藏的歌单里哪些有新歌 |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1085,6 +1086,20 @@ GET /user/recent-plays?type=song
 `lastTime` 保留上游数值，不推断单位；数字字段读不出来时省略。上游一次给完、没有分页，`total` 只是这次返回的条数，不代表完整的历史总量。最近播放的设备、歌单创建者的账号和 MV 付费资料不返回。
 
 没播过时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 19. 收藏歌单有更新
+
+```text
+GET /user/playlist/updates
+```
+
+需要有效会话，没有业务参数。服务先读当前账号收藏歌单的第一页（最多 100 个），再问上游这些歌单里哪些有新歌，两步都只读。
+
+响应为 `{ code: 200, playlists: [...], checked, complete }`。`playlists` 只列有更新的歌单，每条是 `{ id, newSongCount, updateTime, latestSong }`，`latestSong` 为 `{ id, name, singers }`（歌手只有名字），上游没给时省略；数字字段读不出来时也省略。`checked` 是这次实际问过的歌单数，`complete` 为 `false` 表示收藏超过一页、后面的歌单没有检查，不能当成都没更新。
+
+服务不知道你上次看这些歌单的时间，所以一律按「从来没看过」去问；`newSongCount` 是上游在这个条件下给的数字，确切怎么算的还没有验证，请当作提示，不要当成精确的新歌数量。上游回了没问过的歌单会被丢掉。
+
+没有收藏或没有更新时 `playlists` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）、格式异常和网络失败回 `502`，任何一步失败都不会给出部分结果。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 
