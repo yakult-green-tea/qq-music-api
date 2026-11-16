@@ -70,6 +70,7 @@ export const UPSTREAM_PHASES = [
   'get-song-genre',
   'get-autoplay',
   'get-favorite-mvs',
+  'get-recent-plays',
   'get-toplists',
   'get-toplist',
   'search',

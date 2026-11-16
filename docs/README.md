@@ -411,6 +411,7 @@ POST /login/refresh
 | `/user/playlist` | 自建与收藏歌单 |
 | `/user/playlist-detail` | 本人歌单详情，包含不公开歌单 |
 | `/user/mvs` | 本人收藏的 MV |
+| `/user/recent-plays` | 云端最近播放（只读） |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1064,6 +1065,26 @@ GET /user/mvs
 响应为 `{ code: 200, mvs: [...], total, more }`。每条 MV 有 `vid`、`mid`、`name`、`cover`、`singers`，上游给了才带 `duration`、`playCount`、`publishDate`、`time`（收藏时间，保留上游数值，不推断单位）。上传者的账号和昵称不返回。`total` 是上游给的总数，读不出来时为 `null`；`more` 只是照抄上游的 `hasmore`，本接口没有下一页可读，不要拿它去翻页。
 
 没有收藏时 `mvs` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 18. 云端最近播放
+
+```text
+GET /user/recent-plays?type=song
+```
+
+需要有效会话，只读当前登录账号的云端播放记录，不会上报播放，也不能删除记录。`type` 可选 `song`（默认）、`album`、`playlist`、`radio`、`mv`，对应官方 App 最近播放里的歌曲、专辑、歌单、音乐雷达和视频分页；其他值回 `400`。
+
+响应为 `{ code: 200, type, items, total }`：
+
+- `song`：`{ song, lastTime, listenCount }`，`song` 的格式和 `/song/similar` 一样。
+- `album`：`{ id, mid, name, singerName, lastTime }`。
+- `playlist`：`{ id, dirId, name, cover, creator, songCount, lastTime }`。
+- `radio`：`{ id, name, cover, radioType, lastTime }`。
+- `mv`：`{ vid, name, cover, singers, lastTime }`。
+
+`lastTime` 保留上游数值，不推断单位；数字字段读不出来时省略。上游一次给完、没有分页，`total` 只是这次返回的条数，不代表完整的历史总量。最近播放的设备、歌单创建者的账号和 MV 付费资料不返回。
+
+没播过时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

@@ -50,6 +50,7 @@ import { qrCheck } from './operations/qrCheck';
 import { qrCreate } from './operations/qrCreate';
 import { qrKey } from './operations/qrKey';
 import { radioCategories } from './operations/radioCategories';
+import { getRecentPlays } from './operations/recentPlays';
 import {
   getRecommendationPreferences,
   updateRecommendationPreferences,
@@ -514,6 +515,15 @@ export const routeManifest = [
     path: '/user/mvs',
     category: 'User',
     handler: getFavoriteMvs,
+    needsSecret: true,
+  },
+  {
+    name: 'getRecentPlays',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/recent-plays',
+    category: 'User',
+    handler: getRecentPlays,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

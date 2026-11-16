@@ -350,6 +350,17 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
     ],
   },
+  getRecentPlays: {
+    description:
+      'Your cloud play history, read only. One type per call; the upstream has no paging and total only counts this answer.',
+    queryParams: [
+      {
+        key: 'type',
+        label: 'Type',
+        description: 'song (default), album, playlist, radio or mv.',
+      },
+    ],
+  },
   getFavoriteMvs: {
     description:
       'Your favorite MVs. Requires login. The upstream has no paging: more only repeats its hasmore flag, there is no next page to read.',
