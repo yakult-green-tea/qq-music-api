@@ -229,12 +229,16 @@ const approvalOf = (testCase, before, after) =>
           testCase.path === entry.path && testCase.method === 'GET' &&
           before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
           before.upstream.length === 0 &&
-          (testCase.session ? [200, 400, 401, 502].includes(after?.status) : after?.status === 401)) ||
+          (testCase.session ? [200, 400, 401, 502].includes(after?.status) :
+            after?.status === 401 && after.upstream.length === 0 &&
+            (after.headers?.['cache-control'] === undefined ||
+              (after.headers['cache-control'].includes('private') && after.headers['cache-control'].includes('no-store'))))) ||
         (entry.difference === 'new-gated-write-route' &&
           testCase.path === entry.path &&
           before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
           before.upstream.length === 0 &&
           [400, 401, 405, 415, 501].includes(after?.status) &&
+          (after.status !== 501 || after.body?.errorKey === 'feature.unavailable') &&
           after.upstream.length === 0) ||
         (entry.difference === 'capability-flags-added' &&
           testCase.path === entry.path && onlyFlagsAdded(before, after, entry.flags)) ||
