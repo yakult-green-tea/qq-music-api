@@ -31,6 +31,7 @@ const featuresFor = () => ({
     getFavoriteMvs: true,
     getRecentPlays: true,
     getPlaylistUpdates: true,
+    getLikedSongCategories: true,
   },
   catalog: {
     getPlaylistTracks: true,

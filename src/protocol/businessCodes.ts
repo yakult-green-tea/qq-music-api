@@ -180,6 +180,8 @@ export const UPSTREAM_OPERATIONS = [
   'user.medals',
   /** 本人听歌报告（`ListenReportSvr.GetBar`），要登录。 */
   'user.listening-report',
+  /** 「我喜欢」分类：分页读我喜欢（`DissInfo.CgiGetDiss` dirid 201）再问 `SongFavCategory.GetCategoryInfo`，要登录。 */
+  'user.liked-categories',
 ] as const;
 
 export type UpstreamOperation = (typeof UPSTREAM_OPERATIONS)[number];
@@ -386,6 +388,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['user.listening-report'],
     '听歌报告要登录，沿用听歌排行的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.liked-categories'],
+    '我喜欢分类要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这两个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['song.genre'],

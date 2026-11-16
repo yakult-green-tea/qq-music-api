@@ -416,6 +416,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getLikedSongCategories: {
+    description:
+      'Your liked songs grouped the way the official app shows them: suggestions, singers, time and genre. Requires login. Only the first 500 liked songs are sent; complete is false when some were left out.',
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',

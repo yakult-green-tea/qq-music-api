@@ -109,6 +109,7 @@ export const UPSTREAM_PHASES = [
   'get-singer-rank',
   'get-medals',
   'get-listening-report',
+  'get-liked-categories',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

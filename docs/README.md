@@ -420,6 +420,7 @@ POST /login/refresh
 | `/user/singer-rank` | 本人的歌手榜 |
 | `/user/medals` | 本人勋章馆的一个分页 |
 | `/user/listening-report` | 本人的听歌报告 |
+| `/user/liked-songs/categories` | 「我喜欢」的分类 |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1195,6 +1196,22 @@ GET /user/listening-report?range=year&date=2025
 响应为 `{ code: 200, range, date?, availableDates, listenSeconds, listenCount, activeHour, chart, highlights }`：`availableDates` 是有资料的时段；`listenSeconds` 是这段时间的听歌秒数（当天的值和 `/user/friend-rank`、`/user/sound-power` 的当天秒数一致）；`listenCount`、`activeHour` 原样返回；`chart` 按时段排序，每段是 `{ period, items: [{ id, name, value, rank }] }`，`value` 原样返回；`highlights` 是 `{ type, title, subtitle, value }`。读不出来的数字字段会省略。App 上和上一段相比的升降百分比，目前确认不了它的算法，所以不返回。
 
 没听过歌的时段会返回空的 `chart` 和 `highlights`。图表格式不对回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 27. 「我喜欢」的分类
+
+```text
+GET /user/liked-songs/categories
+```
+
+需要有效会话，没有业务参数。服务先分页读当前账号的「我喜欢」（每页 100 首，最多 500 首），再把这些歌送去分类，对应官方 App「收藏歌曲」页的建议、时间、歌手、流派四种看法。
+
+响应为 `{ code: 200, groups, checkedSongs, totalSongs, complete }`：
+
+- `groups` 每组是 `{ type, title, failed?, categories }`，`type` 是 `suggest`、`artist`、`period`、`genre`；`categories` 每条是 `{ id?, key, title, songIds }`，`songIds` 是这个分类里的歌曲 songid。
+- 歌手组的名称是从同一批歌曲资料里按歌手 id 补上的，补不到就是空字符串，不会去猜。
+- `checkedSongs` 是实际送去分类的首数，`totalSongs` 是「我喜欢」的总首数（读不出来时为 `null`）。只有两者相等、而且没有任何一组标了 `failed: true` 时，`complete` 才是 `true`。
+
+「我喜欢」是空的时直接返回空的 `groups`，不再去分类。读歌或分类的回应格式不对回 `502`，任何一步失败都不会给出部分结果。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

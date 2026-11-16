@@ -31,6 +31,7 @@ const expectedFeatures = (node: boolean) => ({
     getFavoriteMvs: true,
     getRecentPlays: true,
     getPlaylistUpdates: true,
+    getLikedSongCategories: true,
   },
   catalog: {
     getPlaylistTracks: true,
