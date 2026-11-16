@@ -97,6 +97,7 @@ const expectedFeatures = (node: boolean) => ({
     likeSong: true,
     subscribePlaylist: true,
     subscribeAlbum: true,
+    likeSongsBatch: false,
   },
   playbackReports: { reportPlayback: false },
 });

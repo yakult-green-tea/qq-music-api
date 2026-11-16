@@ -111,6 +111,7 @@ export const UPSTREAM_PHASES = [
   'get-listening-report',
   'get-liked-categories',
   'get-social',
+  'song-like-batch',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

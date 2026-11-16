@@ -97,6 +97,7 @@ import {
 import { songBatch } from './operations/songBatch';
 import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
+import { songLikeBatch } from './operations/songLikeBatch';
 import { songReplacement } from './operations/songReplacement';
 import { songVersions } from './operations/songVersions';
 import { sortedCategoryPlaylists } from './operations/sortedCategoryPlaylists';
@@ -656,6 +657,16 @@ export const routeManifest = [
     path: '/user/friends',
     category: 'User',
     handler: getFriends,
+    needsSecret: true,
+  },
+  {
+    name: 'songLikeBatch',
+    strictRequest: true,
+    method: 'POST',
+    path: '/user/song/like/batch',
+    category: 'User',
+    handler: songLikeBatch,
+    accountWrite: true,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

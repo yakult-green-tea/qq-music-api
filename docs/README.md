@@ -425,6 +425,7 @@ POST /login/refresh
 | `/user/following/users` | 本人关注的人（第一页） |
 | `/user/followers` | 本人的粉丝（第一页） |
 | `/user/friends` | 本人的好友（第一页） |
+| `POST /user/song/like/batch` | 批量加入或移出「我喜欢」（默认关闭） |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1234,6 +1235,29 @@ GET /user/friends
 - `more` 只是照抄有没有更多的标记，这几个接口都没有下一页可读。会员图标、勋章、隐私提示文字和自己的资料不返回。
 
 名单是空的时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 29. 批量加入或移出「我喜欢」
+
+```http
+POST /user/song/like/batch
+Content-Type: application/json
+```
+
+```json
+{
+  "songs": [{ "id": 90001, "mid": "fixtureSongMid", "type": 0 }],
+  "liked": true
+}
+```
+
+真账号验证完成前默认关闭：可信宿主要设 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能用，否则在检查会话前就回 `501 feature.unavailable`；能力声明 `mutations.likeSongsBatch` 为 `false`。单首的 `/user/song/like` 不变。
+
+- `songs` 是 1–100 首，每首要同时给 `id`（正整数 songid）、`mid` 和 `type: 0`，不能重复，也不能有多余字段；`liked` 为 `true` 是加入、`false` 是移出。只收 `application/json`。
+- 服务先核对每首的 id 和 mid 是同一首歌，有一首对不上就整批不写（回 `400`）；再读一次目前的红心状态，只把状态不同的歌写一次，写完再读回确认。
+- 成功时回 `{ code: 200, liked, results: [{ id, status }], writeAttempted, accepted?, verified }`：`status` 是 `changed`（写了而且读回确认）、`unchanged`（本来就是这个状态，没写）或 `unconfirmed`（写了但读回对不上）。全部都不用改时不会写入，`writeAttempted` 为 `false`。
+- 写入和读回都只送一次，不会自动重送。写入之后出错时，错误回应会带 `writeAttempted: true`、`verified: false`、`retryable: false`，请重新读状态确认，不要直接重送。
+
+缺少、无效或过期会话回 `401`；核对、读状态或写入时的业务拒绝回 `502`，不会清掉会话（和 `/user/song/like` 一致）。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

@@ -69,7 +69,7 @@ export interface SessionRouteContext {
   call: (path: string, options?: CallOptions) => Promise<HttpResult>;
 }
 
-export { CONTRACT_CREDENTIAL };
+export { CONTRACT_CREDENTIAL, CONTRACT_SECRET };
 
 export const setupSessionRoute = (
   runtime: Runtime,
@@ -87,12 +87,19 @@ export const setupSessionRoute = (
       .filter(([key]) => key.startsWith('req_'))
       .map(([, value]) => value as Rpc);
     ctx.recorded.push({ comm: payload.comm, cookie: fetched.headers.get('cookie'), rpcs });
-    const reply = ctx.replies[rpcs[0]?.method] ?? {};
-    if (reply.httpStatus && reply.httpStatus >= 400)
-      return new Response('fixture-private-error-page', { status: reply.httpStatus });
+    // 一次请求里有几个子请求就各回各的；HTTP 失败与外层码看第一个。
+    const replies = rpcs.map((rpc) => ctx.replies[rpc.method] ?? {});
+    const first = replies[0] ?? {};
+    if (first.httpStatus && first.httpStatus >= 400)
+      return new Response('fixture-private-error-page', { status: first.httpStatus });
     return Response.json({
-      code: reply.globalCode ?? 0,
-      req_0: { code: reply.code ?? 0, data: reply.data ?? {} },
+      code: first.globalCode ?? 0,
+      ...Object.fromEntries(
+        replies.map((reply, index) => [
+          `req_${index}`,
+          { code: reply.code ?? 0, data: reply.data ?? {} },
+        ]),
+      ),
     });
   };
 
