@@ -84,6 +84,7 @@ import { recommendFeed } from './operations/recommendFeed';
 import { getHotSearches, getSearch, getSearchSuggestions } from './operations/searchCatalog';
 import { searchMatch } from './operations/searchMatch';
 import { searchUsers } from './operations/searchUsers';
+import { getSingerRank } from './operations/singerRank';
 import { songBatch } from './operations/songBatch';
 import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
@@ -574,6 +575,15 @@ export const routeManifest = [
     path: '/user/friend-rank',
     category: 'User',
     handler: getFriendRank,
+    needsSecret: true,
+  },
+  {
+    name: 'getSingerRank',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/singer-rank',
+    category: 'User',
+    handler: getSingerRank,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

@@ -373,6 +373,18 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getFriendRank: {
     description: 'The daily listening ranking among your friends, first page only. Requires login.',
   },
+  getSingerRank: {
+    description:
+      'Your top singers for a period, as on the singer ranking page of the official app. Requires login.',
+    queryParams: [
+      {
+        key: 'range',
+        label: 'Range',
+        description: 'year, all, month or last-year.',
+        required: true,
+      },
+    ],
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',

@@ -417,6 +417,7 @@ POST /login/refresh
 | `/user/playlist/updates` | 收藏的歌单里哪些有新歌 |
 | `/user/sound-power` | 本人的音乐力等级 |
 | `/user/friend-rank` | 好友听歌日榜（第一页） |
+| `/user/singer-rank` | 本人的歌手榜 |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1152,6 +1153,18 @@ GET /user/friend-rank
 响应为 `{ code: 200, items, myRank, myPlaySeconds, myLikeCount, more }`。`items` 每条是 `{ uin, nick, avatar, playSeconds, likeCount, liked, rank }`：`uin` 是加密后的账号 id，`playSeconds` 是当天听歌秒数，`liked` 表示你是否给对方点过赞，`rank` 是名次。`myRank`、`myPlaySeconds`、`myLikeCount` 是你自己的名次、当天听歌秒数和获赞数。读不出来的数字字段会省略。`more` 只是照抄有没有更多的标记，本接口没有下一页可读。点赞和隐私设置不提供。
 
 榜上没有人时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 24. 本人的歌手榜
+
+```text
+GET /user/singer-rank?range=year
+```
+
+需要有效会话，只读当前登录账号。`range` 必填：`year`（今年）、`all`（全部）、`month`（本月）、`last-year`（去年整年），对应官方 App 歌手榜的「年」「总」「月」和往年回顾；其他值回 `400`。
+
+响应为 `{ code: 200, range, singers: [{ mid, name, avatar, rank, change, playCount, share }] }`。`rank` 是名次，`change` 是名次变化（可能是负数），`playCount` 是这段时间听这位歌手的次数，`share` 是占比的数值，原样返回。读不出来的数字字段会省略。实测一次最多 30 位。年龄、流派、BPM 这些其他统计不在这个接口里。
+
+还没有歌手时 `singers` 是空数组；没有歌手资料或有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

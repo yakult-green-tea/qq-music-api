@@ -174,6 +174,8 @@ export const UPSTREAM_OPERATIONS = [
   'user.sound-power',
   /** 好友听歌日榜（`FriendRankSvr.GetRank`），要登录。 */
   'user.friend-rank',
+  /** 本人歌手榜（`UserProfileSettingSvr.GetProfileReportDetail`），要登录。 */
+  'user.singer-rank',
 ] as const;
 
 export type UpstreamOperation = (typeof UPSTREAM_OPERATIONS)[number];
@@ -368,6 +370,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['user.friend-rank'],
     '好友听歌日榜要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.singer-rank'],
+    '歌手榜要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['song.genre'],
