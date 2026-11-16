@@ -17,6 +17,10 @@
 - 新增 `/user/liked-songs/categories`：登录后按建议、歌手、时间、流派看「我喜欢」的分类，最多处理 500 首，没读完整时 `complete` 为 `false`。能力声明多了 `library.getLikedSongCategories`。
 - 新增 `/user/following/singers`、`/user/following/users`、`/user/followers`、`/user/friends`：登录后读自己关注的歌手、关注的人、粉丝和好友的第一页；对方锁了隐私时回 `locked: true`。能力声明多了 `user.getFollowingSingers`、`user.getFollowingUsers`、`user.getFollowers`、`user.getFriends`。
 
+### 文档
+
+- 补充排行榜往期的读法：周榜期别是 `YYYY_WW`、日榜是 `YYYY-MM-DD`，带过去的期别就能读往期。
+
 ## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)
 
 ### 新功能

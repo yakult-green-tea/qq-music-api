@@ -827,6 +827,7 @@ GET /recommend/toplist?id=26
 - `/radio/list` 和 `/radio/tracks` 需要登录。
 - `/radio/categories` 可以匿名读取分类。
 - 排行榜支持 `period`、`offset`、`limit` 等参数。
+- `/recommend/toplists` 每个榜会给 `period`（当前一期）和 `updateType`。周榜的期别是 `YYYY_WW`（年份和第几周），日榜是 `YYYY-MM-DD`，有的榜没有期别。给 `/recommend/toplist` 带上过去的期别就能读往期，例如 `GET /recommend/toplist?id=26&period=2025_50`；期别格式要照这个榜自己的写法，不带就读最新一期。榜单的数量和分组以返回为准，会随时间变化（2026-11 实测 5 组 46 个，登录与否相同）。
 - 新歌、新碟和歌单分类支持各自的地区、分类或分页参数。
 
 推荐列表的 `more` 不一定代表服务提供了连续游标。具体分页方式应按对应接口处理。
