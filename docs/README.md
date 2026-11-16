@@ -401,6 +401,7 @@ POST /login/refresh
 | `/radio/recommendation-tracks` | 普通官方雷达批次 | 是 |
 | `/song/similar` | 相似歌曲 | 是 |
 | `/song/related-playlists` | 包含指定歌曲的相关歌单 | 是 |
+| `/song/genre` | 歌曲流派 | 是 |
 
 ### 个人音乐库
 
@@ -1025,6 +1026,18 @@ GET /user/music-gene
 响应为 `{ code: 200, profile: {...} }`，`profile` 保留上游 `data` 的原始结构，包括数字类型的 `IsVisitAccount`，不转换成布尔值。成功的空对象也原样返回。上游非零业务码回 `502` 并保留 `upstreamCode`，不能仅凭数字把它解释成未登录。
 
 四条接口在 Node 和 Serverless 使用同一套处理。两条需要会话的接口缺失、无效或过期会话回 `401`；Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`。其余上游业务拒绝、格式异常与网络失败沿用现有的安全 `502` 分类；空清单不用 `404` 表示。
+
+### 15. 歌曲流派
+
+```text
+GET /song/genre?id=90001
+```
+
+需要有效会话。`id` 必填，是正整数 songid，不能传 MID，也不能重复给。
+
+响应为 `{ code: 200, genres: [{ id, name }] }`，只保留上游给的流派编号和名称。很多歌没有流派，这时 `genres` 是空数组，属于正常结果；上游有条目却一条都读不出来回 `502`。流派和 `/song/labels` 的歌曲标签、歌曲详情里的 `genre` 数字不是同一样东西，不要互相换算。
+
+缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

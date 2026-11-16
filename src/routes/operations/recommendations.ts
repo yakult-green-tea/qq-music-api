@@ -10,6 +10,7 @@ import {
   recommendPlaylistsResult,
 } from '../../services/recommend/recommendPlaylists';
 import { relatedPlaylistsResult, similarSongsResult } from '../../services/recommend/songRelations';
+import { songGenreResult } from '../../services/song/genre';
 import { optionalSession, rawQuery, requiredSession } from './requestValues';
 import type { OperationHandler } from './types';
 
@@ -43,6 +44,10 @@ export const getSimilarSongs: OperationHandler = async (request) =>
 
 export const getRelatedPlaylists: OperationHandler = async (request) =>
   relatedPlaylistsResult(await requiredSession(request), rawQuery(request, 'id'));
+
+// 歌曲流派：和标签（`/song/labels`）、详情里的 genre 数字分开。
+export const getSongGenre: OperationHandler = async (request) =>
+  songGenreResult(await requiredSession(request), rawQuery(request, 'id'));
 
 export const getRadioList: OperationHandler = async (request) =>
   radioListResult(await requiredSession(request));

@@ -471,6 +471,18 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getSongGenre: {
+    description:
+      'Get the genres of one song. Requires login. Many songs have none: that is a normal empty list. Genres are not the song labels.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Song ID',
+        description: 'Numeric song id (not the mid).',
+        required: true,
+      },
+    ],
+  },
   getRelatedPlaylists: {
     description:
       'Get playlists that contain one song. Requires login: without a session the upstream only answers an empty list.',

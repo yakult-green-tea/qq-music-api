@@ -63,6 +63,7 @@ import {
   getRecommendRadar,
   getRelatedPlaylists,
   getSimilarSongs,
+  getSongGenre,
 } from './operations/recommendations';
 import {
   getCategoryPlaylists,
@@ -590,6 +591,15 @@ export const routeManifest = [
     path: '/song/related-playlists',
     category: 'Song',
     handler: getRelatedPlaylists,
+    needsSecret: true,
+  },
+  {
+    name: 'getSongGenre',
+    strictRequest: true,
+    method: 'GET',
+    path: '/song/genre',
+    category: 'Song',
+    handler: getSongGenre,
     needsSecret: true,
   },
   {

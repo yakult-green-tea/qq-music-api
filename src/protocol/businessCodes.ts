@@ -74,6 +74,8 @@ export const UPSTREAM_OPERATIONS = [
   'song.similar',
   /** 包含这首歌的歌单（`TrackRelationServer.GetRelatedPlaylist`），要登录。 */
   'song.related-playlists',
+  /** 歌曲流派（`TrackRelationServer.GetSongGenre`），要登录。 */
+  'song.genre',
   /** 刷歌模式（`TrackRelationServer.GetRadarSong`），有会话就带凭证。 */
   'recommend.radar',
   /** 新碟地区清单（`get_new_album_area`），匿名。 */
@@ -318,6 +320,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
       'song.related-playlists',
     ],
     '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
+  ),
+  ...credentialRejected(
+    ['song.genre'],
+    '歌曲流派要登录，沿用相似歌曲的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['recommend.daily-songs'],

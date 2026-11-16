@@ -79,7 +79,7 @@ const featuresFor = () => ({
   },
   comments: { getHotComments: true, getNewComments: true, getCommentCount: true },
   mvs: { getMvList: true, getMvDetail: true, getMvUrl: true, getSongMvs: true },
-  songs: { getSongLabels: true },
+  songs: { getSongLabels: true, getSongGenre: true },
   mutations: {
     updatePlaylistTracks: true,
     likeSong: true,
