@@ -10,17 +10,17 @@
 - 新增 `/recommend/autoplay/similar`：登录后按一首歌接相似的歌，和 `/song/similar`、`/recommend/autoplay` 用途不同。能力声明多了 `recommendations.getAutoplaySimilarSongs`。
 - 新增 `/search/hot/categories`：登录后按分类读热搜，每个热搜词的格式和 `/search/hot` 一样。能力声明多了 `search.getHotSearchCategories`。
 - 新增 `/user/sound-power`：登录后读自己的音乐力等级、升级进度、勋章数和今天的听歌秒数。能力声明多了 `user.getSoundPower`。
-- 新增 `/user/friend-rank`：登录后读好友听歌日榜的第一页，包括每位好友的听歌秒数、获赞数和名次，以及自己的名次。能力声明多了 `user.getFriendRank`。
+- 新增 `/user/friend-rank`：登录后读好友听歌日榜的第一页，最多 60 条，包括每位好友的听歌秒数、获赞数和名次，以及自己的名次。截断时 `more` 为 `true`。能力声明多了 `user.getFriendRank`。
 - 新增 `/user/singer-rank`：登录后读自己的歌手榜，可以选今年、全部、本月或去年。能力声明多了 `user.getSingerRank`。
 - 新增 `/user/medals`：登录后按分页读自己的勋章馆（乐迷、畅听、限定、珍爱守护、书迷、好友、幸运盲盒、会员尊享、里程碑）。能力声明多了 `user.getMedals`。
 - 新增 `/user/listening-report`：登录后读自己某天、某周、某月或某年的听歌报告（听歌秒数、次数、活跃时段、分时段图表和亮点），和 `/user/listening-rank` 的歌曲排行分开。能力声明多了 `user.getListeningReport`。
 - 新增 `/user/liked-songs/categories`：登录后按建议、歌手、时间、流派看「我喜欢」的分类，最多处理 500 首，没读完整时 `complete` 为 `false`。能力声明多了 `library.getLikedSongCategories`。
-- 新增 `/user/following/singers`、`/user/following/users`、`/user/followers`、`/user/friends`：登录后读自己关注的歌手、关注的人、粉丝和好友的第一页；对方锁了隐私时回 `locked: true`。能力声明多了 `user.getFollowingSingers`、`user.getFollowingUsers`、`user.getFollowers`、`user.getFriends`。
+- 新增 `/user/following/singers`、`/user/following/users`、`/user/followers`、`/user/friends`：登录后读自己关注的歌手、关注的人、粉丝和好友的第一页，分别最多 20、20、20、50 条；截断时 `more` 为 `true`，对方锁了隐私时回 `locked: true`。能力声明多了 `user.getFollowingSingers`、`user.getFollowingUsers`、`user.getFollowers`、`user.getFriends`。
 
 ### 文档
 
 - 补充排行榜往期的读法：周榜期别是 `YYYY_WW`、日榜是 `YYYY-MM-DD`，带过去的期别就能读往期。
-- 新增 `POST /user/song/like/batch`：一次把 1–100 首歌加进或移出「我喜欢」，只写状态不同的歌并读回确认。真账号验证前默认关闭，可信宿主设 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能用；能力声明 `mutations.likeSongsBatch` 为 `false`。`/user/song/like` 不变。
+- 新增 `POST /user/song/like/batch`：一次把 1–100 首歌加进或移出「我喜欢」，只写状态不同的歌并读回确认。`unchanged` 表示写入前读到的状态；部分确认回 `502`，请重读状态，不要重送。真账号验证前默认关闭，可信宿主设 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能用；能力声明 `mutations.likeSongsBatch` 为 `false`。`/user/song/like` 不变。
 - 新增 `/user/business-card`，登录后读取自己的音乐名片，返回昵称、头像、标签和喜欢的歌曲。能力声明新增 `user.getBusinessCard`。
 
 ## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)

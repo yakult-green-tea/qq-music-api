@@ -47,7 +47,10 @@ const inputOf = (raw: unknown): { songs: SongInput[]; liked: boolean } => {
   return { songs, liked: input.liked };
 };
 
-const fanStateOf = (mids: string[]): MusicuDescriptor<Map<string, boolean>> => ({
+const fanStateOf = (
+  mids: string[],
+  allowMissing = false,
+): MusicuDescriptor<Map<string, boolean>> => ({
   module: 'music.musicasset.SongFavRead',
   method: 'IsSongFanByMid',
   param: { v_songMid: mids },
@@ -58,6 +61,7 @@ const fanStateOf = (mids: string[]): MusicuDescriptor<Map<string, boolean>> => (
     const fan = data.m_fan;
     const state = new Map<string, boolean>();
     for (const mid of mids) {
+      if (allowMissing && fan[mid] === undefined) continue;
       if (typeof fan[mid] !== 'boolean') throw new QqApiError('invalid-response');
       state.set(mid, fan[mid] as boolean);
     }
@@ -152,7 +156,12 @@ export const songLikeBatchResult = async (
     });
     state.accepted = true;
 
-    const after = await client.execute(fanStateOf(pending.map((song) => song.mid)));
+    const after = await client.execute(
+      fanStateOf(
+        pending.map((song) => song.mid),
+        true,
+      ),
+    );
     const written = new Set(pending.map((song) => song.mid));
     const results = songs.map((song) => ({
       id: song.id,
@@ -162,6 +171,17 @@ export const songLikeBatchResult = async (
           ? 'changed'
           : 'unconfirmed',
     }));
+    if (results.some((result) => result.status === 'unconfirmed')) {
+      const failure = failureResult(
+        'song-like-batch',
+        new QqApiError('upstream-business', {
+          errorKey: 'upstream.unknown',
+          retryable: false,
+        }),
+      );
+      const marked = mark(failure, state);
+      return { ...marked, body: { ...dictionaryOf(marked.body), liked, results } };
+    }
     return okResult({
       liked,
       results,

@@ -1255,8 +1255,8 @@ Content-Type: application/json
 
 - `songs` 是 1–100 首，每首要同时给 `id`（正整数 songid）、`mid` 和 `type: 0`，不能重复，也不能有多余字段；`liked` 为 `true` 是加入、`false` 是移出。只收 `application/json`。
 - 服务先核对每首的 id 和 mid 是同一首歌，有一首对不上就整批不写（回 `400`）；再读一次目前的红心状态，只把状态不同的歌写一次，写完再读回确认。
-- 成功时回 `{ code: 200, liked, results: [{ id, status }], writeAttempted, accepted?, verified }`：`status` 是 `changed`（写了而且读回确认）、`unchanged`（本来就是这个状态，没写）或 `unconfirmed`（写了但读回对不上）。全部都不用改时不会写入，`writeAttempted` 为 `false`。
-- 写入和读回都只送一次，不会自动重送。写入之后出错时，错误回应会带 `writeAttempted: true`、`verified: false`、`retryable: false`，请重新读状态确认，不要直接重送。
+- 成功时回 `{ code: 200, liked, results: [{ id, status }], writeAttempted, accepted?, verified }`：`status` 是 `changed`（写了而且读回确认）或 `unchanged`（写入前读到已经是这个状态，没写）。全部都不用改时不会写入，`writeAttempted` 为 `false`。
+- 写入和读回都只送一次，不会自动重送。部分确认或读回对不上时回 `502`，错误正文带 `liked`、逐首 `results`（未确认的为 `unconfirmed`）、`writeAttempted: true`、`accepted: true`、`verified: false`、`verification: "unconfirmed"` 和 `retryable: false`。写入之后出错请重新读状态确认，不要直接重送。
 
 缺少、无效或过期会话回 `401`；核对、读状态或写入时的业务拒绝回 `502`，不会清掉会话（和 `/user/song/like` 一致）。回应带 `Cache-Control: private, no-store`。
 

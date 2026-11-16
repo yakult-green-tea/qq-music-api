@@ -245,8 +245,12 @@ describe.each(['node', 'serverless'] as Runtime[])('batch song like route: %s', 
 
     const result = await post({ songs: songs([1, 2, 3]), liked: true });
 
-    expect(result.status).toBe(200);
+    expect(result.status).toBe(502);
     expect(result.body).toMatchObject({
+      kind: 'upstream-business',
+      errorKey: 'upstream.unknown',
+      retryable: false,
+      liked: true,
       results: [
         { id: 1, status: 'changed' },
         { id: 2, status: 'unchanged' },
@@ -255,7 +259,11 @@ describe.each(['node', 'serverless'] as Runtime[])('batch song like route: %s', 
       writeAttempted: true,
       accepted: true,
       verified: false,
+      verification: 'unconfirmed',
     });
+    expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
+    fanReplies = [{ data: fansOf([[2, true]]) }];
+    expect((await post({ songs: songs([2]), liked: true })).status).toBe(200);
   });
 
   it('a failed read-back after writing says the write was attempted and does not resend it', async () => {
@@ -281,6 +289,45 @@ describe.each(['node', 'serverless'] as Runtime[])('batch song like route: %s', 
       retryable: false,
     });
     expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
+  });
+
+  it.each([
+    ['missing song', { data: fansOf([[1, true]]) }],
+    ['rejected read-back', { code: 1000 }],
+  ])('%s keeps the session and never repeats the write', async (_label, reply) => {
+    fanReplies = [
+      {
+        data: fansOf([
+          [1, false],
+          [2, true],
+          [3, false],
+        ]),
+      },
+      reply,
+    ];
+    const result = await post({ songs: songs([1, 2, 3]), liked: true });
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({
+      writeAttempted: true,
+      accepted: true,
+      verified: false,
+      verification: 'unconfirmed',
+      retryable: false,
+    });
+    if (_label === 'missing song')
+      expect(result.body).toMatchObject({
+        kind: 'upstream-business',
+        errorKey: 'upstream.unknown',
+        liked: true,
+        results: [
+          { id: 1, status: 'changed' },
+          { id: 2, status: 'unchanged' },
+          { id: 3, status: 'unconfirmed' },
+        ],
+      });
+    expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
+    fanReplies = [{ data: fansOf([[2, true]]) }];
+    expect((await post({ songs: songs([2]), liked: true })).status).toBe(200);
   });
 
   it('a failed write is sent once, marked as attempted and never retried', async () => {
