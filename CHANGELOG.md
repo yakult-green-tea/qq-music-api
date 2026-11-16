@@ -3,6 +3,7 @@
 ### 新功能
 
 - 新增 `/song/genre`：登录后查一首歌的流派，只返回流派编号和名称；没有流派的歌返回空数组。`/login/channels` 的能力声明多了 `songs.getSongGenre`。
+- 新增 `/recommend/autoplay`：登录后按 1–5 首种子歌拿放完后接着放的歌，返回几首由上游决定，可以用 `limit` 在本地截短。能力声明多了 `recommendations.getAutoplaySongs`。
 
 ## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)
 

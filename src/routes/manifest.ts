@@ -54,6 +54,7 @@ import {
   updateRecommendationPreferences,
 } from './operations/recommendationPreferences';
 import {
+  getAutoplay,
   getGuessYouLike,
   getGuessYouLikeModeTracks,
   getPersonalFm,
@@ -600,6 +601,15 @@ export const routeManifest = [
     path: '/song/genre',
     category: 'Song',
     handler: getSongGenre,
+    needsSecret: true,
+  },
+  {
+    name: 'getAutoplay',
+    strictRequest: true,
+    method: 'GET',
+    path: '/recommend/autoplay',
+    category: 'Recommend',
+    handler: getAutoplay,
     needsSecret: true,
   },
   {

@@ -1,3 +1,4 @@
+import { autoplayResult } from '../../services/recommend/autoplay';
 import {
   guessYouLikeModeTracksResult,
   guessYouLikeResult,
@@ -46,6 +47,13 @@ export const getRelatedPlaylists: OperationHandler = async (request) =>
   relatedPlaylistsResult(await requiredSession(request), rawQuery(request, 'id'));
 
 // 歌曲流派：和标签（`/song/labels`）、详情里的 genre 数字分开。
+// 播完自动接歌：和相似歌曲是不同的上游；limit 只在本地截短。
+export const getAutoplay: OperationHandler = async (request) =>
+  autoplayResult(await requiredSession(request), {
+    songids: rawQuery(request, 'songids'),
+    limit: rawQuery(request, 'limit'),
+  });
+
 export const getSongGenre: OperationHandler = async (request) =>
   songGenreResult(await requiredSession(request), rawQuery(request, 'id'));
 

@@ -400,6 +400,7 @@ POST /login/refresh
 | `/radio/recommendation-modes` | 普通官方雷达单选 radio ID 选项 | 是 |
 | `/radio/recommendation-tracks` | 普通官方雷达批次 | 是 |
 | `/song/similar` | 相似歌曲 | 是 |
+| `/recommend/autoplay` | 播完自动接歌 | 是 |
 | `/song/related-playlists` | 包含指定歌曲的相关歌单 | 是 |
 | `/song/genre` | 歌曲流派 | 是 |
 
@@ -1038,6 +1039,18 @@ GET /song/genre?id=90001
 响应为 `{ code: 200, genres: [{ id, name }] }`，只保留上游给的流派编号和名称。很多歌没有流派，这时 `genres` 是空数组，属于正常结果；上游有条目却一条都读不出来回 `502`。流派和 `/song/labels` 的歌曲标签、歌曲详情里的 `genre` 数字不是同一样东西，不要互相换算。
 
 缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 16. 播完自动接歌
+
+```text
+GET /recommend/autoplay?songids=90001,90002&limit=20
+```
+
+需要有效会话。`songids` 必填，是 1–5 个正整数 songid，用逗号分隔，不能重复，也不能传 MID。`limit` 可选，是 1–50 的整数，只在本接口里截掉后面的歌，不改变发给上游的请求，也不改变顺序。
+
+响应为 `{ code: 200, songs: [...] }`，曲目格式和 `/song/similar` 一样。返回几首由上游决定，实测给 1 首种子也会回 50 首；没有推荐时 `songs` 是空数组，有条目却一首都读不出来回 `502`。它和 `/song/similar` 是两个不同的上游接口，用途也不同：这个是放完后接着放，相似歌曲是找风格相近的歌。
+
+缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `retcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

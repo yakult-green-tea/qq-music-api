@@ -64,7 +64,8 @@ const relatedPlaylists = (songid: number): MusicuDescriptor<unknown[]> => ({
   decode: (data) => rowsOf(groupsOf(data, 'vecPlaylistNew'), 'playlists'),
 });
 
-const toTrack = (row: unknown): Dictionary | null => {
+/** `{ track }` 行里可以播的曲目（要有 mid）；`/recommend/autoplay` 也用这一份判断。 */
+export const toTrack = (row: unknown): Dictionary | null => {
   const track = dictionaryOf(row).track;
   if (!isDictionary(track)) return null;
   return typeof track.mid === 'string' && track.mid.length > 0 ? track : null;

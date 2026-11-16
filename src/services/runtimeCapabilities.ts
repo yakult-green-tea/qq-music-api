@@ -66,6 +66,7 @@ const featuresFor = () => ({
     getNewAlbums: true,
     getRadarSongs: true,
     getSimilarSongs: true,
+    getAutoplaySongs: true,
     getRelatedPlaylists: true,
   },
   radio: { getRadioList: true, getRadioTracks: true },

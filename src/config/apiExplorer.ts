@@ -471,6 +471,23 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getAutoplay: {
+    description:
+      'Songs to play after the current ones finish. Requires login. Not the same upstream as similar songs. The upstream decides how many songs come back; limit only trims the answer here.',
+    queryParams: [
+      {
+        key: 'songids',
+        label: 'Seed song IDs',
+        description: '1-5 numeric song ids (not mids), comma separated, no repeats.',
+        required: true,
+      },
+      {
+        key: 'limit',
+        label: 'Limit',
+        description: 'Optional, 1-50. Keeps the first songs of the upstream answer in order.',
+      },
+    ],
+  },
   getSongGenre: {
     description:
       'Get the genres of one song. Requires login. Many songs have none: that is a normal empty list. Genres are not the song labels.',
