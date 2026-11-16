@@ -45,6 +45,27 @@ describe.each(['node', 'serverless'] as Runtime[])('listening report route: %s',
   sharedSessionReadCases(runtime, ctx, '/user/listening-report?range=week', 'GetBar');
 
   it.each([
+    'listenTime',
+    'bar',
+    'highLights',
+    'availableDates',
+  ])('rejects a malformed %s', async (field) => {
+    ctx.replies.GetBar = { data: { ...REPORT, [field]: 'bad' } };
+    const result = await ctx.call('/user/listening-report?range=week', { token: ctx.token });
+    expect(result.status).toBe(502);
+    expect(result.body.errorKey).toBe('upstream.invalid-response');
+  });
+
+  it('accepts null report fields as empty', async () => {
+    ctx.replies.GetBar = {
+      data: { listenTime: null, bar: null, highLights: null, availableDates: null },
+    };
+    const result = await ctx.call('/user/listening-report?range=week', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ chart: [], highlights: [], availableDates: [] });
+  });
+
+  it.each([
     '/user/listening-report',
     '/user/listening-report?range=all',
     '/user/listening-report?range=week&range=day',

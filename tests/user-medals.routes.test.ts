@@ -53,6 +53,20 @@ describe.each(['node', 'serverless'] as Runtime[])('medals route: %s', (runtime)
   const ctx = setupSessionRoute(runtime, defaults);
   sharedSessionReadCases(runtime, ctx, '/user/medals?tab=listening', 'GetHomepageTabDetail');
 
+  it('rejects a malformed medal list', async () => {
+    ctx.replies.GetHomepageTabDetail = { data: { TabInfo: { ModuleList: [module_(4, 'x', {})] } } };
+    const result = await ctx.call('/user/medals?tab=listening', { token: ctx.token });
+    expect(result.status).toBe(502);
+    expect(result.body.errorKey).toBe('upstream.invalid-response');
+  });
+
+  it('accepts a missing medal list as empty', async () => {
+    ctx.replies.GetHomepageTabDetail = { data: { TabInfo: { ModuleList: [{ ModuleID: 4 }] } } };
+    const result = await ctx.call('/user/medals?tab=listening', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body.modules[0].medals).toEqual([]);
+  });
+
   it.each([
     '/user/medals',
     '/user/medals?tab=',

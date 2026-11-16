@@ -67,6 +67,8 @@ const toMedal = (row: unknown): Dictionary | null => {
 
 const toModule = (row: unknown): Dictionary | null => {
   const item = dictionaryOf(row);
+  if (item.MedalList != null && !Array.isArray(item.MedalList))
+    throw new QqApiError('invalid-response');
   const id = countOf(item.ModuleID);
   if (id === undefined) return null;
   return {

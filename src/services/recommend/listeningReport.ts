@@ -103,6 +103,12 @@ export const listeningReportResult = async (
     const range = rangeOf(query.range);
     const date = dateOf(range, query.date);
     const data = await createSessionMusicuClient(session, options).execute(report(range, date));
+    for (const key of ['listenTime', 'bar']) {
+      if (data[key] != null && !isDictionary(data[key])) throw new QqApiError('invalid-response');
+    }
+    for (const key of ['highLights', 'availableDates']) {
+      if (data[key] != null && !Array.isArray(data[key])) throw new QqApiError('invalid-response');
+    }
     const listenTime = dictionaryOf(data.listenTime);
     return okResult({
       range,
