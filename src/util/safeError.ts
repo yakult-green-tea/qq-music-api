@@ -105,6 +105,7 @@ export const UPSTREAM_PHASES = [
   'get-autoplay-similar',
   'get-hot-search-categories',
   'get-sound-power',
+  'get-friend-rank',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

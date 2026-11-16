@@ -6,6 +6,7 @@ import { addBlacklist, removeBlacklist } from './operations/blacklistWrites';
 import { commentList } from './operations/commentList';
 import { dailyHistoryDates, dailyHistorySongs } from './operations/dailyHistory';
 import { getFavoriteMvs } from './operations/favoriteMvs';
+import { getFriendRank } from './operations/friendRank';
 import { getAlbumInfo } from './operations/getAlbumInfo';
 import { getEncryptedMusicPlay } from './operations/getEncryptedMusicPlay';
 import { getLyricOperation } from './operations/getLyric';
@@ -564,6 +565,15 @@ export const routeManifest = [
     path: '/user/sound-power',
     category: 'User',
     handler: getSoundPower,
+    needsSecret: true,
+  },
+  {
+    name: 'getFriendRank',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/friend-rank',
+    category: 'User',
+    handler: getFriendRank,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

@@ -416,6 +416,7 @@ POST /login/refresh
 | `/user/recent-plays` | 云端最近播放（只读） |
 | `/user/playlist/updates` | 收藏的歌单里哪些有新歌 |
 | `/user/sound-power` | 本人的音乐力等级 |
+| `/user/friend-rank` | 好友听歌日榜（第一页） |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1139,6 +1140,18 @@ GET /user/sound-power
 响应为 `{ code: 200, level, name, icon, value, currentValue, nextValue, reachedMaxLevel, medalCount, todayListenSeconds }`：`level` 是等级数字，`name`、`icon` 是等级称号和图标；`value`、`currentValue`、`nextValue` 是音乐力数值和升级进度；`reachedMaxLevel` 表示是否已经到最高级（不是最高等级的数字）；`medalCount` 是勋章数；`todayListenSeconds` 是今天的听歌秒数（北京时间切日）。读不出来的数字字段会省略，`reachedMaxLevel` 遇到没见过的值也会省略。权益清单、跳转链接、昵称和头像不返回。
 
 没有等级资料回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 23. 好友听歌日榜
+
+```text
+GET /user/friend-rank
+```
+
+需要有效会话，没有业务参数。这是官方 App 里的好友听歌排行，按当天（北京时间）的听歌时长排名，只读第一页，一次最多 60 人。
+
+响应为 `{ code: 200, items, myRank, myPlaySeconds, myLikeCount, more }`。`items` 每条是 `{ uin, nick, avatar, playSeconds, likeCount, liked, rank }`：`uin` 是加密后的账号 id，`playSeconds` 是当天听歌秒数，`liked` 表示你是否给对方点过赞，`rank` 是名次。`myRank`、`myPlaySeconds`、`myLikeCount` 是你自己的名次、当天听歌秒数和获赞数。读不出来的数字字段会省略。`more` 只是照抄有没有更多的标记，本接口没有下一页可读。点赞和隐私设置不提供。
+
+榜上没有人时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

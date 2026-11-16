@@ -370,6 +370,9 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Your music power level. Requires login. todayListenSeconds is the listening time of the current day in seconds.',
   },
+  getFriendRank: {
+    description: 'The daily listening ranking among your friends, first page only. Requires login.',
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',

@@ -10,6 +10,7 @@
 - 新增 `/recommend/autoplay/similar`：登录后按一首歌接相似的歌，和 `/song/similar`、`/recommend/autoplay` 用途不同。能力声明多了 `recommendations.getAutoplaySimilarSongs`。
 - 新增 `/search/hot/categories`：登录后按分类读热搜，每个热搜词的格式和 `/search/hot` 一样。能力声明多了 `search.getHotSearchCategories`。
 - 新增 `/user/sound-power`：登录后读自己的音乐力等级、升级进度、勋章数和今天的听歌秒数。能力声明多了 `user.getSoundPower`。
+- 新增 `/user/friend-rank`：登录后读好友听歌日榜的第一页，包括每位好友的听歌秒数、获赞数和名次，以及自己的名次。能力声明多了 `user.getFriendRank`。
 
 ## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)
 
