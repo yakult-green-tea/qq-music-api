@@ -1,5 +1,54 @@
 [
   {
+    "path": "/login/channels",
+    "baseline": "3.3.7",
+    "since": "3.3.8",
+    "difference": "capability-flags-added",
+    "flags": [
+      "songs.getSongGenre",
+      "recommendations.getAutoplaySongs",
+      "library.getFavoriteMvs",
+      "library.getRecentPlays",
+      "library.getPlaylistUpdates"
+    ],
+    "reason": "只多了第一批新接口的能力旗标，都是 true；去掉这几个之后响应和上游请求必须和基准一致"
+  },
+  {
+    "path": "/song/genre",
+    "baseline": "3.3.7",
+    "since": "3.3.8",
+    "difference": "new-session-route",
+    "reason": "新增要登录的只读接口（歌曲流派）；旧版不存在，没会话必须回 401，带会话只能是 200、400、401 或 502"
+  },
+  {
+    "path": "/recommend/autoplay",
+    "baseline": "3.3.7",
+    "since": "3.3.8",
+    "difference": "new-session-route",
+    "reason": "新增要登录的只读接口（播完自动接歌）；旧版不存在，没会话必须回 401，带会话只能是 200、400、401 或 502"
+  },
+  {
+    "path": "/user/mvs",
+    "baseline": "3.3.7",
+    "since": "3.3.8",
+    "difference": "new-session-route",
+    "reason": "新增要登录的只读接口（收藏的 MV）；旧版不存在，没会话必须回 401，带会话只能是 200、400、401 或 502"
+  },
+  {
+    "path": "/user/recent-plays",
+    "baseline": "3.3.7",
+    "since": "3.3.8",
+    "difference": "new-session-route",
+    "reason": "新增要登录的只读接口（云端最近播放）；旧版不存在，没会话必须回 401，带会话只能是 200、400、401 或 502"
+  },
+  {
+    "path": "/user/playlist/updates",
+    "baseline": "3.3.7",
+    "since": "3.3.8",
+    "difference": "new-session-route",
+    "reason": "新增要登录的只读接口（收藏歌单有更新）；旧版不存在，没会话必须回 401，带会话只能是 200、400、401 或 502"
+  },
+  {
     "path": "/getEncryptedMusicPlay",
     "baseline": "3.3.6",
     "since": "3.3.7",

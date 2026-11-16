@@ -180,6 +180,20 @@ const validSource = (source) => {
     return SOURCE_VALUES[key]?.includes(source[key]) ?? false;
   });
 };
+// 只多了登记过的能力旗标：每个都是新加的 true，去掉之后响应和上游请求要和基准逐字相同。
+const onlyFlagsAdded = (before, after, flags) => {
+  const features = after?.body?.data?.features;
+  if (!features || typeof features !== 'object' || !Array.isArray(flags) || !flags.length) return false;
+  const stripped = JSON.parse(JSON.stringify(after));
+  for (const flag of flags) {
+    const [group, name] = flag.split('.');
+    if (before?.body?.data?.features?.[group]?.[name] !== undefined) return false;
+    if (stripped.body.data.features[group]?.[name] !== true) return false;
+    delete stripped.body.data.features[group][name];
+  }
+  return JSON.stringify(stripped) === JSON.stringify(before);
+};
+
 const onlyPlaySourceAdded = (before, after) => {
   const playUrl = after?.body?.data?.playUrl;
   if (!playUrl || typeof playUrl !== 'object') return false;
@@ -209,6 +223,13 @@ const approvalOf = (testCase, before, after) =>
           before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
           before.upstream.length === 0 &&
           (testCase.session ? [200, 400, 502].includes(after?.status) : after?.status === 401)) ||
+        (entry.difference === 'new-session-route' &&
+          testCase.path === entry.path && testCase.method === 'GET' &&
+          before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
+          before.upstream.length === 0 &&
+          (testCase.session ? [200, 400, 401, 502].includes(after?.status) : after?.status === 401)) ||
+        (entry.difference === 'capability-flags-added' &&
+          testCase.path === entry.path && onlyFlagsAdded(before, after, entry.flags)) ||
         (entry.difference === 'toplist-group-zero' &&
         testCase.path === '/recommend/toplists' && testCase.scenario === 'ok' &&
         JSON.stringify(after?.body?.groups?.[0]) === JSON.stringify({ id: 0, name: 'Fixture zero', toplists: [{ id: 4, preview: [], title: 'Fixture zero chart' }] }) &&
