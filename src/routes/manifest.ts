@@ -88,6 +88,12 @@ import { getHotSearches, getSearch, getSearchSuggestions } from './operations/se
 import { searchMatch } from './operations/searchMatch';
 import { searchUsers } from './operations/searchUsers';
 import { getSingerRank } from './operations/singerRank';
+import {
+  getFollowers,
+  getFollowingSingers,
+  getFollowingUsers,
+  getFriends,
+} from './operations/social';
 import { songBatch } from './operations/songBatch';
 import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
@@ -614,6 +620,42 @@ export const routeManifest = [
     path: '/user/liked-songs/categories',
     category: 'User',
     handler: getLikedSongCategories,
+    needsSecret: true,
+  },
+  {
+    name: 'getFollowingSingers',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/following/singers',
+    category: 'User',
+    handler: getFollowingSingers,
+    needsSecret: true,
+  },
+  {
+    name: 'getFollowingUsers',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/following/users',
+    category: 'User',
+    handler: getFollowingUsers,
+    needsSecret: true,
+  },
+  {
+    name: 'getFollowers',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/followers',
+    category: 'User',
+    handler: getFollowers,
+    needsSecret: true,
+  },
+  {
+    name: 'getFriends',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/friends',
+    category: 'User',
+    handler: getFriends,
     needsSecret: true,
   },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。

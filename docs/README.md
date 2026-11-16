@@ -421,6 +421,10 @@ POST /login/refresh
 | `/user/medals` | 本人勋章馆的一个分页 |
 | `/user/listening-report` | 本人的听歌报告 |
 | `/user/liked-songs/categories` | 「我喜欢」的分类 |
+| `/user/following/singers` | 本人关注的歌手（第一页） |
+| `/user/following/users` | 本人关注的人（第一页） |
+| `/user/followers` | 本人的粉丝（第一页） |
+| `/user/friends` | 本人的好友（第一页） |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1212,6 +1216,23 @@ GET /user/liked-songs/categories
 - `checkedSongs` 是实际送去分类的首数，`totalSongs` 是「我喜欢」的总首数（读不出来时为 `null`）。只有两者相等、而且没有任何一组标了 `failed: true` 时，`complete` 才是 `true`。
 
 「我喜欢」是空的时直接返回空的 `groups`，不再去分类。读歌或分类的回应格式不对回 `502`，任何一步失败都不会给出部分结果。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 28. 关注、粉丝与好友
+
+```text
+GET /user/following/singers
+GET /user/following/users
+GET /user/followers
+GET /user/friends
+```
+
+需要有效会话，没有业务参数，只读当前登录账号的第一页：关注的歌手、关注的人、粉丝每次最多 20 条，好友最多 50 条。
+
+- 前三个响应为 `{ code: 200, items, total, more, locked? }`，`items` 每条是 `{ mid, encUin, name, desc, avatar, fanCount?, followed? }`：歌手有 `mid`，一般用户有加密后的 `encUin`；`fanCount` 是粉丝数，`followed` 表示你是否已经关注对方。`total` 读不出来时为 `null`。名单因为隐私设置看不到时会回 `locked: true` 和空的 `items`，这和「真的没有人」不一样。
+- `/user/friends` 响应为 `{ code: 200, items, more }`，每条是 `{ encUin, name, avatar, followed? }`，好友的会员资料不返回。
+- `more` 只是照抄有没有更多的标记，这几个接口都没有下一页可读。会员图标、勋章、隐私提示文字和自己的资料不返回。
+
+名单是空的时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

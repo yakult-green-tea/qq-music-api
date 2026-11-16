@@ -12,6 +12,10 @@ const featuresFor = () => ({
     getSingerRank: true,
     getMedals: true,
     getListeningReport: true,
+    getFollowingSingers: true,
+    getFollowingUsers: true,
+    getFollowers: true,
+    getFriends: true,
   },
   playlistManagement: { createPlaylist: true, renamePlaylist: true, deletePlaylist: true },
   auth: {

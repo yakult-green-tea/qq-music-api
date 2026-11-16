@@ -420,6 +420,20 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Your liked songs grouped the way the official app shows them: suggestions, singers, time and genre. Requires login. Only the first 500 liked songs are sent; complete is false when some were left out.',
   },
+  getFollowingSingers: {
+    description: 'Singers you follow, first page of 20. Requires login.',
+  },
+  getFollowingUsers: {
+    description:
+      'People you follow, first page of 20. Requires login. locked is true when the list is hidden by privacy settings.',
+  },
+  getFollowers: {
+    description:
+      'Your followers, first page of 20. Requires login. locked is true when the list is hidden by privacy settings.',
+  },
+  getFriends: {
+    description: 'Your friends, first page of 50. Requires login.',
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',
