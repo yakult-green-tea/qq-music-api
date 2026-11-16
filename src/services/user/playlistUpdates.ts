@@ -1,6 +1,7 @@
 import { normalizeQqFailure, QqApiError } from '../../protocol/errors';
 import type { MusicuDescriptor } from '../../protocol/musicu';
 import { type Dictionary, dictionaryOf, isDictionary } from '../../util/values';
+import { hasMoreOf } from '../auth/authenticatedReads';
 import type { AuthSession } from '../auth/qrLogin';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
@@ -115,20 +116,31 @@ export const playlistUpdatesResult = async (
     const client = createSessionMusicuClient(session, options);
     const favorites = await client.execute(favoritePage(encryptedUin));
     checkInnerCodes(favorites);
-    const dirs = listOf(favorites.v_list)
-      .map(orderDirOf)
-      .filter((item) => item !== null);
-    const complete = !(favorites.hasmore === true || favorites.hasmore === 1);
+    const rows = listOf(favorites.v_list);
+    const parsed = rows.map(orderDirOf);
+    const unique = new Map<number, OrderDir>();
+    for (const item of parsed)
+      if (item && !unique.has(item.disstid)) unique.set(item.disstid, item);
+    const dirs = [...unique.values()].slice(0, FAVORITE_PAGE_SIZE);
+    const total = countOf(favorites.total);
+    let complete =
+      !hasMoreOf(favorites) &&
+      !parsed.includes(null) &&
+      rows.length <= FAVORITE_PAGE_SIZE &&
+      (total === undefined || total <= dirs.length);
     if (!dirs.length) return okResult({ playlists: [], checked: 0, complete });
     const answer = await client.execute(recentSongs(dirs));
     checkInnerCodes(answer);
-    const rows = listOf(answer.updateDirs);
+    if (answer.v_failTids !== undefined && !Array.isArray(answer.v_failTids))
+      throw new QqApiError('invalid-response');
+    if (Array.isArray(answer.v_failTids) && answer.v_failTids.length) complete = false;
+    const updates = listOf(answer.updateDirs);
     const asked = new Set(dirs.map((dir) => dir.disstid));
-    const playlists = rows.map(updateOf(asked)).filter((item) => item !== null);
+    const playlists = updates.map(updateOf(asked)).filter((item) => item !== null);
     if (
-      rows.length &&
+      updates.length &&
       !playlists.length &&
-      rows.every((row) => !countOf(dictionaryOf(row).disstid))
+      updates.every((row) => !countOf(dictionaryOf(row).disstid))
     )
       throw new QqApiError('invalid-response');
     return okResult({ playlists, checked: dirs.length, complete });

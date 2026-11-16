@@ -22,6 +22,45 @@ const song = (id: number, singers: Array<[number, string]>) => ({
     name,
   })),
 });
+
+describe.each(['node', 'serverless'] as Runtime[])('playlist update boundaries: %s', (runtime) => {
+  const ctx = setupSessionRoute(runtime, () => ({
+    CgiGetPlaylistFavInfo: { data: { total: 1, hasmore: 0, v_list: [{ tid: 1 }] } },
+    CgiGetRecentSong: { data: { updateDirs: [] } },
+  }));
+
+  it.each([
+    ['string hasmore', { total: 1, hasmore: '1', v_list: [{ tid: 1 }] }, 1],
+    ['total exceeds sent', { total: 2, v_list: [{ tid: 1 }] }, 1],
+    ['invalid ids', { total: 1, v_list: [{ tid: 0 }, {}] }, 0],
+    ['duplicate ids', { total: 2, v_list: [{ tid: 1 }, { tid: 1 }] }, 1],
+    [
+      'over 100 entries',
+      { total: 101, v_list: Array.from({ length: 101 }, (_, i) => ({ tid: i + 1 })) },
+      100,
+    ],
+  ])('marks %s incomplete and sends at most unique 100', async (_name, data, checked) => {
+    ctx.replies.CgiGetPlaylistFavInfo = { data };
+    const result = await ctx.call('/user/playlist/updates', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ checked, complete: false });
+    if (checked)
+      expect(ctx.recorded[1].rpcs[0].param.clientOrderDirs as unknown[]).toHaveLength(checked);
+    else expect(ctx.recorded).toHaveLength(1);
+  });
+
+  it.each([
+    [[123], 200],
+    [{}, 502],
+    [null, 502],
+  ])('handles failed ids %s', async (failed, status) => {
+    ctx.replies.CgiGetRecentSong = { data: { updateDirs: [], v_failTids: failed } };
+    const result = await ctx.call('/user/playlist/updates', { token: ctx.token });
+    expect(result.status).toBe(status);
+    if (status === 200) expect(result.body.complete).toBe(false);
+    else expect(result.body.errorKey).toBe('upstream.invalid-response');
+  });
+});
 const likedPage = (ids: number[], total: unknown) => ({
   code: 0,
   subcode: 0,
@@ -74,6 +113,33 @@ const defaults = (): Record<string, Reply> => ({
 describe.each(['node', 'serverless'] as Runtime[])('liked song categories route: %s', (runtime) => {
   const ctx = setupSessionRoute(runtime, defaults);
   sharedSessionReadCases(runtime, ctx, '/user/liked-songs/categories', 'GetCategoryInfo');
+
+  it('deduplicates songs across pages before deciding the total is reached', async () => {
+    let page = 0;
+    const pages = [
+      Array.from({ length: 100 }, (_, i) => i + 1),
+      [...Array.from({ length: 99 }, (_, i) => i + 2), 101],
+      [102],
+    ];
+    Object.defineProperty(ctx.replies, 'CgiGetDiss', {
+      configurable: true,
+      get: () => ({ data: likedPage(pages[page++] ?? [], 102) }),
+    });
+    const result = await ctx.call('/user/liked-songs/categories', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ checkedSongs: 102, totalSongs: 102, complete: true });
+    const sent = ctx.recorded.find((item) => item.rpcs[0].method === 'GetCategoryInfo');
+    expect((sent?.rpcs[0].param.songlist as { song_id: number }[]).map((s) => s.song_id)).toEqual(
+      Array.from({ length: 102 }, (_, i) => i + 1),
+    );
+  });
+
+  it('rejects a grouping response without any group after sending songs', async () => {
+    ctx.replies.GetCategoryInfo = { data: {} };
+    const result = await ctx.call('/user/liked-songs/categories', { token: ctx.token });
+    expect(result.status).toBe(502);
+    expect(result.body.errorKey).toBe('upstream.invalid-response');
+  });
 
   it('reads every liked song, sends them for grouping and fills singer names from the same songs', async () => {
     const result = await ctx.call('/user/liked-songs/categories', { token: ctx.token });

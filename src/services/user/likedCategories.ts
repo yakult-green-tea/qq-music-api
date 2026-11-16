@@ -82,6 +82,7 @@ const readLikedSongs = async (
   encryptedUin: string,
 ): Promise<LikedSongs> => {
   const songs: Dictionary[] = [];
+  const seen = new Set<number>();
   const singerNames = new Map<string, string>();
   let total: number | undefined;
   for (let begin = 0; begin < MAX_SONGS; begin += PAGE_SIZE) {
@@ -95,7 +96,8 @@ const readLikedSongs = async (
     for (const row of rows) {
       const item = dictionaryOf(row);
       const id = countOf(item.id);
-      if (!id) continue;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
       const singerIds: number[] = [];
       for (const value of Array.isArray(item.singer) ? item.singer : []) {
         const singer = dictionaryOf(value);
@@ -108,7 +110,7 @@ const readLikedSongs = async (
       songs.push({ song_id: id, song_type: 13, singers_id: singerIds });
     }
     if (rows.length < PAGE_SIZE) break;
-    if (total !== undefined && begin + rows.length >= total) break;
+    if (total !== undefined && songs.length >= total) break;
   }
   return { songs: songs.slice(0, MAX_SONGS), singerNames, total };
 };
@@ -147,6 +149,7 @@ export const likedCategoriesResult = async (
       });
     const data = await client.execute(categoryInfo(songs));
     checkInnerCodes(data);
+    if (GROUPS.every(([, key]) => data[key] == null)) throw new QqApiError('invalid-response');
     let anyFailed = false;
     const groups = GROUPS.flatMap(([type, key]) => {
       const group = data[key];
