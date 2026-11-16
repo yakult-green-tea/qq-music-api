@@ -51,7 +51,7 @@ const toFriend = (row: unknown): Dictionary | null => {
   };
 };
 
-/** 榜上没人回 200 空数组；有条目却一个都读不出来回 502。`more` 只照抄 has_more，没有下一页可读。 */
+/** 榜上没人回 200 空数组；有条目却一个都读不出来回 502。 */
 export const friendRankResult = async (
   session: AuthSession | null,
   options: SessionMusicuOptions = {},
@@ -72,13 +72,13 @@ export const friendRankResult = async (
     const items = rows.map(toFriend).filter((item) => item !== null);
     if (rows.length && !items.length) throw new QqApiError('invalid-response');
     return okResult({
-      items,
+      items: items.slice(0, 60),
       ...numbers([
         ['myRank', positiveOf(data.my_rank_no)],
         ['myPlaySeconds', countOf(data.my_play_time)],
         ['myLikeCount', countOf(data.my_like_num)],
       ]),
-      more: data.has_more === 1 || data.has_more === true,
+      more: items.length > 60 || data.has_more === 1 || data.has_more === true,
     });
   } catch (error) {
     return failureResult('get-friend-rank', error);

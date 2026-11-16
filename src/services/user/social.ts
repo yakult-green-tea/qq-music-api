@@ -96,10 +96,11 @@ export const relationListResult = async (
       if (typeof lockFlag !== 'number') throw new QqApiError('invalid-response');
       return okResult({ items: [], total: countOf(data.Total) ?? null, more: false, locked: true });
     }
+    const items = itemsOf(data.List, toPerson);
     return okResult({
-      items: itemsOf(data.List, toPerson),
+      items: items.slice(0, RELATION_SIZE),
       total: countOf(data.Total) ?? null,
-      more: data.HasMore === true,
+      more: items.length > RELATION_SIZE || data.HasMore === true,
     });
   } catch (error) {
     return failureResult('get-social', error);
@@ -134,9 +135,10 @@ export const friendsResult = async (
   try {
     if (!session) throw new QqApiError('auth-missing');
     const data = await createSessionMusicuClient(session, options).execute(FRIENDS);
+    const items = itemsOf(data.Friends, toFriend);
     return okResult({
-      items: itemsOf(data.Friends, toFriend),
-      more: data.HasMore === 1 || data.HasMore === true,
+      items: items.slice(0, FRIEND_PAGE_SIZE),
+      more: items.length > FRIEND_PAGE_SIZE || data.HasMore === 1 || data.HasMore === true,
     });
   } catch (error) {
     return failureResult('get-social', error);

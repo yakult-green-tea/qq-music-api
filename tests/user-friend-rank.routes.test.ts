@@ -38,6 +38,18 @@ describe.each(['node', 'serverless'] as Runtime[])('friend rank route: %s', (run
   const ctx = setupSessionRoute(runtime, defaults);
   sharedSessionReadCases(runtime, ctx, '/user/friend-rank', 'GetRank');
 
+  it('limits an oversized ranking and marks more', async () => {
+    ctx.replies.GetRank = {
+      data: { ...RANK, ranks: Array.from({ length: 61 }, (_, i) => friend(i + 1)) },
+    };
+    const result = await ctx.call('/user/friend-rank', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body.items.map((item: { rank: number }) => item.rank)).toEqual(
+      Array.from({ length: 60 }, (_, i) => i + 1),
+    );
+    expect(result.body.more).toBe(true);
+  });
+
   it('reads the first page of the daily friend ranking', async () => {
     const result = await ctx.call('/user/friend-rank', { token: ctx.token });
 

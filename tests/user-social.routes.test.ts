@@ -68,6 +68,28 @@ const ROUTES = [
 describe.each(['node', 'serverless'] as Runtime[])('social routes: %s', (runtime) => {
   const ctx = setupSessionRoute(runtime, defaults);
 
+  it.each(ROUTES)('limits oversized %s and marks more', async (path, method) => {
+    ctx.replies[method] = { data: relation(Array.from({ length: 21 }, (_, i) => person(i + 1))) };
+    const result = await ctx.call(path, { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body.items.map((item: { name: string }) => item.name)).toEqual(
+      Array.from({ length: 20 }, (_, i) => `Fixture person ${i + 1}`),
+    );
+    expect(result.body.more).toBe(true);
+  });
+
+  it('limits oversized friends and marks more', async () => {
+    ctx.replies.GetFriendList = {
+      data: { Friends: Array.from({ length: 51 }, (_, i) => friend(i + 1)), HasMore: 0 },
+    };
+    const result = await ctx.call('/user/friends', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body.items.map((item: { name: string }) => item.name)).toEqual(
+      Array.from({ length: 50 }, (_, i) => `Fixture friend ${i + 1}`),
+    );
+    expect(result.body.more).toBe(true);
+  });
+
   describe.each(ROUTES)('%s', (path, method) => {
     sharedSessionReadCases(runtime, ctx, path, method);
   });
