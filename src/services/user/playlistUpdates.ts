@@ -116,6 +116,8 @@ export const playlistUpdatesResult = async (
     const client = createSessionMusicuClient(session, options);
     const favorites = await client.execute(favoritePage(encryptedUin));
     checkInnerCodes(favorites);
+    if (favorites.v_failTids != null && !Array.isArray(favorites.v_failTids))
+      throw new QqApiError('invalid-response');
     const rows = listOf(favorites.v_list);
     const parsed = rows.map(orderDirOf);
     const unique = new Map<number, OrderDir>();
@@ -123,17 +125,15 @@ export const playlistUpdatesResult = async (
       if (item && !unique.has(item.disstid)) unique.set(item.disstid, item);
     const dirs = [...unique.values()].slice(0, FAVORITE_PAGE_SIZE);
     const total = countOf(favorites.total);
-    let complete =
+    const complete =
       !hasMoreOf(favorites) &&
+      !(Array.isArray(favorites.v_failTids) && favorites.v_failTids.length > 0) &&
       !parsed.includes(null) &&
       rows.length <= FAVORITE_PAGE_SIZE &&
       (total === undefined || total <= dirs.length);
     if (!dirs.length) return okResult({ playlists: [], checked: 0, complete });
     const answer = await client.execute(recentSongs(dirs));
     checkInnerCodes(answer);
-    if (answer.v_failTids !== undefined && !Array.isArray(answer.v_failTids))
-      throw new QqApiError('invalid-response');
-    if (Array.isArray(answer.v_failTids) && answer.v_failTids.length) complete = false;
     const updates = listOf(answer.updateDirs);
     const asked = new Set(dirs.map((dir) => dir.disstid));
     const playlists = updates.map(updateOf(asked)).filter((item) => item !== null);

@@ -176,6 +176,73 @@ describe.each(['node', 'serverless'] as const)('playlist updates route: %s', (ru
     jest.restoreAllMocks();
   });
 
+  describe('playlist update boundaries', () => {
+    beforeEach(() => {
+      replies.CgiGetPlaylistFavInfo = { data: { total: 1, hasmore: 0, v_list: [{ tid: 1 }] } };
+      replies.CgiGetRecentSong = { data: { updateDirs: [] } };
+    });
+
+    it.each([
+      ['string hasmore', { total: 1, hasmore: '1', v_list: [{ tid: 1 }] }, 1],
+      ['total exceeds sent', { total: 2, v_list: [{ tid: 1 }] }, 1],
+      ['invalid ids', { total: 1, v_list: [{ tid: 0 }, {}] }, 0],
+      ['duplicate ids', { total: 2, v_list: [{ tid: 1 }, { tid: 1 }] }, 1],
+      [
+        'over 100 entries',
+        { total: 101, v_list: Array.from({ length: 101 }, (_, i) => ({ tid: i + 1 })) },
+        100,
+      ],
+    ])('marks %s incomplete and sends at most unique 100', async (_name, data, checked) => {
+      replies.CgiGetPlaylistFavInfo = { data };
+      const result = await call('/user/playlist/updates', { token: token });
+      expect(result.status).toBe(200);
+      expect(result.body).toMatchObject({ checked, complete: false });
+      if (checked)
+        expect(recorded[1].rpcs[0].param.clientOrderDirs as unknown[]).toHaveLength(checked);
+      else expect(recorded).toHaveLength(1);
+    });
+
+    it.each([
+      [[123], 200, false],
+      [{}, 502, undefined],
+      [null, 200, true],
+    ])('handles failed ids %s in the favorites response', async (failed, status, complete) => {
+      replies.CgiGetPlaylistFavInfo = {
+        data: { total: 1, hasmore: 0, v_list: [{ tid: 1 }], v_failTids: failed },
+      };
+      const result = await call('/user/playlist/updates', { token });
+      expect(result.status).toBe(status);
+      if (status === 200) expect(result.body.complete).toBe(complete);
+      else expect(result.body.errorKey).toBe('upstream.invalid-response');
+    });
+
+    it('marks incomplete when failed ids are the only favorites', async () => {
+      replies.CgiGetPlaylistFavInfo = {
+        data: { total: 0, hasmore: 0, v_list: [], v_failTids: [123] },
+      };
+      const result = await call('/user/playlist/updates', { token });
+      expect(result.status).toBe(200);
+      expect(result.body).toMatchObject({ checked: 0, complete: false, playlists: [] });
+      expect(recorded).toHaveLength(1);
+    });
+
+    it('ignores failed ids in the recent songs response', async () => {
+      replies.CgiGetRecentSong = { data: { updateDirs: [], v_failTids: {} } };
+      const result = await call('/user/playlist/updates', { token });
+      expect(result.status).toBe(200);
+      expect(result.body).toMatchObject({ checked: 1, complete: true });
+    });
+
+    it('still marks incomplete for another reason when failed ids are null', async () => {
+      replies.CgiGetPlaylistFavInfo = {
+        data: { total: 2, v_list: [{ tid: 1 }], v_failTids: null },
+      };
+      const result = await call('/user/playlist/updates', { token });
+      expect(result.status).toBe(200);
+      expect(result.body).toMatchObject({ checked: 1, complete: false });
+    });
+  });
+
   it('answers 401 without a session and never reaches the upstream', async () => {
     const result = await call('/user/playlist/updates');
 

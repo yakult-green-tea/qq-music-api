@@ -1110,7 +1110,9 @@ GET /user/playlist/updates
 
 需要有效会话，没有业务参数。服务先读当前账号收藏歌单的第一页（最多 100 个），再问上游这些歌单里哪些有新歌，两步都只读。
 
-响应为 `{ code: 200, playlists: [...], checked, complete }`。`playlists` 只列有更新的歌单，每条是 `{ id, newSongCount, updateTime, latestSong }`，`latestSong` 为 `{ id, name, singers }`（歌手只有名字），上游没给时省略；数字字段读不出来时也省略。`checked` 是这次实际问过的歌单数，`complete` 为 `false` 表示收藏超过一页、后面的歌单没有检查，不能当成都没更新。
+响应为 `{ code: 200, playlists: [...], checked, complete }`。`playlists` 只列有更新的歌单，每条是 `{ id, newSongCount, updateTime, latestSong }`，`latestSong` 为 `{ id, name, singers }`（歌手只有名字），上游没给时省略；数字字段读不出来时也省略。`checked` 是这次实际问过的歌单数。重复的歌单只问一次，最多问 100 个。
+
+以下任一情况 `complete` 为 `false`，不能当成都没更新：收藏超过一页、上游总数大于实际问过的歌单数、有读不出 id 的条目，或上游标了读取失败的歌单。
 
 服务不知道你上次看这些歌单的时间，所以一律按「从来没看过」去问；`newSongCount` 是上游在这个条件下给的数字，确切怎么算的还没有验证，请当作提示，不要当成精确的新歌数量。上游回了没问过的歌单会被丢掉。
 

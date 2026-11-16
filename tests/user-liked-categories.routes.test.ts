@@ -23,44 +23,6 @@ const song = (id: number, singers: Array<[number, string]>) => ({
   })),
 });
 
-describe.each(['node', 'serverless'] as Runtime[])('playlist update boundaries: %s', (runtime) => {
-  const ctx = setupSessionRoute(runtime, () => ({
-    CgiGetPlaylistFavInfo: { data: { total: 1, hasmore: 0, v_list: [{ tid: 1 }] } },
-    CgiGetRecentSong: { data: { updateDirs: [] } },
-  }));
-
-  it.each([
-    ['string hasmore', { total: 1, hasmore: '1', v_list: [{ tid: 1 }] }, 1],
-    ['total exceeds sent', { total: 2, v_list: [{ tid: 1 }] }, 1],
-    ['invalid ids', { total: 1, v_list: [{ tid: 0 }, {}] }, 0],
-    ['duplicate ids', { total: 2, v_list: [{ tid: 1 }, { tid: 1 }] }, 1],
-    [
-      'over 100 entries',
-      { total: 101, v_list: Array.from({ length: 101 }, (_, i) => ({ tid: i + 1 })) },
-      100,
-    ],
-  ])('marks %s incomplete and sends at most unique 100', async (_name, data, checked) => {
-    ctx.replies.CgiGetPlaylistFavInfo = { data };
-    const result = await ctx.call('/user/playlist/updates', { token: ctx.token });
-    expect(result.status).toBe(200);
-    expect(result.body).toMatchObject({ checked, complete: false });
-    if (checked)
-      expect(ctx.recorded[1].rpcs[0].param.clientOrderDirs as unknown[]).toHaveLength(checked);
-    else expect(ctx.recorded).toHaveLength(1);
-  });
-
-  it.each([
-    [[123], 200],
-    [{}, 502],
-    [null, 502],
-  ])('handles failed ids %s', async (failed, status) => {
-    ctx.replies.CgiGetRecentSong = { data: { updateDirs: [], v_failTids: failed } };
-    const result = await ctx.call('/user/playlist/updates', { token: ctx.token });
-    expect(result.status).toBe(status);
-    if (status === 200) expect(result.body.complete).toBe(false);
-    else expect(result.body.errorKey).toBe('upstream.invalid-response');
-  });
-});
 const likedPage = (ids: number[], total: unknown) => ({
   code: 0,
   subcode: 0,
