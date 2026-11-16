@@ -11,6 +11,7 @@ const expectedFeatures = (node: boolean) => ({
     getFriendRank: true,
     getSingerRank: true,
     getMedals: true,
+    getListeningReport: true,
   },
   playlistManagement: { createPlaylist: true, renamePlaylist: true, deletePlaylist: true },
   auth: {

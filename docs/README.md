@@ -419,6 +419,7 @@ POST /login/refresh
 | `/user/friend-rank` | 好友听歌日榜（第一页） |
 | `/user/singer-rank` | 本人的歌手榜 |
 | `/user/medals` | 本人勋章馆的一个分页 |
+| `/user/listening-report` | 本人的听歌报告 |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1178,6 +1179,22 @@ GET /user/medals?tab=listening
 响应为 `{ code: 200, tab, modules: [{ id, name, more, medals }] }`，`medals` 每条是 `{ id?, name, icon, level?, obtainedAt?, isNew? }`。列表里也包括还没拿到的勋章，所以数量会比 App 上显示的「已获得」多；`obtainedAt` 只在有取得时间时才给，按原样返回字符串。部分分页的勋章没有 `id`。`more` 表示这个模块还有没列出来的勋章，本接口不往下读，也没有下一页。跳转链接和提示文字不返回，分页里的子分类以后再看。
 
 分页是空的时 `modules` 是空数组；没有分页资料或有模块却一个都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 26. 听歌报告
+
+```text
+GET /user/listening-report?range=week
+GET /user/listening-report?range=year&date=2025
+```
+
+需要有效会话，只读当前登录账号。歌曲排行请用 `/user/listening-rank`，这个接口是同一份「听歌报告」里的统计部分。
+
+- `range` 必填：`day`、`week`、`month`、`year`。
+- `date` 可选，读过去的时段：`day`／`week` 用 `YYYYMMDD`，`month` 用 `YYYYMM`，`year` 用 `YYYY`，必须是真实日期；不给就读当前时段。
+
+响应为 `{ code: 200, range, date?, availableDates, listenSeconds, listenCount, activeHour, chart, highlights }`：`availableDates` 是有资料的时段；`listenSeconds` 是这段时间的听歌秒数（当天的值和 `/user/friend-rank`、`/user/sound-power` 的当天秒数一致）；`listenCount`、`activeHour` 原样返回；`chart` 按时段排序，每段是 `{ period, items: [{ id, name, value, rank }] }`，`value` 原样返回；`highlights` 是 `{ type, title, subtitle, value }`。读不出来的数字字段会省略。App 上和上一段相比的升降百分比，目前确认不了它的算法，所以不返回。
+
+没听过歌的时段会返回空的 `chart` 和 `highlights`。图表格式不对回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

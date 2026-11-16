@@ -398,6 +398,24 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getListeningReport: {
+    description:
+      'Your listening report for a day, week, month or year. Requires login. Song rankings are at /user/listening-rank.',
+    queryParams: [
+      {
+        key: 'range',
+        label: 'Range',
+        description: 'day, week, month or year.',
+        required: true,
+      },
+      {
+        key: 'date',
+        label: 'Date',
+        description:
+          'Optional past period: YYYYMMDD for day and week, YYYYMM for month, YYYY for year.',
+      },
+    ],
+  },
   getPlaylistUpdates: {
     description:
       'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',
