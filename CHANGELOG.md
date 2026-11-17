@@ -16,12 +16,12 @@
 - 新增 `/user/listening-report`：登录后读自己某天、某周、某月或某年的听歌报告（听歌秒数、次数、活跃时段、分时段图表和亮点），图表里没有数据的时段返回空数组，和 `/user/listening-rank` 的歌曲排行分开。能力声明多了 `user.getListeningReport`。
 - 新增 `/user/liked-songs/categories`：登录后按建议、歌手、时间、流派看「我喜欢」的分类，最多处理 500 首，没读完整时 `complete` 为 `false`。能力声明多了 `library.getLikedSongCategories`。
 - 新增 `/user/following/singers`、`/user/following/users`、`/user/followers`、`/user/friends`：登录后读自己关注的歌手、关注的人、粉丝和好友的第一页，分别最多 20、20、20、50 条；截断时 `more` 为 `true`，对方锁了隐私时回 `locked: true`。能力声明多了 `user.getFollowingSingers`、`user.getFollowingUsers`、`user.getFollowers`、`user.getFriends`。
+- 新增 `POST /user/song/like/batch`：一次把 1–100 首歌加进或移出「我喜欢」，只写状态不同的歌并读回确认。`unchanged` 表示写入前读到的状态；部分确认回 `502`，请重读状态，不要重送。已用 QQ 和微信账号实测，默认可用，能力声明多了 `mutations.likeSongsBatch`。`/user/song/like` 不变。
+- 新增 `/user/business-card`：登录后读自己的音乐名片，返回昵称、头像、标签和喜欢的歌曲，不返回分享二维码地址。能力声明多了 `user.getBusinessCard`。
 
 ### 文档
 
 - 补充排行榜往期的读法：周榜期别是 `YYYY_WW`、日榜是 `YYYY-MM-DD`，带过去的期别就能读往期。
-- 新增 `POST /user/song/like/batch`：一次把 1–100 首歌加进或移出「我喜欢」，只写状态不同的歌并读回确认。`unchanged` 表示写入前读到的状态；部分确认回 `502`，请重读状态，不要重送。真账号验证前默认关闭，可信宿主设 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能用；能力声明 `mutations.likeSongsBatch` 为 `false`。`/user/song/like` 不变。
-- 新增 `/user/business-card`，登录后读取自己的音乐名片，返回昵称、头像、标签和喜欢的歌曲。能力声明新增 `user.getBusinessCard`。
 
 ## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)
 

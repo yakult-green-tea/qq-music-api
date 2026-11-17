@@ -6,7 +6,8 @@ import {
   setupSessionRoute,
 } from './helpers/newSessionRoute';
 
-// 批量「我喜欢」：`POST /user/song/like/batch`，真账号双向实写通过前由 QQ_UNVERIFIED_WRITES_ENABLED 闸住。
+// 批量「我喜欢」：`POST /user/song/like/batch`。QQ 与微信两种登录、Node 与 serverless 都做过真账号加入、
+// 重送、移出与读回，已默认开放，不再看 QQ_UNVERIFIED_WRITES_ENABLED。
 // 流程：一次批量核对歌曲身分（CgiGetTrackInfo，每次 20 首）→ 一次批量读红心状态（IsSongFanByMid，实测一次
 // 两首都有回答）→ 只把状态不同的歌写一次（PlaylistDetailWrite，dirId 201）→ 读回确认。只收类型 0；
 // 写入和读回都不重送。`/user/song/like` 不变。
@@ -72,14 +73,27 @@ describe.each(['node', 'serverless'] as Runtime[])('batch song like route: %s', 
   };
   const methods = () => ctx.recorded.map((item) => item.rpcs.map((rpc) => rpc.method).join('+'));
 
-  it('is closed until the trusted host turns unverified writes on, before looking at the session', async () => {
+  it('is open without the unverified writes flag once real-account checks passed', async () => {
+    const result = await post({ songs: songs([1]), liked: true }, { enabled: false });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      liked: true,
+      results: [{ id: 1, status: 'changed' }],
+      writeAttempted: true,
+      verified: true,
+    });
+    expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
+  });
+
+  it('without the flag still checks the session before anything else', async () => {
     const result = await post(
       { songs: songs([1]), liked: true },
       { enabled: false, token: 'c'.repeat(64) },
     );
 
-    expect(result.status).toBe(501);
-    expect(result.body.errorKey).toBe('feature.unavailable');
+    expect(result.status).toBe(401);
+    expect(result.headers['cache-control']).toBe('private, no-store');
     expect(ctx.recorded).toEqual([]);
   });
 

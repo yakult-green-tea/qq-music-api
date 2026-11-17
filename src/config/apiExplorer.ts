@@ -436,7 +436,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   songLikeBatch: {
     description:
-      'Add or remove 1-100 liked songs. Off by default; the trusted host must set QQ_UNVERIFIED_WRITES_ENABLED=1. Unchanged means the state before writing. A partial read-back returns 502: read the state again; do not resend.',
+      'Add or remove 1-100 liked songs. Requires login. Unchanged means the state before writing. A partial read-back returns 502: read the state again; do not resend.',
     bodyExample: { songs: [{ id: 90001, mid: 'fixtureSongMid', type: 0 }], liked: true },
   },
   getBusinessCard: {

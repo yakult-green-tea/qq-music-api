@@ -93,6 +93,19 @@ const approvalOf = (testCase, before, after, approved, baselineVersion) =>
           (testCase.method !== 'POST' || after.status === 501) &&
           (after.status !== 501 || after.body?.errorKey === 'feature.unavailable') &&
           after.upstream.length === 0) ||
+        // 真账号实写验收后开放的写入：旧版不存在；新版每个回应都要 private, no-store。没会话只能是 401 或
+        // 415 且一次上游都不打；带会话可以是写入结果（200、400、502），415 不能打上游；别的方法只能是 405。
+        (entry.difference === 'new-session-write-route' &&
+          testCase.path === entry.path &&
+          before?.status === (testCase.runtime === 'node' ? 404 : 501) &&
+          before.upstream.length === 0 &&
+          privateNoStore(after?.headers) &&
+          (testCase.method !== 'POST'
+            ? after.status === 405 && after.upstream.length === 0
+            : testCase.session
+              ? [200, 400, 502].includes(after.status) ||
+                (after.status === 415 && after.upstream.length === 0)
+              : [401, 415].includes(after.status) && after.upstream.length === 0)) ||
         (entry.difference === 'capability-flags-added' &&
           testCase.path === entry.path && onlyFlagsAdded(before, after, entry.flags)) ||
         (entry.difference === 'toplist-group-zero' &&

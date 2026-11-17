@@ -426,7 +426,7 @@ POST /login/refresh
 | `/user/following/users` | 本人关注的人（第一页） |
 | `/user/followers` | 本人的粉丝（第一页） |
 | `/user/friends` | 本人的好友（第一页） |
-| `POST /user/song/like/batch` | 批量加入或移出「我喜欢」（默认关闭） |
+| `POST /user/song/like/batch` | 批量加入或移出「我喜欢」 |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -1256,7 +1256,7 @@ Content-Type: application/json
 }
 ```
 
-真账号验证完成前默认关闭：可信宿主要设 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才能用，否则在检查会话前就回 `501 feature.unavailable`；能力声明 `mutations.likeSongsBatch` 为 `false`。单首的 `/user/song/like` 不变。
+需要有效会话，不需要 `QQ_UNVERIFIED_WRITES_ENABLED`；能力声明 `mutations.likeSongsBatch` 为 `true`。已用 QQ 和微信账号在 Node 与 Serverless 上实测过加入、重复加入和移出。单首的 `/user/song/like` 不变。
 
 - `songs` 是 1–100 首，每首要同时给 `id`（正整数 songid）、`mid` 和 `type: 0`，不能重复，也不能有多余字段；`liked` 为 `true` 是加入、`false` 是移出。只收 `application/json`。
 - 服务先核对每首的 id 和 mid 是同一首歌，有一首对不上就整批不写（回 `400`）；再读一次目前的红心状态，只把状态不同的歌写一次，写完再读回确认。

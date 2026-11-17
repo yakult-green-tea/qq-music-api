@@ -23,9 +23,9 @@
       "user.getFollowingUsers",
       "user.getFollowers",
       "user.getFriends",
-      "mutations.likeSongsBatch=false"
+      "mutations.likeSongsBatch"
     ],
-    "reason": "只多了 3.3.8 新接口的能力旗标：读取的是 true，还没真账号验证的批量写入是 false；去掉这些之后响应和上游请求必须和基准一致"
+    "reason": "只多了 3.3.8 新接口的能力旗标，都是 true（批量红心已完成真账号实写验收）；去掉这些之后响应和上游请求必须和基准一致"
   },
   {
     "path": "/recommend/autoplay/similar",
@@ -122,8 +122,8 @@
     "path": "/user/song/like/batch",
     "baseline": "3.3.7",
     "since": "3.3.8",
-    "difference": "new-gated-write-route",
-    "reason": "新增默认关闭的批量红心写入；旧版不存在，新版只能回 400、401、405、415 或 501，而且一次上游都不能打"
+    "difference": "new-session-write-route",
+    "reason": "新增批量红心写入，真账号实写验收后默认开放；旧版不存在，新版回应都要 private, no-store，没会话只能 401 或 415 且不打上游，带会话只能是 200、400、415 或 502"
   },
   {
     "path": "/song/genre",

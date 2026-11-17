@@ -104,7 +104,7 @@ const featuresFor = () => ({
     likeSong: true,
     subscribePlaylist: true,
     subscribeAlbum: true,
-    likeSongsBatch: false,
+    likeSongsBatch: true,
   },
   playbackReports: { reportPlayback: false },
 });
