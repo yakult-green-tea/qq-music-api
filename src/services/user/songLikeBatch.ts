@@ -61,7 +61,7 @@ const fanStateOf = (
     const fan = data.m_fan;
     const state = new Map<string, boolean>();
     for (const mid of mids) {
-      if (allowMissing && fan[mid] === undefined) continue;
+      if (allowMissing && typeof fan[mid] !== 'boolean') continue;
       if (typeof fan[mid] !== 'boolean') throw new QqApiError('invalid-response');
       state.set(mid, fan[mid] as boolean);
     }

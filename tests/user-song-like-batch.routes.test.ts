@@ -266,6 +266,60 @@ describe.each(['node', 'serverless'] as Runtime[])('batch song like route: %s', 
     expect((await post({ songs: songs([2]), liked: true })).status).toBe(200);
   });
 
+  it.each([
+    null,
+    'yes',
+    1,
+  ])('a read-back value %s is unconfirmed while other songs stay confirmed', async (invalid) => {
+    fanReplies = [
+      {
+        data: fansOf([
+          [1, false],
+          [3, false],
+        ]),
+      },
+      { data: { m_fan: { fixtureMid1: true, fixtureMid3: invalid } } },
+    ];
+    const result = await post({ songs: songs([1, 3]), liked: true });
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({
+      kind: 'upstream-business',
+      errorKey: 'upstream.unknown',
+      retryable: false,
+      results: [
+        { id: 1, status: 'changed' },
+        { id: 3, status: 'unconfirmed' },
+      ],
+      writeAttempted: true,
+      accepted: true,
+      verified: false,
+      verification: 'unconfirmed',
+    });
+    expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
+  });
+
+  it.each([null, 'yes', 1])('a pre-write value %s is rejected without writing', async (invalid) => {
+    fanReplies = [{ data: { m_fan: { fixtureMid1: invalid } } }];
+    const result = await post({ songs: songs([1]), liked: true });
+    expect(result.status).toBe(502);
+    expect(result.body.errorKey).toBe('upstream.invalid-response');
+    expect(methods()).not.toContain('AddSonglist');
+  });
+
+  it('a malformed read-back map remains an invalid response after writing', async () => {
+    fanReplies = [{ data: fansOf([[1, false]]) }, { data: { m_fan: null } }];
+    const result = await post({ songs: songs([1]), liked: true });
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({
+      errorKey: 'upstream.invalid-response',
+      writeAttempted: true,
+      accepted: true,
+      verified: false,
+      retryable: false,
+    });
+    expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
+  });
+
   it('a failed read-back after writing says the write was attempted and does not resend it', async () => {
     fanReplies = [
       {
