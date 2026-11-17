@@ -1204,7 +1204,7 @@ GET /user/listening-report?range=year&date=2025
 
 响应为 `{ code: 200, range, date?, availableDates, listenSeconds, listenCount, activeHour, chart, highlights }`：`availableDates` 是有资料的时段；`listenSeconds` 是这段时间的听歌秒数（当天的值和 `/user/friend-rank`、`/user/sound-power` 的当天秒数一致）；`listenCount`、`activeHour` 原样返回；`chart` 按时段排序，每段是 `{ period, items: [{ id, name, value, rank }] }`，`value` 原样返回；`highlights` 是 `{ type, title, subtitle, value }`。读不出来的数字字段会省略。App 上和上一段相比的升降百分比，目前确认不了它的算法，所以不返回。
 
-没听过歌的时段会返回空的 `chart` 和 `highlights`。图表格式不对回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+没听过歌的时段会返回空的 `chart` 和 `highlights`。`chart` 里没有数据的时段，`items` 是空数组。图表格式不对回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ### 27. 「我喜欢」的分类
 

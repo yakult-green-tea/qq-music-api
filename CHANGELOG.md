@@ -13,7 +13,7 @@
 - 新增 `/user/friend-rank`：登录后读好友听歌日榜的第一页，最多 60 条，包括每位好友的听歌秒数、获赞数和名次，以及自己的名次。截断时 `more` 为 `true`。能力声明多了 `user.getFriendRank`。
 - 新增 `/user/singer-rank`：登录后读自己的歌手榜，可以选今年、全部、本月或去年。能力声明多了 `user.getSingerRank`。
 - 新增 `/user/medals`：登录后按分页读自己的勋章馆（乐迷、畅听、限定、珍爱守护、书迷、好友、幸运盲盒、会员尊享、里程碑）。能力声明多了 `user.getMedals`。
-- 新增 `/user/listening-report`：登录后读自己某天、某周、某月或某年的听歌报告（听歌秒数、次数、活跃时段、分时段图表和亮点），和 `/user/listening-rank` 的歌曲排行分开。能力声明多了 `user.getListeningReport`。
+- 新增 `/user/listening-report`：登录后读自己某天、某周、某月或某年的听歌报告（听歌秒数、次数、活跃时段、分时段图表和亮点），图表里没有数据的时段返回空数组，和 `/user/listening-rank` 的歌曲排行分开。能力声明多了 `user.getListeningReport`。
 - 新增 `/user/liked-songs/categories`：登录后按建议、歌手、时间、流派看「我喜欢」的分类，最多处理 500 首，没读完整时 `complete` 为 `false`。能力声明多了 `library.getLikedSongCategories`。
 - 新增 `/user/following/singers`、`/user/following/users`、`/user/followers`、`/user/friends`：登录后读自己关注的歌手、关注的人、粉丝和好友的第一页，分别最多 20、20、20、50 条；截断时 `more` 为 `true`，对方锁了隐私时回 `locked: true`。能力声明多了 `user.getFollowingSingers`、`user.getFollowingUsers`、`user.getFollowers`、`user.getFriends`。
 

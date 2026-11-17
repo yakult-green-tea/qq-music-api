@@ -76,6 +76,7 @@ const chartOf = (bar: unknown): Dictionary[] => {
     .sort()
     .map((period) => {
       const rows = results[period];
+      if (rows === null) return { period, items: [] };
       if (!Array.isArray(rows)) throw new QqApiError('invalid-response');
       return { period, items: rows.map(toChartItem).filter((item) => item !== null) };
     });

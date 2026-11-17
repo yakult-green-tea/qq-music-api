@@ -44,6 +44,33 @@ describe.each(['node', 'serverless'] as Runtime[])('listening report route: %s',
   const ctx = setupSessionRoute(runtime, defaults);
   sharedSessionReadCases(runtime, ctx, '/user/listening-report?range=week', 'GetBar');
 
+  it('keeps null periods as empty items in a sorted weekly chart', async () => {
+    ctx.replies.GetBar = {
+      data: {
+        ...REPORT,
+        bar: {
+          optionResults: {
+            '20261102': [{ id: 8, name: 'Fixture a', value: 7 }],
+            '20261101': null,
+          },
+        },
+      },
+    };
+    const result = await ctx.call('/user/listening-report?range=week', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body.chart).toEqual([
+      { period: '20261101', items: [] },
+      { period: '20261102', items: [{ id: 8, name: 'Fixture a', value: 7 }] },
+    ]);
+  });
+
+  it.each(['bad', {}])('rejects a non-array non-null period %p', async (period) => {
+    ctx.replies.GetBar = { data: { ...REPORT, bar: { optionResults: { '20261101': period } } } };
+    const result = await ctx.call('/user/listening-report?range=week', { token: ctx.token });
+    expect(result.status).toBe(502);
+    expect(result.body.errorKey).toBe('upstream.invalid-response');
+  });
+
   it.each([
     'listenTime',
     'bar',
