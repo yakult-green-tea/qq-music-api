@@ -156,16 +156,12 @@ export const songLikeBatchResult = async (
     });
     state.accepted = true;
 
-    const after = await client
-      .execute(
-        fanStateOf(
-          pending.map((song) => song.mid),
-          true,
-        ),
-      )
-      .catch(() => {
-        throw new QqApiError('invalid-response');
-      });
+    const after = await client.execute(
+      fanStateOf(
+        pending.map((song) => song.mid),
+        true,
+      ),
+    );
     const written = new Set(pending.map((song) => song.mid));
     const results = songs.map((song) => ({
       id: song.id,

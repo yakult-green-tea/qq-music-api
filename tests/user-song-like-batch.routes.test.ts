@@ -321,19 +321,34 @@ describe.each(['node', 'serverless'] as Runtime[])('batch song like route: %s', 
   });
 
   it.each([
-    ['business rejection', { code: 1101 }],
-    ['HTTP failure', { httpStatus: 503 }],
-  ])('a read-back RPC %s is an invalid response after writing', async (_label, reply) => {
+    ['business rejection', { code: 1101 }, 'upstream-business', 'upstream.unknown'],
+    ['HTTP failure', { httpStatus: 503 }, 'upstream-http', 'upstream.http'],
+  ])('a read-back RPC %s keeps its upstream error classification', async (_label, reply, kind, errorKey) => {
     fanReplies = [{ data: fansOf([[1, false]]) }, reply];
     const result = await post({ songs: songs([1]), liked: true });
     expect(result.status).toBe(502);
     expect(result.body).toMatchObject({
-      kind: 'invalid-response',
-      errorKey: 'upstream.invalid-response',
+      kind,
+      errorKey,
       writeAttempted: true,
       accepted: true,
       verified: false,
       retryable: false,
+      verification: 'unconfirmed',
+    });
+    expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
+  });
+
+  it('a read-back HTTP 429 is not retryable after writing', async () => {
+    fanReplies = [{ data: fansOf([[1, false]]) }, { httpStatus: 429 }];
+    const result = await post({ songs: songs([1]), liked: true });
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({
+      errorKey: 'upstream.unknown',
+      retryable: false,
+      writeAttempted: true,
+      accepted: true,
+      verified: false,
       verification: 'unconfirmed',
     });
     expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
