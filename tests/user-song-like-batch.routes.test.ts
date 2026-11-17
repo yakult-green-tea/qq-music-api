@@ -320,6 +320,25 @@ describe.each(['node', 'serverless'] as Runtime[])('batch song like route: %s', 
     expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
   });
 
+  it.each([
+    ['business rejection', { code: 1101 }],
+    ['HTTP failure', { httpStatus: 503 }],
+  ])('a read-back RPC %s is an invalid response after writing', async (_label, reply) => {
+    fanReplies = [{ data: fansOf([[1, false]]) }, reply];
+    const result = await post({ songs: songs([1]), liked: true });
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({
+      kind: 'invalid-response',
+      errorKey: 'upstream.invalid-response',
+      writeAttempted: true,
+      accepted: true,
+      verified: false,
+      retryable: false,
+      verification: 'unconfirmed',
+    });
+    expect(methods().filter((m) => m === 'AddSonglist')).toHaveLength(1);
+  });
+
   it('a failed read-back after writing says the write was attempted and does not resend it', async () => {
     fanReplies = [
       {
