@@ -234,6 +234,38 @@ describe.each(['node', 'serverless'] as const)('recent plays route: %s', (runtim
     jest.restoreAllMocks();
   });
 
+  it.each([
+    ['song', 'songList'],
+    ['album', 'albumList'],
+    ['playlist', 'geDanList'],
+    ['radio', 'radioList'],
+    ['mv', 'mvList'],
+  ])('treats -300 with empty %s data as an empty list', async (type, list) => {
+    for (const payload of [
+      { code: -300 },
+      { code: -300, data: null },
+      { code: -300, data: {} },
+      { code: -300, data: { [list]: null } },
+      { code: -300, data: { [list]: [] } },
+    ]) {
+      reply = { data: payload };
+      const result = await call(`/user/recent-plays?type=${type}`, { token });
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual({ code: 200, type, items: [], total: 0 });
+    }
+  });
+
+  it.each([
+    ['-300 with entries', { code: -300, data: { albumList: [{ id: 1 }] } }, 'upstream.unknown'],
+    ['-301 with an empty list', { code: -301, data: { albumList: [] } }, 'upstream.unknown'],
+    ['-300 with non-object data', { code: -300, data: 'bad' }, 'upstream.invalid-response'],
+  ])('rejects %s', async (_label, payload, errorKey) => {
+    reply = { data: payload };
+    const result = await call('/user/recent-plays?type=album', { token });
+    expect(result.status).toBe(502);
+    expect(result.body.errorKey).toBe(errorKey);
+  });
+
   it('answers 401 without a session and never reaches the upstream', async () => {
     const result = await call('/user/recent-plays');
 

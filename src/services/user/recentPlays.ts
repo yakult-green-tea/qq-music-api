@@ -143,6 +143,13 @@ const rowsOf = (data: Dictionary, list: string): unknown[] => {
   if (code !== undefined) {
     if (typeof code !== 'number' || !Number.isSafeInteger(code))
       throw new QqApiError('invalid-response');
+    // 验收观察：-300 与该类没有记录相符，但还未直接证实。
+    if (code === -300) {
+      if (data.data == null) return [];
+      if (!isDictionary(data.data)) throw new QqApiError('invalid-response');
+      const rows = data.data[list];
+      if (rows == null || (Array.isArray(rows) && rows.length === 0)) return [];
+    }
     if (code !== 0) throw normalizeQqFailure({ source: 'business', upstreamCode: code });
   }
   if (!isDictionary(data.data)) throw new QqApiError('invalid-response');

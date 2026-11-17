@@ -5,7 +5,7 @@
 - 新增 `/song/genre`：登录后查一首歌的流派，只返回流派编号和名称；没有流派的歌返回空数组。`/login/channels` 的能力声明多了 `songs.getSongGenre`。
 - 新增 `/recommend/autoplay`：登录后按 1–5 首种子歌拿放完后接着放的歌，返回几首由上游决定，可以用 `limit` 在本地截短。能力声明多了 `recommendations.getAutoplaySongs`。
 - 新增 `/user/mvs`：登录后读自己收藏的 MV，返回 MV 基本资料、总数和上游的 `hasmore`；上游没有分页，所以只有第一页。能力声明多了 `library.getFavoriteMvs`。
-- 新增 `/user/recent-plays`：登录后按分类读云端最近播放（歌曲、专辑、歌单、音乐雷达、视频），只读，不上报也不删除。`total` 只算这次返回的条数。能力声明多了 `library.getRecentPlays`。
+- 新增 `/user/recent-plays`：登录后按分类读云端最近播放（歌曲、专辑、歌单、音乐雷达、视频），只读，不上报也不删除。某一类没有记录时返回空数组；`total` 只算这次返回的条数。能力声明多了 `library.getRecentPlays`。
 - 新增 `/user/playlist/updates`：登录后看收藏的歌单里哪些有新歌，只查收藏的前 100 个，超过时 `complete` 为 `false`。能力声明多了 `library.getPlaylistUpdates`。
 - 新增 `/recommend/autoplay/similar`：登录后按一首歌接相似的歌，和 `/song/similar`、`/recommend/autoplay` 用途不同。能力声明多了 `recommendations.getAutoplaySimilarSongs`。
 - 新增 `/search/hot/categories`：登录后按分类读热搜，每个热搜词的格式和 `/search/hot` 一样。能力声明多了 `search.getHotSearchCategories`。

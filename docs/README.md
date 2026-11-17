@@ -1100,7 +1100,7 @@ GET /user/recent-plays?type=song
 
 `lastTime` 保留上游数值，不推断单位；数字字段读不出来时省略。上游一次给完、没有分页，`total` 只是这次返回的条数，不代表完整的历史总量。最近播放的设备、歌单创建者的账号和 MV 付费资料不返回。
 
-没播过时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+某一类没有记录时返回空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ### 19. 收藏歌单有更新
 
@@ -1161,6 +1161,8 @@ GET /user/friend-rank
 ```
 
 需要有效会话，没有业务参数。这是官方 App 里的好友听歌排行，按当天（北京时间）的听歌时长排名，只读第一页，一次最多 60 人。
+
+用 QQ 音乐 App 扫码登录的 QQ 账号可能读不到，QQ 会拒绝并返回 `502`；用手机 QQ 网页扫码登录可以读。
 
 响应为 `{ code: 200, items, myRank, myPlaySeconds, myLikeCount, more }`。`items` 每条是 `{ uin, nick, avatar, playSeconds, likeCount, liked, rank }`：`uin` 是加密后的账号 id，`playSeconds` 是当天听歌秒数，`liked` 表示你是否给对方点过赞，`rank` 是名次。`myRank`、`myPlaySeconds`、`myLikeCount` 是你自己的名次、当天听歌秒数和获赞数。读不出来的数字字段会省略。`more` 在上游标记有更多或结果被截断时为 `true`，本接口没有下一页可读。点赞和隐私设置不提供。
 
@@ -1235,6 +1237,7 @@ GET /user/friends
 
 - 前三个响应为 `{ code: 200, items, total, more, locked? }`，`items` 每条是 `{ mid, encUin, name, desc, avatar, fanCount?, followed? }`：歌手有 `mid`，一般用户有加密后的 `encUin`；`fanCount` 是粉丝数，`followed` 表示你是否已经关注对方。`total` 读不出来时为 `null`。名单因为隐私设置看不到时会回 `locked: true` 和空的 `items`，这和「真的没有人」不一样。
 - `/user/friends` 响应为 `{ code: 200, items, more }`，每条是 `{ encUin, name, avatar, followed? }`，好友的会员资料不返回。
+- 用 QQ 音乐 App 扫码登录的 QQ 账号可能读不到 `/user/friends`，QQ 会拒绝并返回 `502`；用手机 QQ 网页扫码登录可以读。
 - `more` 在上游标记有更多或结果被截断时为 `true`，这几个接口都没有下一页可读。会员图标、勋章、隐私提示文字和自己的资料不返回。
 
 名单是空的时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。

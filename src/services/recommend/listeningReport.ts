@@ -67,7 +67,7 @@ const toChartItem = (row: unknown): Dictionary | null => {
   };
 };
 
-/** 图表按时段排序；时段不是对象、某个时段不是数组都算格式变了。 */
+/** 图表按时段排序；时段可为空，其他非数组值算格式变了。 */
 const chartOf = (bar: unknown): Dictionary[] => {
   const results = dictionaryOf(bar).optionResults;
   if (results === null || results === undefined) return [];
