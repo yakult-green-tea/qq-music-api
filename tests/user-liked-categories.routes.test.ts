@@ -76,6 +76,63 @@ describe.each(['node', 'serverless'] as Runtime[])('liked song categories route:
   const ctx = setupSessionRoute(runtime, defaults);
   sharedSessionReadCases(runtime, ctx, '/user/liked-songs/categories', 'GetCategoryInfo');
 
+  it('marks incomplete when the total changes between pages', async () => {
+    let page = 0;
+    const replies = [
+      likedPage(
+        Array.from({ length: 100 }, (_, i) => i + 1),
+        101,
+      ),
+      likedPage([101], 102),
+    ];
+    Object.defineProperty(ctx.replies, 'CgiGetDiss', {
+      configurable: true,
+      get: () => ({ data: replies[page++] }),
+    });
+    const result = await ctx.call('/user/liked-songs/categories', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ checkedSongs: 101, totalSongs: 101, complete: false });
+  });
+
+  it('marks an oversized page incomplete and sends at most 500 songs', async () => {
+    ctx.replies.CgiGetDiss = {
+      data: likedPage(
+        Array.from({ length: 501 }, (_, i) => i + 1),
+        500,
+      ),
+    };
+    const result = await ctx.call('/user/liked-songs/categories', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ checkedSongs: 500, totalSongs: 500, complete: false });
+    const sent = ctx.recorded.find((item) => item.rpcs[0].method === 'GetCategoryInfo');
+    expect(sent?.rpcs[0].param.songlist).toHaveLength(500);
+  });
+
+  it('collects singer names from duplicate songs while sending the first singer ids once', async () => {
+    ctx.replies.CgiGetDiss = {
+      data: {
+        total_song_num: 1,
+        songlist: [
+          song(1, [[600, '']]),
+          song(1, [
+            [600, 'Fixture recovered'],
+            [601, 'Another'],
+          ]),
+        ],
+      },
+    };
+    const result = await ctx.call('/user/liked-songs/categories', { token: ctx.token });
+    expect(result.status).toBe(200);
+    expect(
+      result.body.groups.find((group: { type: string }) => group.type === 'artist').categories[0]
+        .title,
+    ).toBe('Fixture recovered');
+    const sent = ctx.recorded.find((item) => item.rpcs[0].method === 'GetCategoryInfo');
+    expect(sent?.rpcs[0].param.songlist).toEqual([
+      { song_id: 1, song_type: 13, singers_id: [600] },
+    ]);
+  });
+
   it('deduplicates songs across pages before deciding the total is reached', async () => {
     let page = 0;
     const pages = [
