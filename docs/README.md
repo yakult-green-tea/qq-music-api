@@ -1164,7 +1164,7 @@ GET /user/friend-rank
 
 用 QQ 音乐 App 扫码登录的 QQ 账号可能读不到，QQ 会拒绝并返回 `502`；用手机 QQ 网页扫码登录可以读。
 
-响应为 `{ code: 200, items, myRank, myPlaySeconds, myLikeCount, more }`。`items` 每条是 `{ uin, nick, avatar, playSeconds, likeCount, liked, rank }`：`uin` 是加密后的账号 id，`playSeconds` 是当天听歌秒数，`liked` 表示你是否给对方点过赞，`rank` 是名次。`myRank`、`myPlaySeconds`、`myLikeCount` 是你自己的名次、当天听歌秒数和获赞数。读不出来的数字字段会省略。`more` 在上游标记有更多或结果被截断时为 `true`，本接口没有下一页可读。点赞和隐私设置不提供。
+响应为 `{ code: 200, items, myRank, myPlaySeconds, myLikeCount, more }`。`items` 每条是 `{ uin, nick, avatar, playSeconds, likeCount, liked, rank }`：`uin` 是 QQ 给的账号 id，原样返回：微信账号是加密形式，QQ 账号可能直接是 QQ 号，`playSeconds` 是当天听歌秒数，`liked` 表示你是否给对方点过赞，`rank` 是名次。`myRank`、`myPlaySeconds`、`myLikeCount` 是你自己的名次、当天听歌秒数和获赞数。读不出来的数字字段会省略。`more` 在上游标记有更多或结果被截断时为 `true`，本接口没有下一页可读。点赞和隐私设置不提供。
 
 榜上没有人时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
