@@ -444,7 +444,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getPlaylistUpdates: {
     description:
-      'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when you have more.',
+      'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when there are more, the upstream reports failed playlists, or its total exceeds the number checked.',
   },
   getRecentPlays: {
     description:
