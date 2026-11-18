@@ -1128,7 +1128,7 @@ GET /recommend/autoplay/similar?id=90001
 
 响应为 `{ code: 200, songs: [...] }`，曲目格式和 `/song/similar` 一样，实测一次回 3 首。它对应官方 App 里按一首歌接相似歌曲的播放方式，和 `/song/similar`（找风格相近的歌）、`/recommend/autoplay`（放完后接着放）是三个不同的上游接口，结果不能互相替代。
 
-没有相似的歌时 `songs` 是空数组；有条目却一首都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `retcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+没有相似的歌时 `songs` 是空数组；有条目却一首都读不出来回 `502`。部分歌曲 QQ 会直接拒绝这个接口并返回 `502`，同一首歌用 `/song/similar` 或 `/recommend/autoplay` 仍可能有结果。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `retcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
 
 ### 21. 按分类的热搜
 
