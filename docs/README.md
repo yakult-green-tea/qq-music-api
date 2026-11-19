@@ -176,6 +176,7 @@ Serverless 请求由部署平台的网络出口发送，可能与用户本地网
 | `QQ_PTLOGIN_HTTP_ENABLED` | 开启 | Serverless 无中继时是否启用手机 QQ 网页登录 |
 | `QQ_WECHAT_POLL_BUDGET_MS` | `15000` | Node 微信扫码单次检查等待上限，单位毫秒 |
 | `QQ_PLAYBACK_HINTS_ENABLED` | 开启 | 是否启用具体播放失败提示及额外查询 |
+| `QQ_PLAYBACK_FALLBACK_ENABLED` | 开启 | 登录后取不到完整歌曲时，是否用网页播放器的方式再取一次 |
 | `AUTO_OPEN_EXPLORER` | `false` | 启动时自动打开 Explorer |
 | `LOG_LEVEL` | `info` | Node 日志级别 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
@@ -573,7 +574,7 @@ GET /getMusicPlay/demo-song-mid?quality=best
 ```
 
 - `kind`：`full` 完整歌曲、`preview` 试听片段；拿到了链接、但这一条带着失败的结果码时是 `unknown`，链接照样给，能不能播完整首没有把握。
-- `protocol`：这次用的取链接办法，`android-vkey`（完整文件）或 `preview-rs02`（试听文件）。
+- `protocol`：这次用的取链接办法，`android-vkey`（完整文件）、`web-session-vkey`（App 方式没给完整文件时，改用官方网页播放器的方式拿到的完整文件）或 `preview-rs02`（试听文件）。
 - `cdn`：链接的主机是上游回应自带的（`response-sip`）、探测过能用的（`probed`），还是探测都没通、用的默认地址（`unverified-default`，能不能播没有验过）；没有链接时是 `none`。
 - `quality`、`codec`：从上游文件名认出的实际音质和格式，认不出就省略。
 - `trial.durationMs`：试听条目有可靠的上游时长时才返回，单位毫秒。
@@ -617,7 +618,7 @@ GET /getMusicPlay/demo-song-mid?quality=best
 
 设置 `QQ_PLAYBACK_HINTS_ENABLED=0` 可以关闭具体原因提示和对应的额外查询，但不关闭既有的取链逻辑。
 
-`QQ_PLAYBACK_FALLBACK_ENABLED` 是备用取链框架的开关，默认关闭。当前没有通过验证的备用办法，打开也不会增加可用音源。
+登录后取链接时，如果 QQ 明确没给完整文件（结果码 `104003`），服务会改用官方网页播放器的方式，用同一个账号、同一个文件名再要一次；拿到的完整文件 `source.protocol` 是 `web-session-vkey`。同一个会员账号有些歌在手机 App 上放不了、在官方网页上能放完整歌曲，这样就能正常播放。m4a、128、320、flac 会再要，`ape`、试听和匿名请求不会；每首每次请求最多多一次。设置 `QQ_PLAYBACK_FALLBACK_ENABLED=0` 可以关闭。
 
 #### 播放范围限制
 

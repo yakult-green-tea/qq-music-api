@@ -19,6 +19,10 @@
 - 新增 `POST /user/song/like/batch`：一次把 1–100 首歌加进或移出「我喜欢」，只写状态不同的歌并读回确认。`unchanged` 表示写入前读到的状态；部分确认回 `502`，请重读状态，不要重送。已用 QQ 和微信账号实测，默认可用，能力声明多了 `mutations.likeSongsBatch`。`/user/song/like` 不变。
 - 新增 `/user/business-card`：登录后读自己的音乐名片，返回昵称、头像、标签和喜欢的歌曲，不返回分享二维码地址。能力声明多了 `user.getBusinessCard`。
 
+### 修复
+
+- 会员登录后有些歌只能试听：同一个账号在官方网页上能放完整歌曲，但 API 用 App 的方式取链接时 QQ 只给试听。现在 QQ 明确没给完整文件时，会改用官方网页播放器的方式再取一次，拿到的完整文件 `source.protocol` 是 `web-session-vkey`。m4a、128、320、flac 都会再取，每首每次请求最多多一次；`QQ_PLAYBACK_FALLBACK_ENABLED=0` 可以关闭。
+
 ### 文档
 
 - 补充排行榜往期的读法：周榜期别是 `YYYY_WW`、日榜是 `YYYY-MM-DD`，带过去的期别就能读往期。

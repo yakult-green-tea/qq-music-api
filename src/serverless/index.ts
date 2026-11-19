@@ -3,6 +3,7 @@ import { loginChannels } from '../routes/operations/loginChannels';
 import { protectAccountWrite, refusedAccountWrite } from '../routes/operations/writeSafety';
 import { AUTH_HEADER_NAME, tokenFromCookieString } from '../routes/sessionToken';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
+import { playbackFallbackEnabledOf } from '../services/auth/playbackFallback';
 import {
   createQrLoginService,
   type QqQrRelay,
@@ -157,7 +158,7 @@ const createServiceFor = async (
   return createQrLoginService({
     http: createFetchAuthHttpClient(),
     playbackHintsEnabled: !['0', 'false'].includes(env.QQ_PLAYBACK_HINTS_ENABLED ?? ''),
-    playbackFallbackEnabled: ['1', 'true'].includes(env.QQ_PLAYBACK_FALLBACK_ENABLED ?? ''),
+    playbackFallbackEnabled: playbackFallbackEnabledOf(env.QQ_PLAYBACK_FALLBACK_ENABLED),
     createSessionHttp: () => createFetchAuthHttpClient(),
     deviceRepository: createMemoryDeviceContextRepository(
       await deriveAndroidDevice(secrets.current),

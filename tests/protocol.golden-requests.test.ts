@@ -156,6 +156,33 @@ const CASES: GoldenCase[] = [
     },
   },
   {
+    // 安卓身份明确 104003：换官方网页播放器身份、同一个文件名再要一次（320 不走查原因与再取一次）。
+    name: 'play/web-session-fallback',
+    path: `/getMusicPlay/${SONG}?quality=320&mediaId=${MEDIA}`,
+    credential: QQ,
+    script: {
+      fallback: true,
+      rpc: {
+        UrlGetVkey: [
+          refused(SONG),
+          {
+            sip: ['https://stream.invalid/'],
+            midurlinfo: [
+              { songmid: SONG, purl: `M800${SONG}${MEDIA}.mp3?vkey=fixture`, result: 0 },
+            ],
+          },
+        ],
+      },
+    },
+  },
+  {
+    // 微信账号：网页身份的 uin 用字符串原样送，19 位的 id 不失真。
+    name: 'play/web-session-fallback-wechat',
+    path: `/getMusicPlay/${SONG}?quality=320&mediaId=${MEDIA}`,
+    credential: WECHAT,
+    script: { fallback: true, rpc: { UrlGetVkey: [refused(SONG), refused(SONG)] } },
+  },
+  {
     name: 'play/retry-once',
     path: `/getMusicPlay/${SONG}`,
     credential: QQ,

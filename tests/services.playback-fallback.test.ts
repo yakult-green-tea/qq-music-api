@@ -1,8 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { getAuthenticatedPlaybackSources } from '../src/services/auth/playback';
 import {
   PLAYBACK_FALLBACK_CANDIDATES,
   type PlaybackFallbackCandidate,
   type PlaybackFallbackOptions,
+  playbackFallbackEnabledOf,
 } from '../src/services/auth/playbackFallback';
 import { StreamCdnSelector } from '../src/services/auth/streamCdnSelector';
 import type { AuthHttpClient } from '../src/transport/httpClientTypes';
@@ -13,7 +16,7 @@ import { CONTRACT_CREDENTIAL, CONTRACT_NOW } from './helpers/contractUpstream';
 // 备援框架：开关默认关；关着时取链接一个请求都不多、结果逐字不变。开着时，主路径（含再取一次）之后还没链接、
 // 而且候选自己认得这种失败的歌，才交给候选试一次；整次取链接共用请求上限和时间上限。候选给的结果要是请求的那首、
 // 文件种类对得上才算数，否则保留原来的结果。每次尝试只记候选名、结果、首数和耗时，不记歌曲 id。
-// 目前没有登记任何候选（实测没有能多拿到歌的做法），这里用测试自己的候选验框架。
+// 登记的候选只有官方网页播放器身份（文件最后一节）；前面用测试自己的候选验框架。
 
 const A = 'fixtureSongMidA1';
 const B = 'fixtureSongMidB2';
@@ -93,8 +96,10 @@ describe('备援框架', () => {
   });
   afterEach(() => jest.restoreAllMocks());
 
-  it('目前没有登记任何候选', () => {
-    expect(PLAYBACK_FALLBACK_CANDIDATES).toEqual([]);
+  it('登记的候选只有官方网页播放器身份这一个', () => {
+    expect(PLAYBACK_FALLBACK_CANDIDATES.map((candidate) => candidate.id)).toEqual([
+      'web-session-vkey',
+    ]);
   });
 
   it('开关关着（默认）：候选不会被叫到，请求数和结果都和没有框架时一样', async () => {
@@ -117,7 +122,7 @@ describe('备援框架', () => {
     const plain = harness(upstream);
     const before = await plain.resolve(A);
     const on = harness(upstream);
-    expect(await on.resolve(A, { enabled: true })).toEqual(before);
+    expect(await on.resolve(A, { enabled: true, candidates: [] })).toEqual(before);
     expect(on.methods).toEqual(plain.methods);
   });
 
@@ -330,5 +335,193 @@ describe('备援框架', () => {
       'playback.fallback-result',
       expect.objectContaining({ outcome: 'skipped-timeout' }),
     );
+  });
+});
+
+// 官方网页播放器身份：同一个账号在 App（安卓）身份被挡的歌，官方网页播放器登录后能拿到完整文件
+// （2026-11 会员账号实测）。备援只在主路径明确 104003 时，用同一个接口、同一个文件名，换成网页播放器的
+// comm、标头和 Cookie 再要一次；comm 里不带安卓设备与 authst。
+describe('官方网页播放器身份候选', () => {
+  beforeEach(() => {
+    jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  type Sent = {
+    comm: Record<string, unknown>;
+    param: Record<string, unknown>;
+    method: string;
+    headers: Record<string, string>;
+  };
+  /** 安卓身份的取链接都回 `android`，网页身份（ct 24）回 `web`；其他（查原因的详情）回空。 */
+  const webHarness = (replies: { android: unknown; web?: unknown }) => {
+    const sent: Sent[] = [];
+    const http = {
+      getCookieHeader: () => '',
+      request: async () => {
+        throw new Error('unexpected');
+      },
+      post: async (
+        _url: string,
+        body: {
+          comm: Record<string, unknown>;
+          req_0: { method: string; param: Record<string, unknown> };
+        },
+        config?: { headers?: Record<string, string> },
+      ) => {
+        sent.push({
+          comm: body.comm,
+          param: body.req_0.param,
+          method: body.req_0.method,
+          headers: config?.headers ?? {},
+        });
+        const data =
+          body.req_0.method !== 'UrlGetVkey'
+            ? {}
+            : body.comm.ct === 24
+              ? (replies.web ?? {})
+              : replies.android;
+        return { status: 200, data: { code: 0, req_0: { code: 0, data } } };
+      },
+    } as unknown as AuthHttpClient;
+    const selector = new StreamCdnSelector(async () => ({ bytes: 1024, elapsedMs: 1 }));
+    const vkey = (ct: number) =>
+      sent.filter((call) => call.method === 'UrlGetVkey' && (call.comm.ct === 24) === (ct === 24));
+    return {
+      sent,
+      web: () => vkey(24),
+      android: () => vkey(11),
+      resolve: (songmid: string, quality: string | number = 128, options = {}) =>
+        getAuthenticatedPlaybackSources(
+          http,
+          auth,
+          selector,
+          songmid,
+          quality,
+          undefined,
+          options,
+          true,
+          { enabled: true },
+        ),
+    };
+  };
+  const gtkOf = (key: string) => {
+    let hash = 5381;
+    for (const char of key) hash += (hash << 5) + char.charCodeAt(0);
+    return hash & 0x7fffffff;
+  };
+  const refusedReply = (songmid: string) => ({ sip: [SIP], midurlinfo: [refused(songmid)] });
+  const grantedReply = (songmid: string, purl = fullPurl(songmid)) => ({
+    sip: [SIP],
+    midurlinfo: [{ songmid, purl, result: 0 }],
+  });
+
+  it('主路径明确 104003：换网页播放器身份再要一次，拿到的完整文件换上，source 标成 web-session-vkey', async () => {
+    const h = webHarness({ android: refusedReply(A), web: grantedReply(A) });
+    const { playUrl } = await h.resolve(A);
+    const [web] = h.web();
+    expect(h.web()).toHaveLength(1);
+    expect(web.param.filename).toEqual(h.android()[0].param.filename);
+    expect(web.param).toMatchObject({
+      songmid: [A],
+      songtype: [0],
+      uin: CONTRACT_CREDENTIAL.str_musicid,
+      loginflag: 1,
+      platform: '20',
+    });
+    const gtk = gtkOf(CONTRACT_CREDENTIAL.musickey);
+    expect(web.comm).toEqual({
+      ct: 24,
+      cv: 4747474,
+      platform: 'yqq.json',
+      format: 'json',
+      inCharset: 'utf-8',
+      outCharset: 'utf-8',
+      notice: 0,
+      needNewCode: 1,
+      uin: CONTRACT_CREDENTIAL.str_musicid,
+      g_tk: gtk,
+      g_tk_new_20200303: gtk,
+    });
+    expect(web.headers['User-Agent']).toMatch(/^Mozilla\/5\.0 /);
+    expect(web.headers.Referer).toBe('https://y.qq.com/');
+    expect(web.headers.Cookie).toBe(h.android()[0].headers.Cookie);
+    expect(playUrl[A]).toMatchObject({
+      url: `${SIP}${fullPurl(A)}`,
+      error: false,
+      source: { kind: 'full', protocol: 'web-session-vkey' },
+    });
+  });
+
+  it.each([
+    ['m4a', 'C400', '.m4a'],
+    ['320', 'M800', '.mp3'],
+    ['flac', 'F000', '.flac'],
+  ])('%s 也会试，文件名照主路径', async (quality, prefix, ext) => {
+    const purl = `${prefix}${A}${A}${ext}?vkey=fixture`;
+    const h = webHarness({ android: refusedReply(A), web: grantedReply(A, purl) });
+    const { playUrl } = await h.resolve(A, quality);
+    expect(h.web()).toHaveLength(1);
+    expect(h.web()[0].param.filename).toEqual(h.android()[0].param.filename);
+    expect(playUrl[A]).toMatchObject({ url: `${SIP}${purl}` });
+  });
+
+  it('主路径拿到了：不多打请求', async () => {
+    const h = webHarness({ android: grantedReply(A) });
+    await h.resolve(A);
+    expect(h.web()).toEqual([]);
+  });
+
+  it('ape 不试（没有文件时上游也会给假链接）', async () => {
+    const h = webHarness({ android: refusedReply(A) });
+    await h.resolve(A, 'ape');
+    expect(h.web()).toEqual([]);
+  });
+
+  it('不是 104003 的拒绝：不试', async () => {
+    const h = webHarness({
+      android: { sip: [SIP], midurlinfo: [{ songmid: A, purl: '', result: 104009, subcode: 0 }] },
+    });
+    await h.resolve(A);
+    expect(h.web()).toEqual([]);
+  });
+
+  it('试听请求不试', async () => {
+    const h = webHarness({ android: refusedReply(A) });
+    await h.resolve(A, 128, { preview: true });
+    expect(h.web()).toEqual([]);
+  });
+
+  it('网页身份给的是别的音质或试听文件：不采用，保留原来的结果', async () => {
+    const h = webHarness({
+      android: refusedReply(A),
+      web: grantedReply(A, `RS02${A}.mp3?vkey=x`),
+    });
+    const { playUrl } = await h.resolve(A);
+    expect(playUrl[A]).toMatchObject({ url: '', error: '暂无播放链接' });
+  });
+
+  it('网页身份也被拒：保留原来的结果', async () => {
+    const h = webHarness({ android: refusedReply(A), web: refusedReply(A) });
+    const { playUrl } = await h.resolve(A);
+    expect(h.web()).toHaveLength(1);
+    expect(playUrl[A]).toMatchObject({ url: '', error: '暂无播放链接' });
+  });
+});
+
+describe('备援开关', () => {
+  it('没设或设成其他值时开着，只有 0 和 false 关掉', () => {
+    expect(playbackFallbackEnabledOf(undefined)).toBe(true);
+    expect(playbackFallbackEnabledOf('')).toBe(true);
+    expect(playbackFallbackEnabledOf('1')).toBe(true);
+    expect(playbackFallbackEnabledOf('0')).toBe(false);
+    expect(playbackFallbackEnabledOf('false')).toBe(false);
+  });
+
+  it('Node 与 serverless 两个宿主都用同一个判断', () => {
+    for (const file of ['../src/services/auth/qrLogin.node.ts', '../src/serverless/index.ts']) {
+      const source = readFileSync(resolve(__dirname, file), 'utf8');
+      expect(source).toContain('playbackFallbackEnabledOf(');
+    }
   });
 });

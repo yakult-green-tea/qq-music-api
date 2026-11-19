@@ -9,7 +9,7 @@ import type { PlaybackProtocolId } from '../../protocol/playbackSource';
 import type { UpstreamPhase } from '../../util/safeError';
 import { type Dictionary, stringOf } from '../../util/values';
 import type { AuthHttpClient } from './httpClient';
-import { callMusicu } from './musicuProtocol';
+import { callMusicu, callWebPlayerMusicu } from './musicuProtocol';
 import type { AuthSession } from './qrTypes';
 
 // src/services/auth/playbackStrategies.ts
@@ -88,3 +88,29 @@ export const previewRs02Strategy: PlaybackStrategy = {
   filenameOf: (_songmid, mediaId) => previewFilenameOf(mediaId),
   request: urlGetVkey,
 };
+
+/**
+ * 官方网页播放器身份：同一个接口、同样的两段文件名，comm 和标头换成网页播放器那一组，参数照网页多带
+ * `loginflag 1`、`platform "20"`。只在安卓身份明确拒绝完整文件时，由备援来用。
+ */
+export const webSessionVKeyStrategy = (fileType: PlaybackFileType): PlaybackStrategy => ({
+  id: 'web-session-vkey',
+  filenameOf: (songmid, mediaId) => fullFilenameOf(fileType, songmid, mediaId),
+  request: ({ http, auth, guid, phase }, items) =>
+    callWebPlayerMusicu(
+      http,
+      phase,
+      'music.vkey.GetVkey',
+      'UrlGetVkey',
+      {
+        filename: items.map((item) => item.filename),
+        guid,
+        songmid: items.map((item) => item.songmid),
+        songtype: items.map(() => 0),
+        uin: stringOf(auth.credential.str_musicid) || String(auth.credential.musicid),
+        loginflag: 1,
+        platform: '20',
+      },
+      auth.credential,
+    ),
+});

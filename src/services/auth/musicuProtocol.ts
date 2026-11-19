@@ -1,4 +1,9 @@
-import { androidUserAgent } from '../../protocol/clientProfiles';
+import {
+  androidUserAgent,
+  WEB_PLAYER_CLIENT,
+  WEB_PLAYER_HEADERS,
+  webGtkOf,
+} from '../../protocol/clientProfiles';
 import { logger } from '../../util/logger';
 import type { UpstreamPhase } from '../../util/safeError';
 import { type Dictionary, dictionaryOf, identifierOf, numberOf } from '../../util/values';
@@ -130,6 +135,11 @@ export const callMusicu = async (
       },
     },
   );
+  return musicuDataOf(phase, response);
+};
+
+/** 单个 RPC 的回应：外层或 RPC 码不是 0 都抛 QqProtocolError，否则交出 data。 */
+const musicuDataOf = (phase: UpstreamPhase, response: { status: number; data: unknown }) => {
   const body = dictionaryOf(response.data);
   const item = dictionaryOf(body.req_0);
   const globalCode = numberOf(body.code) ?? 0;
@@ -144,4 +154,38 @@ export const callMusicu = async (
     throw new QqProtocolError(phase, upstreamCode, globalCode, response.status);
   }
   return dictionaryOf(item.data);
+};
+
+/**
+ * 用官方网页播放器的身份打一个带凭证的 RPC：comm 是网页那一组加 g_tk，凭证照样走 Cookie，不带安卓设备信息和 authst。
+ * 账号 id 用字符串送，微信账号的长 id 不会失真。
+ */
+export const callWebPlayerMusicu = async (
+  http: AuthHttpClient,
+  phase: UpstreamPhase,
+  module: string,
+  method: string,
+  param: Dictionary,
+  credential: QqCredential,
+): Promise<Dictionary> => {
+  const uin = identifierOf(credential.str_musicid) || String(credential.musicid);
+  const gtk = webGtkOf(credential.musickey);
+  const request = {
+    comm: {
+      ...WEB_PLAYER_CLIENT,
+      format: 'json',
+      inCharset: 'utf-8',
+      outCharset: 'utf-8',
+      notice: 0,
+      needNewCode: 1,
+      uin,
+      g_tk: gtk,
+      g_tk_new_20200303: gtk,
+    },
+    req_0: { module, method, param },
+  };
+  const response = await http.post<unknown>(MUSICU_URL, request, {
+    headers: { ...WEB_PLAYER_HEADERS, Cookie: credentialCookieHeader(credential) },
+  });
+  return musicuDataOf(phase, response);
 };

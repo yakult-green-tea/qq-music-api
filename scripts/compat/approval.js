@@ -5,7 +5,7 @@
 const SOURCE_KEYS = ['cdn', 'kind', 'protocol'];
 const SOURCE_VALUES = {
   kind: ['full', 'preview', 'unknown'],
-  protocol: ['android-vkey', 'preview-rs02', 'web-anonymous-vkey'],
+  protocol: ['android-vkey', 'preview-rs02', 'web-anonymous-vkey', 'web-session-vkey'],
   cdn: ['response-sip', 'probed', 'unverified-default', 'none'],
   quality: ['m4a', '128', '320', 'ape', 'flac', 'preview'],
   codec: ['mp3', 'm4a', 'flac', 'ape'],

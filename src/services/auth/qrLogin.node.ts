@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { createDefaultDeviceContextRepository } from './deviceContext';
 import createAuthHttpClient from './httpClient';
+import { playbackFallbackEnabledOf } from './playbackFallback';
 import {
   type AuthSessionRepository,
   createMqttListen,
@@ -35,7 +36,7 @@ export const createNodeQrLoginService = (): QrLoginService =>
   createQrLoginService({
     http: createAuthHttpClient(),
     playbackHintsEnabled: !['0', 'false'].includes(process.env.QQ_PLAYBACK_HINTS_ENABLED ?? ''),
-    playbackFallbackEnabled: ['1', 'true'].includes(process.env.QQ_PLAYBACK_FALLBACK_ENABLED ?? ''),
+    playbackFallbackEnabled: playbackFallbackEnabledOf(process.env.QQ_PLAYBACK_FALLBACK_ENABLED),
     createSessionHttp: createAuthHttpClient,
     deviceRepository: createDefaultDeviceContextRepository(),
     listen: createMqttListen(WebSocketRuntime),

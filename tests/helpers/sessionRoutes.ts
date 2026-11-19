@@ -95,6 +95,8 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     credentialLoginType?: number;
     credentialOverrides?: Partial<QqCredential>;
     playbackHintsEnabled?: boolean;
+    /** 取链接的备援：两个宿主都默认关着，好让其他测试只看主路径；专门的测试打开。 */
+    playbackFallbackEnabled?: boolean;
     rpcReplies?: Record<string, SessionReply>;
     rpcReplyQueues?: Record<string, SessionReply[]>;
     /** 旧 CGI 的假回应：回传 undefined 就照原来的契约桩处理；有 httpStatus 时回那个状态。 */
@@ -116,6 +118,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     const session = sessionOf(expiresAt);
     mockSessionService = createQrLoginService({
       ...{ playbackHintsEnabled: state.playbackHintsEnabled },
+      playbackFallbackEnabled: state.playbackFallbackEnabled === true,
       http: createAuthHttpClient(),
       createSessionHttp: createAuthHttpClient,
       deviceRepository: createMemoryDeviceContextRepository(deviceFixture.device),
@@ -282,6 +285,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
         env: {
           QQ_SESSION_SECRET: CONTRACT_SECRET,
           ...{ QQ_PLAYBACK_HINTS_ENABLED: state.playbackHintsEnabled === false ? '0' : undefined },
+          QQ_PLAYBACK_FALLBACK_ENABLED: state.playbackFallbackEnabled === true ? undefined : '0',
         },
         service: async () => mockSessionService,
         beforeEachLeg: () => resetService(expiresAt),
