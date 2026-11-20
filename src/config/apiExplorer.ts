@@ -350,6 +350,124 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
     ],
   },
+  getAutoplaySimilar: {
+    description:
+      'Songs similar to one song, the way the official app continues playback. Requires login. Not the same upstream as /song/similar or /recommend/autoplay.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Song ID',
+        description: 'One numeric song id (not the mid).',
+        required: true,
+      },
+    ],
+  },
+  getHotSearchCategories: {
+    description:
+      'Hot searches grouped the way the official app shows them. Requires login. The number of groups can differ between accounts.',
+  },
+  getSoundPower: {
+    description:
+      'Your music power level. Requires login. todayListenSeconds is the listening time of the current day in seconds.',
+  },
+  getFriendRank: {
+    description: 'The daily listening ranking among your friends, first page only. Requires login.',
+  },
+  getSingerRank: {
+    description:
+      'Your top singers for a period, as on the singer ranking page of the official app. Requires login.',
+    queryParams: [
+      {
+        key: 'range',
+        label: 'Range',
+        description: 'year, all, month or last-year.',
+        required: true,
+      },
+    ],
+  },
+  getMedals: {
+    description:
+      'One tab of your medal hall. Requires login. The list also contains medals you have not earned yet.',
+    queryParams: [
+      {
+        key: 'tab',
+        label: 'Tab',
+        description:
+          'fans, listening, limited, guardian, books, friends, blind-box, vip or milestones.',
+        required: true,
+      },
+    ],
+  },
+  getListeningReport: {
+    description:
+      'Your listening report for a day, week, month or year. Requires login. Song rankings are at /user/listening-rank.',
+    queryParams: [
+      {
+        key: 'range',
+        label: 'Range',
+        description: 'day, week, month or year.',
+        required: true,
+      },
+      {
+        key: 'date',
+        label: 'Date',
+        description:
+          'Optional past period: YYYYMMDD for day and week, YYYYMM for month, YYYY for year.',
+      },
+    ],
+  },
+  getLikedSongCategories: {
+    description:
+      'Your liked songs grouped the way the official app shows them: suggestions, singers, time and genre. Requires login. Only the first 500 liked songs are sent; complete is false when some were left out.',
+  },
+  getFollowingSingers: {
+    description: 'Singers you follow, first page of 20. Requires login.',
+  },
+  getFollowingUsers: {
+    description:
+      'People you follow, first page of 20. Requires login. locked is true when the list is hidden by privacy settings.',
+  },
+  getFollowers: {
+    description:
+      'Your followers, first page of 20. Requires login. locked is true when the list is hidden by privacy settings.',
+  },
+  getFriends: {
+    description: 'Your friends, first page of 50. Requires login.',
+  },
+  songLikeBatch: {
+    description:
+      'Add or remove 1-100 liked songs. Requires login. Unchanged means the state before writing. A partial read-back returns 502: read the state again; do not resend.',
+    bodyExample: { songs: [{ id: 90001, mid: 'fixtureSongMid', type: 0 }], liked: true },
+  },
+  getBusinessCard: {
+    description: 'Read the music business card of the current account. Requires login.',
+  },
+  getPlaylistUpdates: {
+    description:
+      'Which of your favorite playlists got new songs. Requires login. Only the first 100 favorites are checked; complete is false when there are more, the upstream reports failed playlists, or its total exceeds the number checked.',
+  },
+  getRecentPlays: {
+    description:
+      'Your cloud play history, read only. One type per call; the upstream has no paging and total only counts this answer.',
+    queryParams: [
+      {
+        key: 'type',
+        label: 'Type',
+        description: 'song (default), album, playlist, radio or mv.',
+      },
+    ],
+  },
+  getFavoriteMvs: {
+    description:
+      'Your favorite MVs. Requires login. The upstream has no paging: more only repeats its hasmore flag, there is no next page to read.',
+    queryParams: [
+      {
+        key: 'page',
+        label: 'Page',
+        description: 'Optional; only 1 is accepted.',
+      },
+    ],
+  },
   getUserLikedSongs: {
     description: "Get the authenticated user's built-in liked songs.",
     queryParams: [
@@ -462,6 +580,35 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getSimilarSongs: {
     description:
       'Get songs similar to one song. Requires login: without a session the upstream only answers an empty list.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Song ID',
+        description: 'Numeric song id (not the mid).',
+        required: true,
+      },
+    ],
+  },
+  getAutoplay: {
+    description:
+      'Songs to play after the current ones finish. Requires login. Not the same upstream as similar songs. The upstream decides how many songs come back; limit only trims the answer here.',
+    queryParams: [
+      {
+        key: 'songids',
+        label: 'Seed song IDs',
+        description: '1-5 numeric song ids (not mids), comma separated, no repeats.',
+        required: true,
+      },
+      {
+        key: 'limit',
+        label: 'Limit',
+        description: 'Optional, 1-50. Keeps the first songs of the upstream answer in order.',
+      },
+    ],
+  },
+  getSongGenre: {
+    description:
+      'Get the genres of one song. Requires login. Many songs have none: that is a normal empty list. Genres are not the song labels.',
     queryParams: [
       {
         key: 'id',
@@ -804,7 +951,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getMusicPlay: {
     // An authenticated unconfirmed m4a/128 result retries once; the visible description is Chinese.
     description:
-      '按歌曲 MID 获取播放链接，扫码会话可用于登录播放。没有链接时返回 restriction 和英文提示。带会话的 m4a/128 失败时最多查 10 首歌曲详情，只有特征完整匹配才提示地区或会员限制；原因不明则保留未确认提示。设置 QQ_PLAYBACK_HINTS_ENABLED=0 可关闭提示和查询。微信账号的匹配特征尚未经过受控实测。ape 会先查 size_ape（最多 10 首），没有文件和查询失败的提示不同，可带 restriction.failureReason，两种情况都不取链接。preview=1 优先：size_try 大于 0 且有媒体标识才取试听，成功时标记 preview: true；带会话且详情中的 size_try 恰好为 0 时返回 playback.preview-missing，其他跳过的试听返回 playback.preview-unavailable。quality=best 依次尝试 flac、320、128，size_flac 或 size_320mp3 不大于 0 的级别跳过（最多查 10 首详情），每项的 quality 表示实际使用的音质；详情不可读、超过查询上限或没有会话时直接取 128。带会话时，最终提示为 playback.reason-unconfirmed 的 m4a/128 歌曲（含 best 的最后一级）会合并重试一次；重试失败或出错则保留第一次结果。带会话且向上游请求过的歌曲可带 source，包含 kind（full、preview，或结果码失败但有链接时的 unknown）、protocol 和 cdn（response-sip、probed、unverified-default 或 none）。上游漏掉的歌曲返回空链接和 playback.reason-unconfirmed，不重试；没有请求过的歌曲会丢弃。',
+      '按歌曲 MID 获取播放链接，扫码会话可用于登录播放。没有链接时返回 restriction 和英文提示。带会话的 m4a/128 失败时最多查 10 首歌曲详情，只有特征完整匹配才提示地区或会员限制；原因不明则保留未确认提示。设置 QQ_PLAYBACK_HINTS_ENABLED=0 可关闭提示和查询。微信账号的匹配特征尚未经过受控实测。ape 会先查 size_ape（最多 10 首），没有文件和查询失败的提示不同，可带 restriction.failureReason，两种情况都不取链接。preview=1 优先：size_try 大于 0 且有媒体标识才取试听，成功时标记 preview: true；带会话且详情中的 size_try 恰好为 0 时返回 playback.preview-missing，其他跳过的试听返回 playback.preview-unavailable。quality=best 依次尝试 flac、320、128，size_flac 或 size_320mp3 不大于 0 的级别跳过（最多查 10 首详情），每项的 quality 表示实际使用的音质；详情不可读、超过查询上限或没有会话时直接取 128。带会话时，最终提示为 playback.reason-unconfirmed 的 m4a/128 歌曲（含 best 的最后一级）会合并重试一次；重试失败或出错则保留第一次结果。带会话时 m4a、128、320、flac 明确回 104003 的歌，会改用官方网页播放器的方式再取一次，拿到时 source.protocol 为 web-session-vkey；设置 QQ_PLAYBACK_FALLBACK_ENABLED=0 可关闭。带会话且向上游请求过的歌曲可带 source，包含 kind（full、preview，或结果码失败但有链接时的 unknown）、protocol 和 cdn（response-sip、probed、unverified-default 或 none）。上游漏掉的歌曲返回空链接和 playback.reason-unconfirmed，不重试；没有请求过的歌曲会丢弃。',
   },
   getEncryptedMusicPlay: {
     description:

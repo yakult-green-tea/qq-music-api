@@ -85,6 +85,7 @@ describe('取链接的办法和客户端身份', () => {
     expect(CLIENT_COMM_OF).toEqual({
       android: { ct: 11, cv: 14090008 },
       web: { ct: 24, cv: 0 },
+      webPlayer: { ct: 24, cv: 4747474 },
       lite: { ct: 11, cv: '1003006' },
     });
   });

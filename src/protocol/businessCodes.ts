@@ -74,6 +74,16 @@ export const UPSTREAM_OPERATIONS = [
   'song.similar',
   /** 包含这首歌的歌单（`TrackRelationServer.GetRelatedPlaylist`），要登录。 */
   'song.related-playlists',
+  /** 歌曲流派（`TrackRelationServer.GetSongGenre`），要登录。 */
+  'song.genre',
+  /** 播完自动接歌（`AutoPlayServer.GetAutoPlayList`），要登录。 */
+  'recommend.autoplay',
+  /** 收藏的 MV（`MVFavRead.getMyFavMV`），要登录。 */
+  'user.favorite-mvs',
+  /** 云端最近播放（`PlayRecentlyRead.GetPlayRecentlyInfo`），要登录，只读。 */
+  'user.recent-plays',
+  /** 收藏歌单有更新：读收藏歌单（`PlaylistFavRead.CgiGetPlaylistFavInfo`）再问 `FavDissRecentUpdate.CgiGetRecentSong`，要登录。 */
+  'user.playlist-updates',
   /** 刷歌模式（`TrackRelationServer.GetRadarSong`），有会话就带凭证。 */
   'recommend.radar',
   /** 新碟地区清单（`get_new_album_area`），匿名。 */
@@ -156,6 +166,26 @@ export const UPSTREAM_OPERATIONS = [
   'library.favorite-albums',
   /** 带会话取播放链接（`UrlGetVkey`）。 */
   'playback.authenticated-url',
+  /** 相似歌曲接歌（`AutoPlayServer.GetRadioSimilarSongs`），要登录。 */
+  'recommend.autoplay-similar',
+  /** 按分类的热搜（`HotkeyService.GetHotkeyAllBusinessForQQMusicMobile`），要登录。 */
+  'search.hot-categories',
+  /** 音乐力等级（`SoundPowerSvr.QueryLevelDetailPage`），要登录。 */
+  'user.sound-power',
+  /** 好友听歌日榜（`FriendRankSvr.GetRank`），要登录。 */
+  'user.friend-rank',
+  /** 本人歌手榜（`UserProfileSettingSvr.GetProfileReportDetail`），要登录。 */
+  'user.singer-rank',
+  /** 本人勋章馆分页（`MedalHallHomepageSrv.GetHomepageTabDetail`），要登录。 */
+  'user.medals',
+  /** 本人听歌报告（`ListenReportSvr.GetBar`），要登录。 */
+  'user.listening-report',
+  /** 「我喜欢」分类：分页读我喜欢（`DissInfo.CgiGetDiss` dirid 201）再问 `SongFavCategory.GetCategoryInfo`，要登录。 */
+  'user.liked-categories',
+  /** 社交：关注的歌手、关注的人、粉丝（`concern.RelationList`）和好友（`homepage.Friendship.GetFriendList`），要登录。 */
+  'user.social',
+  /** 本人音乐名片（`HomepageShareSvr.GetMusicBusinessCard`），要登录。 */
+  'user.business-card',
 ] as const;
 
 export type UpstreamOperation = (typeof UPSTREAM_OPERATIONS)[number];
@@ -318,6 +348,66 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
       'song.related-playlists',
     ],
     '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
+  ),
+  ...credentialRejected(
+    ['user.playlist-updates'],
+    '收藏歌单更新要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这两个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.recent-plays'],
+    '最近播放要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.favorite-mvs'],
+    '收藏 MV 要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['recommend.autoplay'],
+    '播完自动接歌要登录，沿用相似歌曲的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['recommend.autoplay-similar'],
+    '相似歌曲接歌要登录，沿用相似歌曲的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['search.hot-categories'],
+    '按分类的热搜要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.sound-power'],
+    '音乐力要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.friend-rank'],
+    '好友听歌日榜要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.singer-rank'],
+    '歌手榜要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.medals'],
+    '勋章馆要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.listening-report'],
+    '听歌报告要登录，沿用听歌排行的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.liked-categories'],
+    '我喜欢分类要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这两个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.social'],
+    '社交读取要登录，沿用带凭证读取的处理：会话解得开但上游不认凭证时回 401。这几个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['user.business-card'],
+    '音乐名片要登录，沿用本人资料接口的凭证错误分类。这几个错误码未在本接口单独实测',
+  ),
+  ...credentialRejected(
+    ['song.genre'],
+    '歌曲流派要登录，沿用相似歌曲的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['recommend.daily-songs'],

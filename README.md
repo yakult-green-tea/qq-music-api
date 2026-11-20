@@ -3,6 +3,7 @@
 <img width="1672" height="941" alt="QQ Music API 功能全景图" src="https://github.com/user-attachments/assets/8bb7f377-4c95-4fea-8b76-0653add1997f" />
 
 [![npm version](https://img.shields.io/npm/v/@yakult-green-tea/qq-music-api?style=flat-square)](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)
+[![npm downloads](https://img.shields.io/npm/dt/@yakult-green-tea/qq-music-api?style=flat-square)](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)
 [![CI](https://github.com/yakult-green-tea/qq-music-api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/yakult-green-tea/qq-music-api/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/yakult-green-tea/qq-music-api?style=flat-square)](./LICENSE)
 

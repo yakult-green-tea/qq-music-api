@@ -11,8 +11,8 @@ import { createSessionMusicuClient } from './sessionMusicu';
 // 年榜是去年 1 月 1 日到 12 月 31 日。token 的用途、有没有上限还没有真账号证据，所以 date 与 token
 // 都原样转交，不替上游解释。
 
-const RANGE_TYPES = { day: 1, week: 2, month: 3, year: 4 } as const;
-type Range = keyof typeof RANGE_TYPES;
+export const RANGE_TYPES = { day: 1, week: 2, month: 3, year: 4 } as const;
+export type Range = keyof typeof RANGE_TYPES;
 
 const MAX_ITEMS = 500;
 const MAX_TOKEN = 512;
@@ -24,7 +24,7 @@ const single = (value: string | string[] | undefined): string | undefined => {
 
 // 日、周：YYYYMMDD；月：YYYYMM。只验是真实日期，周要不要落在周一交给上游。年榜固定是去年整年，
 // 带 date 读别的年份没有样本，所以年不收 date。
-const validDate = (range: Range, date: string): boolean => {
+export const validDate = (range: Range, date: string): boolean => {
   if (range === 'day' || range === 'week') {
     if (!/^\d{8}$/.test(date)) return false;
     const [year, month, day] = [+date.slice(0, 4), +date.slice(4, 6), +date.slice(6, 8)];

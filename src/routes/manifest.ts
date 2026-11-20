@@ -1,9 +1,13 @@
 import { albumSubscribe } from './operations/albumSubscribe';
 import { allPlaylistCategories } from './operations/allPlaylistCategories';
+import { getAutoplaySimilar } from './operations/autoplaySimilar';
 import { getBlacklist, getBlacklistStyleOptions } from './operations/blacklistReads';
 import { addBlacklist, removeBlacklist } from './operations/blacklistWrites';
+import { getBusinessCard } from './operations/businessCard';
 import { commentList } from './operations/commentList';
 import { dailyHistoryDates, dailyHistorySongs } from './operations/dailyHistory';
+import { getFavoriteMvs } from './operations/favoriteMvs';
+import { getFriendRank } from './operations/friendRank';
 import { getAlbumInfo } from './operations/getAlbumInfo';
 import { getEncryptedMusicPlay } from './operations/getEncryptedMusicPlay';
 import { getLyricOperation } from './operations/getLyric';
@@ -17,11 +21,15 @@ import { getUserAlbums } from './operations/getUserAlbums';
 import { getUserLikedSongs } from './operations/getUserLikedSongs';
 import { getUserPlaylist } from './operations/getUserPlaylist';
 import { getGuessYouLikeModes } from './operations/guessYouLikeModes';
+import { getHotSearchCategories } from './operations/hotCategories';
+import { getLikedSongCategories } from './operations/likedCategories';
 import { getListeningRank } from './operations/listeningRank';
+import { getListeningReport } from './operations/listeningReport';
 import { loginChannels } from './operations/loginChannels';
 import { loginRefresh } from './operations/loginRefresh';
 import { loginStatus } from './operations/loginStatus';
 import { logout } from './operations/logout';
+import { getMedals } from './operations/medals';
 import {
   getCommentCount,
   getHotComments,
@@ -44,16 +52,19 @@ import {
 } from './operations/officialRadio';
 import { playlistCreate, playlistDelete, playlistRename } from './operations/playlistManagement';
 import { playlistTracks } from './operations/playlistTracks';
+import { getPlaylistUpdates } from './operations/playlistUpdates';
 import { qrCancel } from './operations/qrCancel';
 import { qrCheck } from './operations/qrCheck';
 import { qrCreate } from './operations/qrCreate';
 import { qrKey } from './operations/qrKey';
 import { radioCategories } from './operations/radioCategories';
+import { getRecentPlays } from './operations/recentPlays';
 import {
   getRecommendationPreferences,
   updateRecommendationPreferences,
 } from './operations/recommendationPreferences';
 import {
+  getAutoplay,
   getGuessYouLike,
   getGuessYouLikeModeTracks,
   getPersonalFm,
@@ -63,6 +74,7 @@ import {
   getRecommendRadar,
   getRelatedPlaylists,
   getSimilarSongs,
+  getSongGenre,
 } from './operations/recommendations';
 import {
   getCategoryPlaylists,
@@ -76,12 +88,21 @@ import { recommendFeed } from './operations/recommendFeed';
 import { getHotSearches, getSearch, getSearchSuggestions } from './operations/searchCatalog';
 import { searchMatch } from './operations/searchMatch';
 import { searchUsers } from './operations/searchUsers';
+import { getSingerRank } from './operations/singerRank';
+import {
+  getFollowers,
+  getFollowingSingers,
+  getFollowingUsers,
+  getFriends,
+} from './operations/social';
 import { songBatch } from './operations/songBatch';
 import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
+import { songLikeBatch } from './operations/songLikeBatch';
 import { songReplacement } from './operations/songReplacement';
 import { songVersions } from './operations/songVersions';
 import { sortedCategoryPlaylists } from './operations/sortedCategoryPlaylists';
+import { getSoundPower } from './operations/soundPower';
 import { playlistSubscribe, subscriptionStatus } from './operations/subscriptions';
 import type { OperationHandler } from './operations/types';
 import { userCloud } from './operations/userCloud';
@@ -504,6 +525,160 @@ export const routeManifest = [
     handler: getUserLikedSongs,
     needsSecret: true,
   },
+  {
+    name: 'getFavoriteMvs',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/mvs',
+    category: 'User',
+    handler: getFavoriteMvs,
+    needsSecret: true,
+  },
+  {
+    name: 'getRecentPlays',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/recent-plays',
+    category: 'User',
+    handler: getRecentPlays,
+    needsSecret: true,
+  },
+  {
+    name: 'getPlaylistUpdates',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/playlist/updates',
+    category: 'User',
+    handler: getPlaylistUpdates,
+    needsSecret: true,
+  },
+  {
+    name: 'getAutoplaySimilar',
+    strictRequest: true,
+    method: 'GET',
+    path: '/recommend/autoplay/similar',
+    category: 'Recommend',
+    handler: getAutoplaySimilar,
+    needsSecret: true,
+  },
+  {
+    name: 'getHotSearchCategories',
+    strictRequest: true,
+    method: 'GET',
+    path: '/search/hot/categories',
+    category: 'Search',
+    handler: getHotSearchCategories,
+    needsSecret: true,
+  },
+  {
+    name: 'getSoundPower',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/sound-power',
+    category: 'User',
+    handler: getSoundPower,
+    needsSecret: true,
+  },
+  {
+    name: 'getBusinessCard',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/business-card',
+    category: 'User',
+    handler: getBusinessCard,
+    needsSecret: true,
+  },
+  {
+    name: 'getFriendRank',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/friend-rank',
+    category: 'User',
+    handler: getFriendRank,
+    needsSecret: true,
+  },
+  {
+    name: 'getSingerRank',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/singer-rank',
+    category: 'User',
+    handler: getSingerRank,
+    needsSecret: true,
+  },
+  {
+    name: 'getMedals',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/medals',
+    category: 'User',
+    handler: getMedals,
+    needsSecret: true,
+  },
+  {
+    name: 'getListeningReport',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/listening-report',
+    category: 'User',
+    handler: getListeningReport,
+    needsSecret: true,
+  },
+  {
+    name: 'getLikedSongCategories',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/liked-songs/categories',
+    category: 'User',
+    handler: getLikedSongCategories,
+    needsSecret: true,
+  },
+  {
+    name: 'getFollowingSingers',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/following/singers',
+    category: 'User',
+    handler: getFollowingSingers,
+    needsSecret: true,
+  },
+  {
+    name: 'getFollowingUsers',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/following/users',
+    category: 'User',
+    handler: getFollowingUsers,
+    needsSecret: true,
+  },
+  {
+    name: 'getFollowers',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/followers',
+    category: 'User',
+    handler: getFollowers,
+    needsSecret: true,
+  },
+  {
+    name: 'getFriends',
+    strictRequest: true,
+    method: 'GET',
+    path: '/user/friends',
+    category: 'User',
+    handler: getFriends,
+    needsSecret: true,
+  },
+  {
+    name: 'songLikeBatch',
+    strictRequest: true,
+    method: 'POST',
+    path: '/user/song/like/batch',
+    category: 'User',
+    handler: songLikeBatch,
+    accountWrite: true,
+    needsSecret: true,
+  },
   // 用户自己的歌单，带凭证读。匿名的 /getSongListDetail 读不公开歌单只会拿到空壳。
   {
     name: 'getOwnedPlaylistSongs',
@@ -590,6 +765,24 @@ export const routeManifest = [
     path: '/song/related-playlists',
     category: 'Song',
     handler: getRelatedPlaylists,
+    needsSecret: true,
+  },
+  {
+    name: 'getSongGenre',
+    strictRequest: true,
+    method: 'GET',
+    path: '/song/genre',
+    category: 'Song',
+    handler: getSongGenre,
+    needsSecret: true,
+  },
+  {
+    name: 'getAutoplay',
+    strictRequest: true,
+    method: 'GET',
+    path: '/recommend/autoplay',
+    category: 'Recommend',
+    handler: getAutoplay,
     needsSecret: true,
   },
   {

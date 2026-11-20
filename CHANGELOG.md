@@ -1,3 +1,33 @@
+## [3.3.8](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.7...v3.3.8) (2026-11-20)
+
+### 新功能
+
+- 新增 `/song/genre`：登录后查一首歌属于哪些流派，返回流派编号和名称；一首歌可能有好几个，很多歌一个都没有（空数组）。取播放链接时上游不会带流派；歌曲详情里的 `genre` 数字是另一套编号，不能拿来对照。能力声明多了 `songs.getSongGenre`。
+- 新增 `/recommend/autoplay`：登录后传 1–5 首刚放过的歌，返回一批可以接着放的歌（实测约 50 首，可以用 `limit` 截短）。适合自己的歌单、专辑放完后接着放；猜你喜欢、私人 FM 这类电台本来就会自己出歌，用不到它。能力声明多了 `recommendations.getAutoplaySongs`。
+- 新增 `/user/mvs`：登录后读自己收藏的 MV，返回 MV 基本资料、总数和上游的 `hasmore`；上游没有分页，所以只有第一页。能力声明多了 `library.getFavoriteMvs`。
+- 新增 `/user/recent-plays`：登录后按分类读云端最近播放（歌曲、专辑、歌单、音乐雷达、视频），只读，不上报也不删除。某一类没有记录时返回空数组；`total` 只算这次返回的条数。能力声明多了 `library.getRecentPlays`。
+- 新增 `/user/playlist/updates`：登录后一次查出收藏的歌单里哪些加了新歌，每个返回新歌数量和最新的一首，类似官方 App 收藏歌单上的更新提示。重新读收藏歌单只拿得到歌单本身，看不出哪个有新歌。只查收藏的前 100 个，超过时 `complete` 为 `false`；服务不知道你上次看的时间，新歌数量只能当提示。能力声明多了 `library.getPlaylistUpdates`。
+- 新增 `/recommend/autoplay/similar`：登录后按一首歌一次接 3 首相似的歌，对应官方 App 里从一首歌开始放相似歌曲的模式，适合边放边补。`/song/similar` 是给页面展示的相似歌曲清单，`/recommend/autoplay` 是按几首歌续播一大批；三个是不同的上游接口，结果不一样，一个没结果时另外两个可能还有。能力声明多了 `recommendations.getAutoplaySimilarSongs`。
+- 新增 `/search/hot/categories`：登录后按分类读热搜，每个热搜词的格式和 `/search/hot` 一样。能力声明多了 `search.getHotSearchCategories`。
+- 新增 `/user/sound-power`：登录后读自己的音乐力等级、升级进度、勋章数和今天的听歌秒数。能力声明多了 `user.getSoundPower`。
+- 新增 `/user/friend-rank`：登录后读好友听歌日榜的第一页，最多 60 条，包括每位好友的听歌秒数、获赞数和名次，以及自己的名次。截断时 `more` 为 `true`。能力声明多了 `user.getFriendRank`。
+- 新增 `/user/singer-rank`：登录后读自己的歌手榜，可以选今年、全部、本月或去年。能力声明多了 `user.getSingerRank`。
+- 新增 `/user/medals`：登录后按分页读自己的勋章馆（乐迷、畅听、限定、珍爱守护、书迷、好友、幸运盲盒、会员尊享、里程碑）。能力声明多了 `user.getMedals`。
+- 新增 `/user/listening-report`：登录后读自己某天、某周、某月或某年的听歌报告（听歌秒数、次数、活跃时段、分时段图表和亮点），图表里没有数据的时段返回空数组，和 `/user/listening-rank` 的歌曲排行分开。能力声明多了 `user.getListeningReport`。
+- 新增 `/user/liked-songs/categories`：登录后按建议、歌手、时间、流派看「我喜欢」的分类，最多处理 500 首，没读完整时 `complete` 为 `false`。能力声明多了 `library.getLikedSongCategories`。
+- 新增 `/user/following/singers`、`/user/following/users`、`/user/followers`、`/user/friends`：登录后读自己关注的歌手、关注的人、粉丝和好友的第一页，分别最多 20、20、20、50 条；截断时 `more` 为 `true`，对方锁了隐私时回 `locked: true`。能力声明多了 `user.getFollowingSingers`、`user.getFollowingUsers`、`user.getFollowers`、`user.getFriends`。
+- 新增 `POST /user/song/like/batch`：一次把 1–100 首歌加进或移出「我喜欢」，只写状态不同的歌并读回确认。`unchanged` 表示写入前读到的状态；部分确认回 `502`，请重读状态，不要重送。已用 QQ 和微信账号实测，默认可用，能力声明多了 `mutations.likeSongsBatch`。`/user/song/like` 不变。
+- 新增 `/user/business-card`：登录后读自己的音乐名片，返回昵称、头像、标签和喜欢的歌曲，不返回分享二维码地址。能力声明多了 `user.getBusinessCard`。
+
+### 修复
+
+- 会员登录后有些歌只能试听：同一个账号在官方网页上能放完整歌曲，但 API 用 App 的方式取链接时 QQ 只给试听。现在 QQ 明确没给完整文件时，会改用官方网页播放器的方式再取一次，拿到的完整文件 `source.protocol` 是 `web-session-vkey`。m4a、128、320、flac 都会再取，每种音质最多多取一次（`quality=best` 时 flac、320、128 每一级都可能多一次）；`QQ_PLAYBACK_FALLBACK_ENABLED=0` 可以关闭。
+- 试听时长算错：有些歌的 `source.trial.durationMs` 报得太长（比如实际 60 秒报成 129 秒），因为以前直接用了上游给的片段终点。现在改成终点减起点，和下载下来的试听文件一样长。
+
+### 文档
+
+- 补充排行榜往期的读法：周榜期别是 `YYYY_WW`、日榜是 `YYYY-MM-DD`，带过去的期别就能读往期。
+
 ## [3.3.7](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.6...v3.3.7) (2026-11-16)
 
 ### 新功能

@@ -130,6 +130,32 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 试听（%s）', (runtime) => {
     expect(legs.host).toEqual(legs.operation);
   });
 
+  it('3.3.8：详情的 b_30s 不是 0 时，试听长度是 e_30s − b_30s，起止不交，两个宿主一样', async () => {
+    upstream.state.songDetails = {
+      'fixture-a': {
+        mid: 'fixture-detail',
+        file: { size_try: 960887, media_mid: MEDIA_A, b_30s: 69000, e_30s: 129000 },
+      },
+    };
+    upstream.state.data = {
+      sip: ['https://stream.invalid/'],
+      midurlinfo: [granted('fixture-a', MEDIA_A)],
+    };
+
+    const legs = await play('fixture-a?preview=1');
+
+    expect(legs.operation.status).toBe(200);
+    expect(playUrlOf(legs.operation.body)['fixture-a'].source).toEqual({
+      kind: 'preview',
+      protocol: 'preview-rs02',
+      cdn: 'response-sip',
+      quality: 'preview',
+      codec: 'mp3',
+      trial: { durationMs: 60000 },
+    });
+    expect(legs.host).toEqual(legs.operation);
+  });
+
   it.each([
     ['size_try 是数字 0', track(0, MEDIA_B), ''],
     ['size_try 是字符串 "0"', track('0', MEDIA_B), ''],

@@ -146,6 +146,8 @@ export interface WireScript {
   streams?: Record<string, number>;
   /** musicu 以外的请求回的 JSON，默认是 `{ code: 0 }`。 */
   cgi?: unknown;
+  /** 打开取链接的备援（两个宿主一致）；不给时关着，其他情境只录主路径。 */
+  fallback?: boolean;
 }
 
 const replier = (script: WireScript) => {
@@ -202,6 +204,7 @@ export const runOnWire = async (
     expiresAt: CONTRACT_NOW + 3600000,
   };
   mockWireService = createQrLoginService({
+    playbackFallbackEnabled: script.fallback === true,
     http: createAuthHttpClient(),
     createSessionHttp: createAuthHttpClient,
     deviceRepository: createMemoryDeviceContextRepository({ ...WIRE_DEVICE }),
@@ -215,7 +218,10 @@ export const runOnWire = async (
   const result = await callRoute(runtime, path, {
     ...request,
     headers: token === undefined ? {} : { 'X-QQ-Session': token },
-    env: { QQ_SESSION_SECRET: CONTRACT_SECRET },
+    env: {
+      QQ_SESSION_SECRET: CONTRACT_SECRET,
+      QQ_PLAYBACK_FALLBACK_ENABLED: script.fallback === true ? undefined : '0',
+    },
   });
   return { status: result.status, body: result.body, calls };
 };

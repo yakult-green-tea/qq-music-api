@@ -5,7 +5,19 @@ import { handleRequest, type QqQrRelay, type ServerlessEnv } from '../src/server
 
 // Public feature names follow provider interfaces; values describe implemented backend methods.
 const expectedFeatures = (node: boolean) => ({
-  user: { getVip: true },
+  user: {
+    getVip: true,
+    getSoundPower: true,
+    getFriendRank: true,
+    getSingerRank: true,
+    getMedals: true,
+    getListeningReport: true,
+    getFollowingSingers: true,
+    getFollowingUsers: true,
+    getFollowers: true,
+    getFriends: true,
+    getBusinessCard: true,
+  },
   playlistManagement: { createPlaylist: true, renamePlaylist: true, deletePlaylist: true },
   auth: {
     getLoginStatus: true,
@@ -21,6 +33,10 @@ const expectedFeatures = (node: boolean) => ({
     getLikedSongIds: true,
     getLikedSongs: true,
     getCloudCollection: true,
+    getFavoriteMvs: true,
+    getRecentPlays: true,
+    getPlaylistUpdates: true,
+    getLikedSongCategories: true,
   },
   catalog: {
     getPlaylistTracks: true,
@@ -41,6 +57,7 @@ const expectedFeatures = (node: boolean) => ({
     searchArtists: true,
     getHotSearches: true,
     getSearchSuggestions: true,
+    getHotSearchCategories: true,
   },
   lyrics: { getLyrics: true, getChorusRanges: false },
   recommendations: {
@@ -60,7 +77,9 @@ const expectedFeatures = (node: boolean) => ({
     getNewAlbums: true,
     getRadarSongs: true,
     getSimilarSongs: true,
+    getAutoplaySongs: true,
     getRelatedPlaylists: true,
+    getAutoplaySimilarSongs: true,
   },
   radio: { getRadioList: true, getRadioTracks: true },
   singers: {
@@ -73,12 +92,13 @@ const expectedFeatures = (node: boolean) => ({
   },
   comments: { getHotComments: true, getNewComments: true, getCommentCount: true },
   mvs: { getMvList: true, getMvDetail: true, getMvUrl: true, getSongMvs: true },
-  songs: { getSongLabels: true },
+  songs: { getSongLabels: true, getSongGenre: true },
   mutations: {
     updatePlaylistTracks: true,
     likeSong: true,
     subscribePlaylist: true,
     subscribeAlbum: true,
+    likeSongsBatch: true,
   },
   playbackReports: { reportPlayback: false },
 });

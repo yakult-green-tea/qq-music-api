@@ -49,12 +49,19 @@ export const previewMediaIdOf = (
 };
 
 /**
- * 详情宣告的试听长度（`file.e_30s`，毫秒）。实测两首（30 秒、60 秒）都和下载下来的试听文件一样长。
- * 不是正整数就当没有，不拿 30 秒顶上。
+ * 详情宣告的试听长度（毫秒）：`file.e_30s − file.b_30s`。实测搜索结果 39 首，有试听的都是 60 秒、两者相减都是 60000，
+ * `b_30s` 不少不是 0，所以不能直接用 `e_30s`。`e_30s` 不是正整数就当没有，不拿 30 秒顶上；
+ * 详情没有 `b_30s` 时和以前一样用 `e_30s`；`b_30s` 给了却读不懂、是负数或不在 `e_30s` 之前，当没有。
+ * `b_30s` 是官方网页试听文件的起点，不是这里要的 RS02 文件的起点（实测对不上），所以只拿来算长度，不交位置。
  */
 export const previewDurationMsOf = (trackInfo: unknown): number | undefined => {
-  const value = integerOf(read(read(trackInfo, 'file'), 'e_30s'));
-  return value !== undefined && value > 0 ? value : undefined;
+  const file = read(trackInfo, 'file');
+  const endMs = integerOf(read(file, 'e_30s'));
+  if (endMs === undefined || endMs <= 0) return undefined;
+  const rawStart = read(file, 'b_30s');
+  if (rawStart === undefined || rawStart === null) return endMs;
+  const startMs = integerOf(rawStart);
+  return startMs !== undefined && startMs >= 0 && startMs < endMs ? endMs - startMs : undefined;
 };
 
 /** 详情里 `size_try` 正好是 0（整数或纯数字字符串）才算确定没有试听文件；缺字段、负数、读不到都不算。 */

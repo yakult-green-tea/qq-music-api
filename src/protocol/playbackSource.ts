@@ -19,6 +19,8 @@ export type PlaybackProtocolId =
   | 'preview-rs02'
   /** 不带会话、匿名网页身份，只有 Node 上有。 */
   | 'web-anonymous-vkey'
+  /** 带会话、官方网页播放器身份，同一个接口。安卓身份明确拒绝完整文件时的备援。 */
+  | 'web-session-vkey'
   /** 用取加密文件的接口要未加密文件。只登记：实测在两个海外出口都没有比现行做法多拿到歌。 */
   | 'evkey-plain'
   /** 调用方明确要加密文件时才用。 */
@@ -81,6 +83,19 @@ export const PLAYBACK_PROTOCOLS: Readonly<Record<PlaybackProtocolId, PlaybackPro
     usedByDefault: false,
     notes:
       '只有 Node 不带会话时用，Serverless 不带会话直接回 401。失败不再试，也不会改走带会话的路。',
+  },
+  'web-session-vkey': {
+    rpc: 'music.vkey.GetVkey/UrlGetVkey',
+    profile: 'webPlayer',
+    requiresSession: true,
+    files: 'plain',
+    qualities: ['m4a', '128', '320', 'flac'],
+    evidence: 'verified-controlled',
+    implemented: true,
+    usedByDefault: true,
+    notes:
+      '安卓身份明确回 104003 时，换官方网页播放器的 comm、标头和 Cookie，用同一个文件名再要一次。' +
+      '同一会员账号在 App 身份被挡的歌，官方网页播放器能放完整歌曲，实测四种音质都拿到完整文件。试听、ape 不用。',
   },
   'evkey-plain': {
     rpc: 'music.vkey.GetEVkey/CgiGetEVkey',

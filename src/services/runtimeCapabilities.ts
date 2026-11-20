@@ -5,7 +5,19 @@ export type BackendRuntime = 'node' | 'serverless';
 // These flags describe implemented backend methods, independent of login or upstream availability.
 // Keep client-only predicates and diagnostics out of this declaration.
 const featuresFor = () => ({
-  user: { getVip: true },
+  user: {
+    getVip: true,
+    getSoundPower: true,
+    getFriendRank: true,
+    getSingerRank: true,
+    getMedals: true,
+    getListeningReport: true,
+    getFollowingSingers: true,
+    getFollowingUsers: true,
+    getFollowers: true,
+    getFriends: true,
+    getBusinessCard: true,
+  },
   playlistManagement: { createPlaylist: true, renamePlaylist: true, deletePlaylist: true },
   auth: {
     getLoginStatus: true,
@@ -21,6 +33,10 @@ const featuresFor = () => ({
     getLikedSongIds: true,
     getLikedSongs: true,
     getCloudCollection: true,
+    getFavoriteMvs: true,
+    getRecentPlays: true,
+    getPlaylistUpdates: true,
+    getLikedSongCategories: true,
   },
   catalog: {
     getPlaylistTracks: true,
@@ -46,6 +62,7 @@ const featuresFor = () => ({
     searchArtists: true,
     getHotSearches: true,
     getSearchSuggestions: true,
+    getHotSearchCategories: true,
   },
   lyrics: { getLyrics: true, getChorusRanges: false },
   recommendations: {
@@ -66,7 +83,9 @@ const featuresFor = () => ({
     getNewAlbums: true,
     getRadarSongs: true,
     getSimilarSongs: true,
+    getAutoplaySongs: true,
     getRelatedPlaylists: true,
+    getAutoplaySimilarSongs: true,
   },
   radio: { getRadioList: true, getRadioTracks: true },
   singers: {
@@ -79,12 +98,13 @@ const featuresFor = () => ({
   },
   comments: { getHotComments: true, getNewComments: true, getCommentCount: true },
   mvs: { getMvList: true, getMvDetail: true, getMvUrl: true, getSongMvs: true },
-  songs: { getSongLabels: true },
+  songs: { getSongLabels: true, getSongGenre: true },
   mutations: {
     updatePlaylistTracks: true,
     likeSong: true,
     subscribePlaylist: true,
     subscribeAlbum: true,
+    likeSongsBatch: true,
   },
   playbackReports: { reportPlayback: false },
 });

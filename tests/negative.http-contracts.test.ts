@@ -148,7 +148,8 @@ describe.each(['node', 'serverless'] as const)('negative HTTP baselines: %s', (r
       }
       const result = await handleRequest(
         new Request(`https://contract.invalid${path}`, { headers: { 'X-QQ-Session': token } }),
-        { QQ_SESSION_SECRET: CONTRACT_SECRET },
+        // 取链接的备援另有专门测试；这里两个宿主都只看主路径。
+        { QQ_SESSION_SECRET: CONTRACT_SECRET, QQ_PLAYBACK_FALLBACK_ENABLED: '0' },
         { qqRelay: mockUpstream.relay },
       );
       return {

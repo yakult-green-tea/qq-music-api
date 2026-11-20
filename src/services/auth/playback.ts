@@ -43,6 +43,7 @@ import { type Dictionary, dictionaryOf, identifierOf, numberOf, stringOf } from 
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
 import {
+  candidateStrategyOf,
   countingHttpOf,
   isPlaybackDeadlineMiss,
   PLAYBACK_FALLBACK_CANDIDATES,
@@ -223,7 +224,7 @@ type FallbackRun = PlaybackFallbackOptions & { budget?: PlaybackRequestBudget };
 
 /**
  * 带会话取播放链接。回对外的 `playUrl` 和内部的音源描述；对外只用前者，形状和以前一样。
- * `fallback` 默认关着（见 playbackFallback）：关着时和没有这个参数一样。
+ * `fallback` 不传时关着（宿主默认开，见 playbackFallback）：关着时和没有这个参数一样。
  */
 export const getAuthenticatedPlaybackSources = async (
   upstreamHttp: AuthHttpClient,
@@ -541,7 +542,7 @@ export const getAuthenticatedPlaybackSources = async (
       // 第一次的结果已经在 playUrl 里。
     }
   }
-  // 备援（默认关）：主路径和再取一次之后还没链接的歌，交给认得这种失败的候选各试一次。规则见 playbackFallback。
+  // 备援（宿主默认开）：主路径和再取一次之后还没链接的歌，交给认得这种失败的候选各试一次。规则见 playbackFallback。
   if (budget && !options.preview) {
     let pending = songmidList.filter(
       (mid) => playUrl[mid] && !stringOf(dictionaryOf(playUrl[mid]).url),
@@ -577,14 +578,15 @@ export const getAuthenticatedPlaybackSources = async (
         break;
       }
       budget.count();
+      const candidateStrategy = candidateStrategyOf(candidate, String(loggedQuality));
       let reply: Dictionary | undefined;
       try {
         const answer = await withinPlaybackDeadline(
-          candidate.strategy.request(
+          candidateStrategy.request(
             { http: upstreamHttp, auth, guid, phase: 'get-music-play-fallback' },
             eligible.map((mid) => ({
               songmid: mid,
-              filename: candidate.strategy.filenameOf(mid, normalizedMediaId),
+              filename: candidateStrategy.filenameOf(mid, normalizedMediaId),
             })),
           ),
           remaining,

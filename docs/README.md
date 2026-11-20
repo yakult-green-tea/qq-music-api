@@ -4,7 +4,7 @@ QQ Music API 是一个基于 **Koa2 + TypeScript** 的非官方 QQ 音乐 API，
 
 提供扫码登录、歌曲搜索、播放链接、个人音乐库、歌单管理、推荐、电台、歌词及 MV 等功能。
 
-> **适用版本：3.3.7**
+> **适用版本：3.3.8**
 >
 > - 项目主页：[QQ Music API](../README.md)
 > - 接口错误：[错误对照表](./errors.md)
@@ -176,6 +176,7 @@ Serverless 请求由部署平台的网络出口发送，可能与用户本地网
 | `QQ_PTLOGIN_HTTP_ENABLED` | 开启 | Serverless 无中继时是否启用手机 QQ 网页登录 |
 | `QQ_WECHAT_POLL_BUDGET_MS` | `15000` | Node 微信扫码单次检查等待上限，单位毫秒 |
 | `QQ_PLAYBACK_HINTS_ENABLED` | 开启 | 是否启用具体播放失败提示及额外查询 |
+| `QQ_PLAYBACK_FALLBACK_ENABLED` | 开启 | 登录后取不到完整歌曲时，是否用网页播放器的方式再取一次 |
 | `AUTO_OPEN_EXPLORER` | `false` | 启动时自动打开 Explorer |
 | `LOG_LEVEL` | `info` | Node 日志级别 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
@@ -400,7 +401,11 @@ POST /login/refresh
 | `/radio/recommendation-modes` | 普通官方雷达单选 radio ID 选项 | 是 |
 | `/radio/recommendation-tracks` | 普通官方雷达批次 | 是 |
 | `/song/similar` | 相似歌曲 | 是 |
+| `/recommend/autoplay` | 播完自动接歌 | 是 |
+| `/recommend/autoplay/similar` | 按一首歌接相似的歌 | 是 |
+| `/search/hot/categories` | 按分类的热搜 | 是 |
 | `/song/related-playlists` | 包含指定歌曲的相关歌单 | 是 |
+| `/song/genre` | 歌曲流派 | 是 |
 
 ### 个人音乐库
 
@@ -408,6 +413,21 @@ POST /login/refresh
 | --- | --- |
 | `/user/playlist` | 自建与收藏歌单 |
 | `/user/playlist-detail` | 本人歌单详情，包含不公开歌单 |
+| `/user/mvs` | 本人收藏的 MV |
+| `/user/recent-plays` | 云端最近播放（只读） |
+| `/user/playlist/updates` | 收藏的歌单里哪些有新歌 |
+| `/user/sound-power` | 本人的音乐力等级 |
+| `/user/business-card` | 当前登录账号的音乐名片 |
+| `/user/friend-rank` | 好友听歌日榜（第一页） |
+| `/user/singer-rank` | 本人的歌手榜 |
+| `/user/medals` | 本人勋章馆的一个分页 |
+| `/user/listening-report` | 本人的听歌报告 |
+| `/user/liked-songs/categories` | 「我喜欢」的分类 |
+| `/user/following/singers` | 本人关注的歌手（第一页） |
+| `/user/following/users` | 本人关注的人（第一页） |
+| `/user/followers` | 本人的粉丝（第一页） |
+| `/user/friends` | 本人的好友（第一页） |
+| `POST /user/song/like/batch` | 批量加入或移出「我喜欢」 |
 | `/user/liked-songs` | 我喜欢的歌曲 |
 | `/user/albums` | 收藏专辑 |
 | `/user/cloud` | 音乐云盘 |
@@ -554,7 +574,7 @@ GET /getMusicPlay/demo-song-mid?quality=best
 ```
 
 - `kind`：`full` 完整歌曲、`preview` 试听片段；拿到了链接、但这一条带着失败的结果码时是 `unknown`，链接照样给，能不能播完整首没有把握。
-- `protocol`：这次用的取链接办法，`android-vkey`（完整文件）或 `preview-rs02`（试听文件）。
+- `protocol`：这次用的取链接办法，`android-vkey`（完整文件）、`web-session-vkey`（App 方式没给完整文件时，改用官方网页播放器的方式拿到的完整文件）或 `preview-rs02`（试听文件）。
 - `cdn`：链接的主机是上游回应自带的（`response-sip`）、探测过能用的（`probed`），还是探测都没通、用的默认地址（`unverified-default`，能不能播没有验过）；没有链接时是 `none`。
 - `quality`、`codec`：从上游文件名认出的实际音质和格式，认不出就省略。
 - `trial.durationMs`：试听条目有可靠的上游时长时才返回，单位毫秒。
@@ -598,7 +618,7 @@ GET /getMusicPlay/demo-song-mid?quality=best
 
 设置 `QQ_PLAYBACK_HINTS_ENABLED=0` 可以关闭具体原因提示和对应的额外查询，但不关闭既有的取链逻辑。
 
-`QQ_PLAYBACK_FALLBACK_ENABLED` 是备用取链框架的开关，默认关闭。当前没有通过验证的备用办法，打开也不会增加可用音源。
+登录后取链接时，如果 QQ 明确没给完整文件（结果码 `104003`），服务会改用官方网页播放器的方式，用同一个账号、同一个文件名再要一次；拿到的完整文件 `source.protocol` 是 `web-session-vkey`。同一个会员账号有些歌在手机 App 上放不了、在官方网页上能放完整歌曲，这样就能正常播放。m4a、128、320、flac 会再要，`ape`、试听和匿名请求不会；每种音质最多多要一次，`quality=best` 时 flac、320、128 每一级都可能多一次。设置 `QQ_PLAYBACK_FALLBACK_ENABLED=0` 可以关闭。
 
 #### 播放范围限制
 
@@ -810,6 +830,7 @@ GET /recommend/toplist?id=26
 - `/radio/list` 和 `/radio/tracks` 需要登录。
 - `/radio/categories` 可以匿名读取分类。
 - 排行榜支持 `period`、`offset`、`limit` 等参数。
+- `/recommend/toplists` 每个榜会给 `period`（当前一期）和 `updateType`。周榜的期别是 `YYYY_WW`（年份和第几周），日榜是 `YYYY-MM-DD`，有的榜没有期别。给 `/recommend/toplist` 带上过去的期别就能读往期，例如 `GET /recommend/toplist?id=26&period=2025_50`；期别格式要照这个榜自己的写法，不带就读最新一期。榜单的数量和分组以返回为准，会随时间变化（2026-11 实测 5 组 46 个，登录与否相同）。
 - 新歌、新碟和歌单分类支持各自的地区、分类或分页参数。
 
 推荐列表的 `more` 不一定代表服务提供了连续游标。具体分页方式应按对应接口处理。
@@ -1025,6 +1046,239 @@ GET /user/music-gene
 响应为 `{ code: 200, profile: {...} }`，`profile` 保留上游 `data` 的原始结构，包括数字类型的 `IsVisitAccount`，不转换成布尔值。成功的空对象也原样返回。上游非零业务码回 `502` 并保留 `upstreamCode`，不能仅凭数字把它解释成未登录。
 
 四条接口在 Node 和 Serverless 使用同一套处理。两条需要会话的接口缺失、无效或过期会话回 `401`；Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`。其余上游业务拒绝、格式异常与网络失败沿用现有的安全 `502` 分类；空清单不用 `404` 表示。
+
+### 15. 歌曲流派
+
+```text
+GET /song/genre?id=90001
+```
+
+需要有效会话。`id` 必填，是正整数 songid，不能传 MID，也不能重复给。
+
+响应为 `{ code: 200, genres: [{ id, name }] }`，只保留上游给的流派编号和名称。很多歌没有流派，这时 `genres` 是空数组，属于正常结果；上游有条目却一条都读不出来回 `502`。流派和 `/song/labels` 的歌曲标签、歌曲详情里的 `genre` 数字不是同一样东西，不要互相换算。
+
+缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 16. 播完自动接歌
+
+```text
+GET /recommend/autoplay?songids=90001,90002&limit=20
+```
+
+需要有效会话。`songids` 必填，是 1–5 个正整数 songid，用逗号分隔，不能重复，也不能传 MID。`limit` 可选，是 1–50 的整数，只在本接口里截掉后面的歌，不改变发给上游的请求，也不改变顺序。
+
+响应为 `{ code: 200, songs: [...] }`，曲目格式和 `/song/similar` 一样。返回几首由上游决定，实测给 1 首种子也会回 50 首；没有推荐时 `songs` 是空数组，有条目却一首都读不出来回 `502`。它和 `/song/similar` 是两个不同的上游接口，用途也不同：这个是放完后接着放，相似歌曲是找风格相近的歌。
+
+缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `retcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 17. 收藏的 MV
+
+```text
+GET /user/mvs
+```
+
+需要有效会话，只读当前登录账号。上游没有分页参数，`page` 只能省略或写 `1`。
+
+响应为 `{ code: 200, mvs: [...], total, more }`。每条 MV 有 `vid`、`mid`、`name`、`cover`、`singers`，上游给了才带 `duration`、`playCount`、`publishDate`、`time`（收藏时间，保留上游数值，不推断单位）。上传者的账号和昵称不返回。`total` 是上游给的总数，读不出来时为 `null`；`more` 只是照抄上游的 `hasmore`，本接口没有下一页可读，不要拿它去翻页。
+
+没有收藏时 `mvs` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 18. 云端最近播放
+
+```text
+GET /user/recent-plays?type=song
+```
+
+需要有效会话，只读当前登录账号的云端播放记录，不会上报播放，也不能删除记录。`type` 可选 `song`（默认）、`album`、`playlist`、`radio`、`mv`，对应官方 App 最近播放里的歌曲、专辑、歌单、音乐雷达和视频分页；其他值回 `400`。
+
+响应为 `{ code: 200, type, items, total }`：
+
+- `song`：`{ song, lastTime, listenCount }`，`song` 的格式和 `/song/similar` 一样。
+- `album`：`{ id, mid, name, singerName, lastTime }`。
+- `playlist`：`{ id, dirId, name, cover, creator, songCount, lastTime }`。
+- `radio`：`{ id, name, cover, radioType, lastTime }`。
+- `mv`：`{ vid, name, cover, singers, lastTime }`。
+
+`lastTime` 保留上游数值，不推断单位；数字字段读不出来时省略。上游一次给完、没有分页，`total` 只是这次返回的条数，不代表完整的历史总量。最近播放的设备、歌单创建者的账号和 MV 付费资料不返回。
+
+某一类没有记录时返回空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 19. 收藏歌单有更新
+
+```text
+GET /user/playlist/updates
+```
+
+需要有效会话，没有业务参数。服务先读当前账号收藏歌单的第一页（最多 100 个），再问上游这些歌单里哪些有新歌，两步都只读。
+
+响应为 `{ code: 200, playlists: [...], checked, complete }`。`playlists` 只列有更新的歌单，每条是 `{ id, newSongCount, updateTime, latestSong }`，`latestSong` 为 `{ id, name, singers }`（歌手只有名字），上游没给时省略；数字字段读不出来时也省略。`checked` 是这次实际问过的歌单数。重复的歌单只问一次，最多问 100 个。
+
+以下任一情况 `complete` 为 `false`，不能当成都没更新：收藏超过一页、上游总数大于实际问过的歌单数、有读不出 id 的条目，或上游标了读取失败的歌单。
+
+服务不知道你上次看这些歌单的时间，所以一律按「从来没看过」去问；`newSongCount` 是上游在这个条件下给的数字，确切怎么算的还没有验证，请当作提示，不要当成精确的新歌数量。上游回了没问过的歌单会被丢掉。
+
+没有收藏或没有更新时 `playlists` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）、格式异常和网络失败回 `502`，任何一步失败都不会给出部分结果。回应带 `Cache-Control: private, no-store`。
+
+### 20. 相似歌曲接歌
+
+```text
+GET /recommend/autoplay/similar?id=90001
+```
+
+需要有效会话。`id` 必填，是一个正整数 songid，不能传 MID、多个 id 或重复参数。
+
+响应为 `{ code: 200, songs: [...] }`，曲目格式和 `/song/similar` 一样，实测一次回 3 首。它对应官方 App 里按一首歌接相似歌曲的播放方式，和 `/song/similar`（找风格相近的歌）、`/recommend/autoplay`（放完后接着放）是三个不同的上游接口，结果不能互相替代。
+
+没有相似的歌时 `songs` 是空数组；有条目却一首都读不出来回 `502`。部分歌曲 QQ 会直接拒绝这个接口并返回 `502`，同一首歌用 `/song/similar` 或 `/recommend/autoplay` 仍可能有结果。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `retcode`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 21. 按分类的热搜
+
+```text
+GET /search/hot/categories
+```
+
+需要有效会话，没有业务参数。
+
+响应为 `{ code: 200, categories: [{ key, name, nameEn, hotkeys }] }`，分类照官方 App 的显示顺序排列。`hotkeys` 里每个词的格式和 `/search/hot` 一样：`{ keyword, title?, description? }`。广告、功能入口和推荐词不返回。不同账号看到的分类数可能不一样（实测免费账号 5 个、绿钻账号 6 个），这里只照实际回的给，不代表和会员等级有关。
+
+没有分类时 `categories` 是空数组；分类里一个关键字都读不出来的会跳过，全部都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 22. 音乐力等级
+
+```text
+GET /user/sound-power
+```
+
+需要有效会话，没有业务参数，只读当前登录账号。
+
+响应为 `{ code: 200, level, name, icon, value, currentValue, nextValue, reachedMaxLevel, medalCount, todayListenSeconds }`：`level` 是等级数字，`name`、`icon` 是等级称号和图标；`value`、`currentValue`、`nextValue` 是音乐力数值和升级进度；`reachedMaxLevel` 表示是否已经到最高级（不是最高等级的数字）；`medalCount` 是勋章数；`todayListenSeconds` 是今天的听歌秒数（北京时间切日）。读不出来的数字字段会省略，`reachedMaxLevel` 遇到没见过的值也会省略。权益清单、跳转链接、昵称和头像不返回。
+
+没有等级资料回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 23. 好友听歌日榜
+
+```text
+GET /user/friend-rank
+```
+
+需要有效会话，没有业务参数。这是官方 App 里的好友听歌排行，按当天（北京时间）的听歌时长排名，只读第一页，一次最多 60 人。
+
+用 QQ 音乐 App 扫码登录的 QQ 账号可能读不到，QQ 会拒绝并返回 `502`；用手机 QQ 网页扫码登录可以读。
+
+响应为 `{ code: 200, items, myRank, myPlaySeconds, myLikeCount, more }`。`items` 每条是 `{ uin, nick, avatar, playSeconds, likeCount, liked, rank }`：`uin` 是 QQ 给的账号 id，原样返回：微信账号是加密形式，QQ 账号可能直接是 QQ 号，`playSeconds` 是当天听歌秒数，`liked` 表示你是否给对方点过赞，`rank` 是名次。`myRank`、`myPlaySeconds`、`myLikeCount` 是你自己的名次、当天听歌秒数和获赞数。读不出来的数字字段会省略。`more` 在上游标记有更多或结果被截断时为 `true`，本接口没有下一页可读。点赞和隐私设置不提供。
+
+榜上没有人时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`）、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 24. 本人的歌手榜
+
+```text
+GET /user/singer-rank?range=year
+```
+
+需要有效会话，只读当前登录账号。`range` 必填：`year`（今年）、`all`（全部）、`month`（本月）、`last-year`（去年整年），对应官方 App 歌手榜的「年」「总」「月」和往年回顾；其他值回 `400`。
+
+响应为 `{ code: 200, range, singers: [{ mid, name, avatar, rank, change, playCount, share }] }`。`rank` 是名次，`change` 是名次变化（可能是负数），`playCount` 是这段时间听这位歌手的次数，`share` 是占比的数值，原样返回。读不出来的数字字段会省略。实测一次最多 30 位。年龄、流派、BPM 这些其他统计不在这个接口里。
+
+还没有歌手时 `singers` 是空数组；没有歌手资料或有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 25. 勋章馆
+
+```text
+GET /user/medals?tab=listening
+```
+
+需要有效会话，只读当前登录账号。`tab` 必填，对应官方 App 勋章馆的分页：`fans`（乐迷）、`listening`（畅听）、`limited`（限定）、`guardian`（珍爱守护）、`books`（书迷）、`friends`（好友）、`blind-box`（幸运盲盒）、`vip`（会员尊享）、`milestones`（里程碑）；其他值回 `400`。
+
+响应为 `{ code: 200, tab, modules: [{ id, name, more, medals }] }`，`medals` 每条是 `{ id?, name, icon, level?, obtainedAt?, isNew? }`。列表里也包括还没拿到的勋章，所以数量会比 App 上显示的「已获得」多；`obtainedAt` 只在有取得时间时才给，按原样返回字符串。部分分页的勋章没有 `id`。`more` 表示这个模块还有没列出来的勋章，本接口不往下读，也没有下一页。跳转链接和提示文字不返回，分页里的子分类以后再看。
+
+分页是空的时 `modules` 是空数组；没有分页资料或有模块却一个都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 26. 听歌报告
+
+```text
+GET /user/listening-report?range=week
+GET /user/listening-report?range=year&date=2025
+```
+
+需要有效会话，只读当前登录账号。歌曲排行请用 `/user/listening-rank`，这个接口是同一份「听歌报告」里的统计部分。
+
+- `range` 必填：`day`、`week`、`month`、`year`。
+- `date` 可选，读过去的时段：`day`／`week` 用 `YYYYMMDD`，`month` 用 `YYYYMM`，`year` 用 `YYYY`，必须是真实日期；不给就读当前时段。
+
+响应为 `{ code: 200, range, date?, availableDates, listenSeconds, listenCount, activeHour, chart, highlights }`：`availableDates` 是有资料的时段；`listenSeconds` 是这段时间的听歌秒数（当天的值和 `/user/friend-rank`、`/user/sound-power` 的当天秒数一致）；`listenCount`、`activeHour` 原样返回；`chart` 按时段排序，每段是 `{ period, items: [{ id, name, value, rank }] }`，`value` 原样返回；`highlights` 是 `{ type, title, subtitle, value }`。读不出来的数字字段会省略。App 上和上一段相比的升降百分比，目前确认不了它的算法，所以不返回。
+
+没听过歌的时段会返回空的 `chart` 和 `highlights`。`chart` 里没有数据的时段，`items` 是空数组。图表格式不对回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 27. 「我喜欢」的分类
+
+```text
+GET /user/liked-songs/categories
+```
+
+需要有效会话，没有业务参数。服务先分页读当前账号的「我喜欢」（每页 100 首，最多 500 首），再把这些歌送去分类，对应官方 App「收藏歌曲」页的建议、时间、歌手、流派四种看法。
+
+响应为 `{ code: 200, groups, checkedSongs, totalSongs, complete }`：
+
+- `groups` 每组是 `{ type, title, failed?, categories }`，`type` 是 `suggest`、`artist`、`period`、`genre`；`categories` 每条是 `{ id?, key, title, songIds }`，`songIds` 是这个分类里的歌曲 songid。
+- 歌手组的名称是从同一批歌曲资料里按歌手 id 补上的，补不到就是空字符串，不会去猜。
+- `checkedSongs` 是实际送去分类的首数，`totalSongs` 是「我喜欢」的总首数（读不出来时为 `null`）。只有两者相等、而且没有任何一组标了 `failed: true` 时，`complete` 才是 `true`。
+
+「我喜欢」是空的时直接返回空的 `groups`，不再去分类。读歌或分类的回应格式不对回 `502`，任何一步失败都不会给出部分结果。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码（包括回应里的 `code`、`subcode`）和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 28. 关注、粉丝与好友
+
+```text
+GET /user/following/singers
+GET /user/following/users
+GET /user/followers
+GET /user/friends
+```
+
+需要有效会话，没有业务参数，只读当前登录账号的第一页：关注的歌手、关注的人、粉丝每次最多 20 条，好友最多 50 条。
+
+- 前三个响应为 `{ code: 200, items, total, more, locked? }`，`items` 每条是 `{ mid, encUin, name, desc, avatar, fanCount?, followed? }`：歌手有 `mid`，一般用户有加密后的 `encUin`；`fanCount` 是粉丝数，`followed` 表示你是否已经关注对方。`total` 读不出来时为 `null`。名单因为隐私设置看不到时会回 `locked: true` 和空的 `items`，这和「真的没有人」不一样。
+- `/user/friends` 响应为 `{ code: 200, items, more }`，每条是 `{ encUin, name, avatar, followed? }`，好友的会员资料不返回。
+- 用 QQ 音乐 App 扫码登录的 QQ 账号可能读不到 `/user/friends`，QQ 会拒绝并返回 `502`；用手机 QQ 网页扫码登录可以读。
+- `more` 在上游标记有更多或结果被截断时为 `true`，这几个接口都没有下一页可读。会员图标、勋章、隐私提示文字和自己的资料不返回。
+
+名单是空的时 `items` 是空数组；有条目却一条都读不出来回 `502`。缺少、无效或过期会话回 `401`，Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`；上游拒绝凭证回 `401`，其他业务码、格式异常和网络失败回 `502`。回应带 `Cache-Control: private, no-store`。
+
+### 29. 批量加入或移出「我喜欢」
+
+```http
+POST /user/song/like/batch
+Content-Type: application/json
+```
+
+```json
+{
+  "songs": [{ "id": 90001, "mid": "fixtureSongMid", "type": 0 }],
+  "liked": true
+}
+```
+
+需要有效会话，不需要 `QQ_UNVERIFIED_WRITES_ENABLED`；能力声明 `mutations.likeSongsBatch` 为 `true`。已用 QQ 和微信账号在 Node 与 Serverless 上实测过加入、重复加入和移出。单首的 `/user/song/like` 不变。
+
+- `songs` 是 1–100 首，每首要同时给 `id`（正整数 songid）、`mid` 和 `type: 0`，不能重复，也不能有多余字段；`liked` 为 `true` 是加入、`false` 是移出。只收 `application/json`。
+- 服务先核对每首的 id 和 mid 是同一首歌，有一首对不上就整批不写（回 `400`）；再读一次目前的红心状态，只把状态不同的歌写一次，写完再读回确认。
+- 成功时回 `{ code: 200, liked, results: [{ id, status }], writeAttempted, accepted?, verified }`：`status` 是 `changed`（写了而且读回确认）或 `unchanged`（写入前读到已经是这个状态，没写）。全部都不用改时不会写入，`writeAttempted` 为 `false`。
+- 写入和读回都只送一次，不会自动重送。部分确认或读回对不上时回 `502`，错误正文带 `liked`、逐首 `results`（未确认的为 `unconfirmed`）、`writeAttempted: true`、`accepted: true`、`verified: false`、`verification: "unconfirmed"` 和 `retryable: false`。写入之后出错请重新读状态确认，不要直接重送。
+
+缺少、无效或过期会话回 `401`；核对、读状态或写入时的业务拒绝回 `502`，不会清掉会话（和 `/user/song/like` 一致）。回应带 `Cache-Control: private, no-store`。
+
+### 30. 音乐名片
+
+```text
+GET /user/business-card
+```
+
+需要有效会话，只读当前登录账号，没有业务参数。响应为 `{ code: 200, nick, avatar, tags, musicTags, favoriteSongs }`。
+
+- `tags`、`musicTags` 的条目格式是 `{ name, icon, type? }`。
+- `favoriteSongs` 的条目格式是 `{ id, title, subtitle, cover }`。`id` 保留上游给的字符串格式。
+- 没有标签或喜欢的歌曲时，返回对应的空数组。分享二维码地址不返回。
+
+缺少、无效或过期会话回 `401`。Serverless 未配置 `QQ_SESSION_SECRET` 时回 `501`。上游错误或响应格式异常回 `502`。响应带 `Cache-Control: private, no-store`。
 
 ## 错误处理
 

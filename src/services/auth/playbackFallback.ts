@@ -1,15 +1,17 @@
 import { QqApiError } from '../../protocol/errors';
 import type { PlaybackEntryCodes } from '../../protocol/playbackDiagnostics';
+import { playbackFileTypeOf } from '../../protocol/playbackFiles';
 import type { PlaybackProtocolId } from '../../protocol/playbackSource';
 import type { AuthHttpClient } from '../../transport/httpClientTypes';
-import type { PlaybackStrategy } from './playbackStrategies';
+import { type PlaybackStrategy, webSessionVKeyStrategy } from './playbackStrategies';
 
 // src/services/auth/playbackFallback.ts
 //
-// 主路径（含原因没确认时的再取一次）之后还没链接的歌，要不要换一种办法再试。框架本身默认关着；
-// 目前也没有登记任何候选：实测在两个海外出口，换接口、换 ct、照第三方修复包的整组做法都没多拿到歌。
-// 以后要加候选，必须先有同账号、同歌、同出口的对照证明能多拿到、而且下载下来的音频验过，再登记在这里，
-// 默认仍关着，先收集成功率再决定要不要默认打开。
+// 主路径（含原因没确认时的再取一次）之后还没链接的歌，要不要换一种办法再试。由宿主决定开不开：Node 和
+// serverless 默认开着，`QQ_PLAYBACK_FALLBACK_ENABLED` 设成 0 或 false 关掉；直接建服务、不传开关时关着。
+// 登记的候选只有官方网页播放器身份：同一会员账号在 App 身份被挡的歌，官方网页播放器能放完整歌曲，
+// 同账号、同歌、同出口实测换这一组拿到完整文件（四种音质，CDN 总长等于详情的文件大小）。
+// 以后要加别的候选，也要先有这样的对照，再登记在这里。
 //
 // 规则：
 //   - 开关关着：一个请求都不多，结果逐字不变（取链接那边连计数都不包）。
@@ -34,8 +36,26 @@ export interface PlaybackFallbackCandidate {
   /** 记在 source.protocol 和日志里的名字。 */
   id: PlaybackProtocolId;
   appliesTo(context: PlaybackFallbackContext): boolean;
-  strategy: PlaybackStrategy;
+  /** 固定的做法，或按这次要的音质给做法（文件名前缀跟着音质变）。 */
+  strategy: PlaybackStrategy | ((quality: string) => PlaybackStrategy);
 }
+
+/** 候选这次要用的做法。 */
+export const candidateStrategyOf = (
+  candidate: PlaybackFallbackCandidate,
+  quality: string,
+): PlaybackStrategy =>
+  typeof candidate.strategy === 'function' ? candidate.strategy(quality) : candidate.strategy;
+
+/** 官方网页播放器身份试这几种音质；ape 没文件时上游也会给假链接，试听另有路，都不试。 */
+const WEB_SESSION_QUALITIES = new Set(['m4a', '128', '320', 'flac']);
+
+/** 安卓身份明确回 104003（没给完整文件）时，换官方网页播放器身份再要一次。 */
+export const WEB_SESSION_CANDIDATE: PlaybackFallbackCandidate = {
+  id: 'web-session-vkey',
+  appliesTo: ({ quality, codes }) => WEB_SESSION_QUALITIES.has(quality) && codes.result === 104003,
+  strategy: (quality) => webSessionVKeyStrategy(playbackFileTypeOf(quality)),
+};
 
 export interface PlaybackFallbackLimits {
   /** 整次取链接（含主路径）最多打几次上游的 musicu 请求。 */
@@ -52,8 +72,14 @@ export interface PlaybackFallbackOptions {
   now?: () => number;
 }
 
-/** 登记的候选。目前没有：见文件开头。 */
-export const PLAYBACK_FALLBACK_CANDIDATES: readonly PlaybackFallbackCandidate[] = [];
+/** 登记的候选，按顺序试：见文件开头。 */
+export const PLAYBACK_FALLBACK_CANDIDATES: readonly PlaybackFallbackCandidate[] = [
+  WEB_SESSION_CANDIDATE,
+];
+
+/** 宿主读环境变量用的开关：没设或其他值都开着，只有 0 和 false 关掉。 */
+export const playbackFallbackEnabledOf = (value: string | undefined): boolean =>
+  !['0', 'false'].includes(value ?? '');
 
 export const DEFAULT_PLAYBACK_FALLBACK_LIMITS: PlaybackFallbackLimits = {
   maxRequests: 16,
