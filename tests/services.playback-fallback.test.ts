@@ -391,7 +391,7 @@ describe('官方网页播放器身份候选', () => {
       sent,
       web: () => vkey(24),
       android: () => vkey(11),
-      resolve: (songmid: string, quality: string | number = 128, options = {}) =>
+      resolve: (songmid: string, quality: string | number = 128, options = {}, enabled = true) =>
         getAuthenticatedPlaybackSources(
           http,
           auth,
@@ -401,7 +401,7 @@ describe('官方网页播放器身份候选', () => {
           undefined,
           options,
           true,
-          { enabled: true },
+          { enabled },
         ),
     };
   };
@@ -506,6 +506,18 @@ describe('官方网页播放器身份候选', () => {
     const { playUrl } = await h.resolve(A);
     expect(h.web()).toHaveLength(1);
     expect(playUrl[A]).toMatchObject({ url: '', error: '暂无播放链接' });
+  });
+
+  it.each([
+    128,
+    'flac',
+    'best',
+  ])('网页身份也被拒（quality=%p）：整份结果和关掉备援时一模一样', async (quality) => {
+    const off = await webHarness({ android: refusedReply(A) }).resolve(A, quality, {}, false);
+    const h = webHarness({ android: refusedReply(A), web: refusedReply(A) });
+    const on = await h.resolve(A, quality);
+    expect(h.web().length).toBeGreaterThan(0);
+    expect(on).toEqual(off);
   });
 });
 

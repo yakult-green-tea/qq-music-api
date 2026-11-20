@@ -233,6 +233,55 @@ describe('内部的音源描述', () => {
     expect((playUrl[A] as { source: Record<string, unknown> }).source).not.toHaveProperty('trial');
   });
 
+  // 试听长度是 e_30s − b_30s：b_30s 不一定是 0，不能直接用 e_30s。b_30s 是官方网页试听文件的起点，
+  // 不是 RS02 文件的起点，所以只拿来算长度，起止不填。
+  const previewWith = async (file: Reply) => {
+    const purl = `RS02${MEDIA}.mp3?vkey=v`;
+    const { resolve } = harness({
+      get_song_detail_yqq: { track_info: { file: { size_try: 1, media_mid: MEDIA, ...file } } },
+      UrlGetVkey: { sip: [SIP], midurlinfo: [granted(A, { purl })] },
+    });
+    const { sources, playUrl } = await resolve(A, 128, undefined, true);
+    return { trial: sources[0].trial, source: (playUrl[A] as { source: Reply }).source };
+  };
+
+  it.each([
+    [69000, 129000],
+    ['69000', '129000'],
+    [0, 60000],
+  ])('b_30s=%p、e_30s=%p：试听长度是两者相减，起止不填', async (b30s, e30s) => {
+    const { trial, source } = await previewWith({ b_30s: b30s, e_30s: e30s });
+    const durationMs = Number(e30s) - Number(b30s);
+    expect(trial).toEqual({
+      durationMs,
+      durationSource: 'upstream-declared',
+      rangeSource: 'unknown',
+    });
+    expect(source.trial).toEqual({ durationMs });
+  });
+
+  it.each([
+    -1,
+    60000,
+    70000,
+    'x',
+    1.5,
+  ])('b_30s 读不懂或不在 e_30s 之前（%p）：不交试听长度', async (b30s) => {
+    const { trial, source } = await previewWith({ b_30s: b30s, e_30s: 60000 });
+    expect(trial).toBeUndefined();
+    expect(source).not.toHaveProperty('trial');
+  });
+
+  it.each([undefined, null])('详情没有 b_30s（%p）：和以前一样用 e_30s 当长度', async (b30s) => {
+    const { trial, source } = await previewWith({ b_30s: b30s, e_30s: 60000 });
+    expect(trial).toEqual({
+      durationMs: 60000,
+      durationSource: 'upstream-declared',
+      rangeSource: 'unknown',
+    });
+    expect(source.trial).toEqual({ durationMs: 60000 });
+  });
+
   it('试听没给链接：不带试听长度', async () => {
     const { resolve } = harness({
       get_song_detail_yqq: {

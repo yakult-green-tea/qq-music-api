@@ -618,7 +618,7 @@ GET /getMusicPlay/demo-song-mid?quality=best
 
 设置 `QQ_PLAYBACK_HINTS_ENABLED=0` 可以关闭具体原因提示和对应的额外查询，但不关闭既有的取链逻辑。
 
-登录后取链接时，如果 QQ 明确没给完整文件（结果码 `104003`），服务会改用官方网页播放器的方式，用同一个账号、同一个文件名再要一次；拿到的完整文件 `source.protocol` 是 `web-session-vkey`。同一个会员账号有些歌在手机 App 上放不了、在官方网页上能放完整歌曲，这样就能正常播放。m4a、128、320、flac 会再要，`ape`、试听和匿名请求不会；每首每次请求最多多一次。设置 `QQ_PLAYBACK_FALLBACK_ENABLED=0` 可以关闭。
+登录后取链接时，如果 QQ 明确没给完整文件（结果码 `104003`），服务会改用官方网页播放器的方式，用同一个账号、同一个文件名再要一次；拿到的完整文件 `source.protocol` 是 `web-session-vkey`。同一个会员账号有些歌在手机 App 上放不了、在官方网页上能放完整歌曲，这样就能正常播放。m4a、128、320、flac 会再要，`ape`、试听和匿名请求不会；每种音质最多多要一次，`quality=best` 时 flac、320、128 每一级都可能多一次。设置 `QQ_PLAYBACK_FALLBACK_ENABLED=0` 可以关闭。
 
 #### 播放范围限制
 
