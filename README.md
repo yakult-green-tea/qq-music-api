@@ -3,6 +3,7 @@
 <img width="1672" height="941" alt="QQ Music API 功能全景图" src="https://github.com/user-attachments/assets/8bb7f377-4c95-4fea-8b76-0653add1997f" />
 
 [![npm version](https://img.shields.io/npm/v/@yakult-green-tea/qq-music-api?style=flat-square)](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)
+[![npm downloads](https://img.shields.io/npm/dt/@yakult-green-tea/qq-music-api?style=flat-square)](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)
 [![CI](https://github.com/yakult-green-tea/qq-music-api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/yakult-green-tea/qq-music-api/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/yakult-green-tea/qq-music-api?style=flat-square)](./LICENSE)
 
@@ -110,3 +111,5 @@ Node 使用 `stored` 会话，默认保存在内存，可配置加密持久化�
 ## 授权
 
 本项目采用 [MIT License](./LICENSE)，保留原作者 Rain120 的来源记录与原始许可证
+
+作者的请求：希望大家不要把本项目用于商业用途。这只是请求，不改变 MIT License 给你的任何权利，上游原始许可证也照旧
