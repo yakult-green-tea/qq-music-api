@@ -93,6 +93,98 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 共用处理与真实宿主�
     expect(legs.operation.calls).toHaveLength(2);
     expect(legs.host).toEqual(legs.operation);
   });
+  const privacyRejected = { code: 0, subcode: 4000, msg: 'check privacy error!' };
+  const publicDissinfo = {
+    code: 0,
+    subcode: 0,
+    dirinfo: {
+      id: 70001,
+      title: 'Public fixture',
+      picurl: 'https://y.gtimg.cn/music/photo_new/T002R300x300M000fixtureCover.jpg',
+      dir_show: 1,
+      songnum: 1,
+    },
+    songlist: [{ mid: 'fixture-song', title: 'Fixture song' }],
+    total_song_num: 1,
+    hasmore: 0,
+  };
+  it.each([
+    'valid',
+    'missing',
+  ] as const)('匿名 subcode 4000 时会话 %s 都改用匿名 musicu 读公开歌单', async (mode) => {
+    upstream.state.anonymousPlaylist = privacyRejected;
+    upstream.state.rpcReplies = { uniform_get_Dissinfo: { data: publicDissinfo } };
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail/70001',
+      upstream.calls,
+      await upstream.options(mode),
+    );
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toHaveLength(2);
+    expect(legs.operation.calls[1].rpc[0]).toMatchObject({
+      module: 'music.srfDissInfo.aiDissInfo',
+      method: 'uniform_get_Dissinfo',
+      param: { disstid: 70001, song_begin: 0, song_num: 150, enc_host_uin: '' },
+    });
+    expect(legs.operation.calls[1].params).not.toHaveProperty('cookie');
+    expect(legs.operation.body).toEqual({
+      response: {
+        code: 0,
+        subcode: 0,
+        cdnum: 1,
+        realcdnum: 1,
+        cdlist: [
+          expect.objectContaining({
+            disstid: '70001',
+            dissname: 'Public fixture',
+            logo: publicDissinfo.dirinfo.picurl,
+            total_song_num: 1,
+            hasmore: 0,
+            songlist: publicDissinfo.songlist,
+          }),
+        ],
+      },
+    });
+    expect(legs.host).toEqual(legs.operation);
+  });
+  it('匿名 subcode 4000、匿名改读被拒且没有会话：原样回 4000', async () => {
+    upstream.state.anonymousPlaylist = privacyRejected;
+    upstream.state.rpcReplies = { uniform_get_Dissinfo: { code: 80120, data: {} } };
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail/70001',
+      upstream.calls,
+      await upstream.options('missing'),
+    );
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toHaveLength(2);
+    expect(legs.operation.body).toEqual({ response: privacyRejected });
+    expect(legs.host).toEqual(legs.operation);
+  });
+  it('匿名 subcode 4000、匿名改读被拒但带着会话：再用凭据读', async () => {
+    upstream.state.anonymousPlaylist = privacyRejected;
+    upstream.state.rpcReplyQueues = {
+      uniform_get_Dissinfo: [
+        { code: 80120, data: {} },
+        { data: publicDissinfo },
+        { code: 80120, data: {} },
+        { data: publicDissinfo },
+      ],
+    };
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail/70001',
+      upstream.calls,
+      await upstream.options('valid'),
+    );
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toHaveLength(3);
+    expect(legs.operation.body).toMatchObject({
+      response: { code: 0, cdlist: [{ disstid: '70001', dissname: 'Public fixture' }] },
+    });
+    expect(legs.host).toEqual(legs.operation);
+  });
   it.each([10, '10', 2001, 777777, -1])('匿名业务码 %s 不改变 HTTP 状态', async (code) => {
     upstream.state.anonymousPlaylist = { code, cdlist: [] };
     const legs = await parity(

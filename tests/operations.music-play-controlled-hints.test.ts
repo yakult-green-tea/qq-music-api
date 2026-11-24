@@ -22,7 +22,10 @@ const cases = [
   [0x1019701, 13, 41, 1, 'playback.maybe-membership'],
   [0x101d701, 13, 35, 1, 'playback.reason-unconfirmed'],
   [0x101d703, 13, 41, 1, 'playback.reason-unconfirmed'],
-  [0x8010001, 3, 0, 1, 'playback.reason-unconfirmed'],
+  // switch 带 bit 27（0x8000000）：官方各端都放不了（下架、只剩 MV），见 3.3.9 的对照。
+  [0x8010001, 3, 0, 1, 'playback.maybe-taken-down'],
+  [141671807, 0, 0, 0, 'playback.maybe-taken-down'],
+  [0x10001, 3, 0, 0, 'playback.reason-unconfirmed'],
   [1, 0, 0, 0, 'playback.reason-unconfirmed'],
   [1, 23, undefined, 0, 'playback.reason-unconfirmed'],
 ] as const;

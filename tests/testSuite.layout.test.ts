@@ -22,7 +22,7 @@ const FOLIA_ROUTE_TESTS = [
 ];
 
 /**
- * Folia 会调用的路由（folia-major `950e0209` 的 qqTransport.ts，51 条），每条对应 test:contracts 里
+ * Folia 会调用的路由（folia-major `950e0209` 的 qqTransport.ts，51 条；后来 QQ 音源加了替代歌曲 /song/replacement），每条对应 test:contracts 里
  * 守着它回包形状的测试。Folia 加了新路由，就在这里加一行，并把测试放进 test:contracts。
  * 值是 [测试文件, 文件里要出现的路径写法]；路径是拼出来的才另写。
  */
@@ -53,6 +53,7 @@ const FOLIA_ROUTE_CONTRACTS: Record<string, [string, string?]> = {
   '/recommend/toplist': ['tests/recommend-toplists.routes.test.ts'],
   '/recommend/toplists': ['tests/recommend-toplists.routes.test.ts'],
   '/search': ['tests/search.routes.test.ts'],
+  '/song/replacement': ['tests/song-replacement.routes.test.ts'],
   '/song/similar': ['tests/song-relations.routes.test.ts'],
   '/user/album/subscribe': ['tests/album.subscribe.routes.test.ts'],
   '/user/albums': ['tests/folia.http-contracts.test.ts'],
@@ -149,7 +150,7 @@ describe('default test suite layout', () => {
 
   it('Folia 用到的每条路由都有 test:contracts 里的测试守着', () => {
     const contracts = packageScripts()['test:contracts'].split(' ');
-    expect(Object.keys(FOLIA_ROUTE_CONTRACTS)).toHaveLength(51);
+    expect(Object.keys(FOLIA_ROUTE_CONTRACTS)).toHaveLength(52);
     for (const [route, [file, needle = route]] of Object.entries(FOLIA_ROUTE_CONTRACTS)) {
       expect({ route, inContracts: contracts.includes(file) }).toEqual({
         route,
