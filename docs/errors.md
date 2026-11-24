@@ -141,6 +141,7 @@ QQ 出错时会回一个数字码。这个服务会把它原样交给你，让�
 | `22006` | 猜你喜欢 | 推荐请求被拒，原因没有分离 | 实测过 | `recommendation.rejected` |
 | `2001` | 关键字搜索 | 搜索被拒，常见于不登录搜歌曲，原因没有分离 | 实测过 | `search.rejected` |
 | `10` | 不登录读歌单详情 | 这张是按账号生成的官方歌单，要带登录才读得到（服务会自己带登录重读） | 实测过 | `playlist.anonymous-unreadable` |
+| `0`（`subcode` `4000`） | 不登录读歌单详情 | 中国大陆网络下，部分公开歌单的旧接口回 `check privacy error!`、没有歌单内容；海外网络正常。服务会自己改用另一个公开接口重读，读到了回包形状不变，读不到才原样返回 | 实测过 | `playlist.anonymous-unreadable` |
 | `10004` | 登录后读歌单详情 | 歌单不存在 | 实测过 | `playlist.not-found` |
 | `80120` | 读歌单详情 | 疑似和登录有关，但没确认，所以**不回 401** | 实测过 | `playlist.authentication-unverified` |
 | `80092` | 歌单加歌、删歌 | 歌曲已经在（或不在）歌单里；不当成成功 | 公开资料，实际写入时没见过 | `playlist.already-applied` |

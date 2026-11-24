@@ -87,16 +87,32 @@ export interface SongListDetailResponse {
   cdlist: [Dictionary];
 }
 
-export const toSongListDetailResponse = (data: unknown): SongListDetailResponse | null => {
+export interface SongListDetailResponseOptions {
+  /**
+   * 普通公开歌单（旧 CGI 回 4000 时匿名改读的结果）：封面先用歌单自己的 `picurl`，没有才用第一首的专辑图；
+   * 公开（`dir_show` 为 1）的空歌单照常返回。不给就是官方歌单的写法，与原来完全相同。
+   */
+  publicPlaylist?: boolean;
+}
+
+export const toSongListDetailResponse = (
+  data: unknown,
+  options: SongListDetailResponseOptions = {},
+): SongListDetailResponse | null => {
   if (!isDictionary(data)) return null;
   const dirinfo = dictionaryOf(data.dirinfo);
   const disstid = identifierOf(dirinfo.id);
   const title = stringOf(dirinfo.title).trim();
   const songlist = Array.isArray(data.songlist) ? data.songlist : [];
-  if (!disstid || !title || songlist.length === 0) return null;
+  const emptyAllowed = options.publicPlaylist === true && numberOf(dirinfo.dir_show) === 1;
+  if (!disstid || !title || (songlist.length === 0 && !emptyAllowed)) return null;
 
   const total = countOf(data.total_song_num) ?? countOf(dirinfo.songnum) ?? songlist.length;
   const nickname = stringOf(dirinfo.host_nick);
+  const playlistCover = stringOf(dirinfo.picurl).trim();
+  const logo = options.publicPlaylist
+    ? playlistCover || firstSongAlbumCoverUrl(songlist) || ''
+    : (firstSongAlbumCoverUrl(songlist) ?? stringOf(dirinfo.picurl));
   return {
     code: 0,
     subcode: 0,
@@ -106,7 +122,7 @@ export const toSongListDetailResponse = (data: unknown): SongListDetailResponse 
       {
         disstid,
         dissname: stringOf(dirinfo.title),
-        logo: firstSongAlbumCoverUrl(songlist) ?? stringOf(dirinfo.picurl),
+        logo,
         desc: stringOf(dirinfo.desc),
         nickname,
         nick: nickname,

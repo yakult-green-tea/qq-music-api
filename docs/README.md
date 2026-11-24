@@ -483,7 +483,7 @@ POST /login/refresh
 
 | 接口 | 说明 |
 | --- | --- |
-| `/getSongListDetail` | 歌单详情 |
+| `/getSongListDetail` | 歌单详情；旧接口读不到部分公开歌单时会自动改读，回包形状不变 |
 | `/getAlbumInfo` | 专辑详情 |
 | `/getSingerAlbum` | 歌手专辑 |
 | `/getSingerHotsong` | 歌手热门歌曲 |

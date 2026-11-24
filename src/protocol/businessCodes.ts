@@ -156,6 +156,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.web-daily-candidate',
   /** 匿名的歌单详情 CGI。 */
   'playlist.anonymous-detail',
+  /** 旧 CGI 回 subcode 4000 时匿名改读的公开歌单（musicu `uniform_get_Dissinfo`）。 */
+  'playlist.public-detail',
   /** 带凭证重读歌单详情。 */
   'playlist.authenticated-detail',
   /** 往歌单里加歌（还没有路由）。 */
@@ -447,6 +449,12 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ),
   ...entries(['playlist.anonymous-detail'], 'business', [10], {
     ...observedUnknown('本项目实测：算法歌单用匿名接口读不到，要带凭证重读'),
+    errorKey: 'playlist.anonymous-unreadable',
+  }),
+  ...entries(['playlist.anonymous-detail'], 'business-subcode', [4000], {
+    ...observedUnknown(
+      '本项目实测：中国大陆出口对部分公开歌单回 code 0、subcode 4000（check privacy error!），没有歌单内容；海外出口正常。改用匿名 musicu 读同一张歌单',
+    ),
     errorKey: 'playlist.anonymous-unreadable',
   }),
   ...entries(['playlist.authenticated-detail'], 'business', [10004], {

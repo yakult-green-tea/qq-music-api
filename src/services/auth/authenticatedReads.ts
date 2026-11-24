@@ -15,6 +15,15 @@ import {
   firstSongAlbumCoverUrl,
   isOfficialPlaylistEntry,
 } from '../songLists/officialPlaylist';
+import {
+  collectSongListPages,
+  hasMoreOf,
+  type PagingStopReason,
+  SONG_LIST_MAX_PAGES,
+  SONG_LIST_PAGE_SIZE,
+  songIdOf,
+  songsOf,
+} from '../songLists/songListPages';
 import { type AndroidDevice, credentialMusicId } from './androidDevice';
 import { credentialFrom, sanitizePublicValue } from './credentialWire';
 import type { AuthHttpClient } from './httpClient';
@@ -208,10 +217,7 @@ export const FAVORITE_PLAYLIST_LIMIT = 1000;
 
 export const FAVORITE_PLAYLIST_PAGE_SIZE = 100;
 
-export const hasMoreOf = (page: Dictionary): boolean =>
-  page.hasmore === true || numberOf(page.hasmore) === 1;
-
-export type PagingStopReason = 'limit' | 'empty-page' | 'repeated-page';
+export { hasMoreOf, type PagingStopReason, songIdOf, songsOf };
 
 /**
  * 没读完就停下时留一条诊断。停下是为了不无限读，不代表资料完整；这条日志说明为什么停、读到多少，
@@ -443,17 +449,9 @@ export interface AuthenticatedSongListDetailOptions {
 }
 
 /** 实测一页 1000 首可以一次读完 761 首的歌单；再多就续页。 */
-export const AUTHENTICATED_SONG_LIST_PAGE_SIZE = 1000;
+export const AUTHENTICATED_SONG_LIST_PAGE_SIZE = SONG_LIST_PAGE_SIZE;
 
-export const AUTHENTICATED_SONG_LIST_MAX_PAGES = 10;
-
-export const songsOf = (data: Dictionary): unknown[] =>
-  Array.isArray(data.songlist) ? data.songlist : [];
-
-export const songIdOf = (value: unknown): string => {
-  const song = dictionaryOf(value);
-  return identifierOf(song.mid ?? song.songmid ?? song.id ?? song.songid);
-};
+export const AUTHENTICATED_SONG_LIST_MAX_PAGES = SONG_LIST_MAX_PAGES;
 
 /**
  * 带凭据读一张歌单。与 `getOwnedPlaylistSongs` 的 `CgiGetDiss` 不同，这里走 QQ 音乐客户端读算法歌单
@@ -498,46 +496,15 @@ export const getAuthenticatedSongListDetail = async (
     return readPage(0, Math.min(AUTHENTICATED_SONG_LIST_PAGE_SIZE, Math.max(1, Math.floor(limit))));
   }
 
-  const first = await readPage(0, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
-  const songs = [...songsOf(first)];
-  const seen = new Set(songs.map(songIdOf).filter(Boolean));
-  const total = numberOf(first.total_song_num);
-  const readAll = () => total !== undefined && songs.length >= total;
-  let last = first;
-  let pages = 1;
-  let repeatedPage = false;
-  for (let page = 1; page < AUTHENTICATED_SONG_LIST_MAX_PAGES; page += 1) {
-    if (!hasMoreOf(last) || songsOf(last).length === 0 || readAll()) break;
-    last = await readPage(songs.length, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
-    pages += 1;
-    const pageSongs = songsOf(last);
-    // 上游不理 song_begin、整页都是读过的歌：不接上去，也不再往下读。
-    // 认不出身份的歌一律当成新的，不拿来判断重复。
-    const repeated = pageSongs.every((song) => {
-      const id = songIdOf(song);
-      return id !== '' && seen.has(id);
-    });
-    if (pageSongs.length > 0 && repeated) {
-      repeatedPage = true;
-      break;
-    }
-    for (const song of pageSongs) {
-      const id = songIdOf(song);
-      if (id) seen.add(id);
-    }
-    songs.push(...pageSongs);
-  }
+  const { first, songs, pages, complete, stopReason, upstreamTotal } = await collectSongListPages(
+    readPage,
+    AUTHENTICATED_SONG_LIST_PAGE_SIZE,
+    AUTHENTICATED_SONG_LIST_MAX_PAGES,
+  );
   // 回传的 hasmore 说的是这次读取的结果：读满总数或上游说没有更多才算读完；停在上限、空页或重复页
   // 时如实标成没读完，而不是照搬最后一页的原值。
-  const complete = readAll() || !hasMoreOf(last);
-  if (!complete) {
-    const reason = repeatedPage
-      ? 'repeated-page'
-      : songsOf(last).length === 0
-        ? 'empty-page'
-        : 'limit';
-    logPagingStopped('song-list-detail', reason, pages, songs.length, total);
-  }
+  if (!complete && stopReason)
+    logPagingStopped('song-list-detail', stopReason, pages, songs.length, upstreamTotal);
   return { ...first, songlist: songs, hasmore: complete ? 0 : 1 };
 };
 
