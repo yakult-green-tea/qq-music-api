@@ -87,9 +87,22 @@ describe('toSongListDetailResponse 的公开歌单写法', () => {
     expect(toSongListDetailResponse(data, { publicPlaylist: true })).toBeNull();
   });
 
-  it('播放数只沿用 listennum，不补 visitnum', () => {
+  it('公开歌单的播放数同时写成 listennum 与旧 CGI 的 visitnum', () => {
     const detail = toSongListDetailResponse(publicData(), { publicPlaylist: true })?.cdlist[0];
+    expect(detail).toMatchObject({ listennum: 1234, visitnum: 1234 });
+  });
+
+  it('官方歌单仍不补 visitnum', () => {
+    const detail = toSongListDetailResponse(publicData())?.cdlist[0];
     expect(detail).toMatchObject({ listennum: 1234 });
+    expect(detail).not.toHaveProperty('visitnum');
+  });
+
+  it('上游没给播放数：两个字段都不补', () => {
+    const data = publicData();
+    delete (data.dirinfo as Record<string, unknown>).listennum;
+    const detail = toSongListDetailResponse(data, { publicPlaylist: true })?.cdlist[0];
+    expect(detail).not.toHaveProperty('listennum');
     expect(detail).not.toHaveProperty('visitnum');
   });
 });
@@ -135,7 +148,7 @@ describe('readPublicSongListDetail', () => {
         tag: 1,
         orderlist: 1,
         song_begin: 0,
-        song_num: 1000,
+        song_num: 150,
         onlysonglist: 0,
         enc_host_uin: '',
       },
@@ -149,20 +162,89 @@ describe('readPublicSongListDetail', () => {
     });
   });
 
-  it('按 hasmore 续页，从已读的歌数接着读', async () => {
-    const first = publicData({
-      songlist: [{ mid: 'songA' }],
-      total_song_num: 2,
-      hasmore: 1,
-    });
-    const second = publicData({ songlist: [{ mid: 'songB' }], total_song_num: 2, hasmore: 0 });
-    const { http, requests } = transportOf(reply(first), reply(second));
+  const songsFrom = (begin: number, count: number) =>
+    Array.from({ length: count }, (_, index) => ({ mid: `song${begin + index}` }));
+  const pageOf = (begin: number, count: number, total: number) =>
+    publicData({ songlist: songsFrom(begin, count), total_song_num: total, hasmore: 1 });
+
+  it('一页读得完：只发一次请求', async () => {
+    const { http, requests } = transportOf(reply(pageOf(0, 2, 2)));
 
     const result = await readPublicSongListDetail('8322594955', { http });
 
-    expect(requests.map((r) => r.body.req_0.param.song_begin)).toEqual([0, 1]);
-    expect(result?.cdlist[0].songlist).toEqual([{ mid: 'songA' }, { mid: 'songB' }]);
+    expect(requests).toHaveLength(1);
+    expect(result?.cdlist[0].songlist).toHaveLength(2);
     expect(result?.cdlist[0].hasmore).toBe(0);
+  });
+
+  it('按总数算出偏移量读完剩下的页，结果按顺序接起来', async () => {
+    const { http, requests } = transportOf(
+      reply(pageOf(0, 150, 310)),
+      reply(pageOf(150, 150, 310)),
+      reply(pageOf(300, 10, 310)),
+    );
+
+    const result = await readPublicSongListDetail('8322594955', { http });
+
+    expect(requests.map((r) => r.body.req_0.param.song_begin)).toEqual([0, 150, 300]);
+    expect(requests.every((r) => r.body.req_0.param.song_num === 150)).toBe(true);
+    expect(result?.cdlist[0].songlist).toEqual(songsFrom(0, 310));
+    expect(result?.cdlist[0]).toMatchObject({ total_song_num: 310, hasmore: 0 });
+  });
+
+  it('第一页之后最多同时读 3 页', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const begins: number[] = [];
+    const http: HttpTransport = async (request) => {
+      const begin = JSON.parse(String(request.body)).req_0.param.song_begin as number;
+      begins.push(begin);
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight -= 1;
+      return reply(pageOf(begin, Math.min(150, 1000 - begin), 1000)) as never;
+    };
+
+    const result = await readPublicSongListDetail('8322594955', { http });
+
+    expect(begins).toHaveLength(7);
+    expect(peak).toBeLessThanOrEqual(3);
+    expect(result?.cdlist[0].songlist).toHaveLength(1000);
+  });
+
+  it('超过 10 页（1500 首）：不往下读，返回 null', async () => {
+    const { http, requests } = transportOf(reply(pageOf(0, 150, 1501)));
+    await expect(readPublicSongListDetail('8322594955', { http })).resolves.toBeNull();
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    ['中间一页不满', [pageOf(0, 150, 400), pageOf(150, 100, 400), pageOf(300, 100, 400)]],
+    ['中间一页是空的', [pageOf(0, 150, 400), pageOf(150, 0, 400), pageOf(300, 100, 400)]],
+    ['整页都是读过的歌', [pageOf(0, 150, 400), pageOf(0, 150, 400), pageOf(300, 100, 400)]],
+    ['读到的歌比总数少', [pageOf(0, 150, 400), pageOf(150, 150, 400), pageOf(300, 50, 400)]],
+    ['第一页不满却说还有', [pageOf(0, 100, 400)]],
+  ])('%s：不改写，返回 null', async (_label, pages) => {
+    const { http } = transportOf(...pages.map((page) => reply(page)));
+    await expect(readPublicSongListDetail('8322594955', { http })).resolves.toBeNull();
+  });
+
+  it('不知道总数：上游说没有更多才算读完', async () => {
+    const done = publicData({ total_song_num: undefined, hasmore: 0 });
+    delete (done.dirinfo as Record<string, unknown>).songnum;
+    const more = { ...done, hasmore: 1 };
+    await expect(
+      readPublicSongListDetail('8322594955', { http: transportOf(reply(done)).http }),
+    ).resolves.toMatchObject({ cdlist: [{ songlist: publicData().songlist }] });
+    await expect(
+      readPublicSongListDetail('8322594955', { http: transportOf(reply(more)).http }),
+    ).resolves.toBeNull();
+  });
+
+  it('后面的页请求失败：抛错，交给调用方保留原回应', async () => {
+    const { http } = transportOf(reply(pageOf(0, 150, 200)), new Error('socket hang up'));
+    await expect(readPublicSongListDetail('8322594955', { http })).rejects.toThrow();
   });
 
   it.each([

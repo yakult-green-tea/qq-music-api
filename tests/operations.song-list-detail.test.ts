@@ -125,7 +125,7 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 共用处理与真实宿主�
     expect(legs.operation.calls[1].rpc[0]).toMatchObject({
       module: 'music.srfDissInfo.aiDissInfo',
       method: 'uniform_get_Dissinfo',
-      param: { disstid: 70001, song_begin: 0, song_num: 1000, enc_host_uin: '' },
+      param: { disstid: 70001, song_begin: 0, song_num: 150, enc_host_uin: '' },
     });
     expect(legs.operation.calls[1].params).not.toHaveProperty('cookie');
     expect(legs.operation.body).toEqual({
