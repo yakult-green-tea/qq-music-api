@@ -1,5 +1,6 @@
 import { LOGIN_HINT_MESSAGES, loginFailureHintOf } from '../src/protocol/loginHints';
 import {
+  hasKnownUnplayableTraits,
   PLAYBACK_HINT_MESSAGES,
   PLAYBACK_HINT_RULES,
   playbackHintOf,
@@ -21,11 +22,13 @@ const UNCONFIRMED = {
 };
 
 describe('playback display hints', () => {
-  it('完整规则只有地区与会员候选，不带播放上下文时保持未知', () => {
+  it('完整规则只有地区、会员与下架候选，不带播放上下文时保持未知', () => {
     expect(PLAYBACK_HINT_RULES.map((rule) => rule.key)).toEqual([
       'playback.maybe-region-restricted',
       'playback.maybe-membership',
+      'playback.maybe-taken-down',
     ]);
+    expect(playbackHintOf(track({ action: { switch: 141671807 } }))).toEqual(UNCONFIRMED);
     expect(playbackHintOf(track({ action: { switch: 1, msgid: 23, alert: 0 } }))).toEqual(
       UNCONFIRMED,
     );
@@ -130,5 +133,44 @@ describe('login display hints', () => {
   it('keeps every message in plain English', () => {
     for (const message of Object.values(LOGIN_HINT_MESSAGES))
       expect(message).toMatch(/^[\x20-\x7e]+$/);
+  });
+});
+
+describe('下架特征（switch 的 bit 27）', () => {
+  const context = {
+    authenticated: true,
+    quality: '128',
+    codes: { result: 104003, subcode: 1 },
+  };
+  const withSwitch = (value: unknown) => ({ action: { switch: value, msgid: 0, alert: 0 } });
+
+  it.each([
+    [141671807, 'playback.maybe-taken-down'],
+    [0x8010001, 'playback.maybe-taken-down'],
+    ['134283265', 'playback.maybe-taken-down'],
+    [0x10001, 'playback.reason-unconfirmed'],
+    [7421823, 'playback.reason-unconfirmed'],
+    [-1, 'playback.reason-unconfirmed'],
+    [1.5, 'playback.reason-unconfirmed'],
+  ])('switch %p → %s', (value, expected) => {
+    expect(playbackHintOf(withSwitch(value), PLAYBACK_HINT_RULES, context).key).toBe(expected);
+  });
+
+  it('没有带会话的 104003 上下文就不说下架', () => {
+    expect(
+      playbackHintOf(withSwitch(141671807), PLAYBACK_HINT_RULES, {
+        ...context,
+        authenticated: false,
+      }).key,
+    ).toBe('playback.reason-unconfirmed');
+    expect(
+      playbackHintOf(withSwitch(141671807), PLAYBACK_HINT_RULES, { ...context, quality: '320' })
+        .key,
+    ).toBe('playback.reason-unconfirmed');
+  });
+
+  it('挑替代版本时，带下架特征的版本算已知不可播', () => {
+    expect(hasKnownUnplayableTraits(withSwitch(141671807))).toBe(true);
+    expect(hasKnownUnplayableTraits(withSwitch(7421823))).toBe(false);
   });
 });

@@ -82,6 +82,17 @@ export const canLookupPlaybackHint = (context: PlaybackHintContext): boolean =>
   context.codes.result === 104003 &&
   context.codes.subcode === 1;
 const REGION_TUPLES = ['1/23/0/0', '769/0/35/0', '769/0/35/1'];
+
+/**
+ * `action.switch` 的 bit 27（`0x8000000`）。2026-11 对照：官方 App（海外、登录）播放时与队列批次、大陆匿名
+ * 详情三种视角里，带这一位的歌官方各端都放不了（下架，多数只剩 MV）；可播的歌都没有这一位。只认这一位，
+ * 不推论其他位元。`switch 65537`（同样放不了，但没有这一位）不算在内，仍是原因尚未确认。
+ */
+const TAKEN_DOWN_SWITCH_BIT = 0x8000000;
+const hasTakenDownBit = (track: unknown): boolean => {
+  const value = integer(read(read(track, 'action'), 'switch'));
+  return value !== undefined && value >= 0 && Math.floor(value / TAKEN_DOWN_SWITCH_BIT) % 2 === 1;
+};
 const MEMBERSHIP_TUPLES = [`${0x101d701}/13/21/1`, `${0x101d701}/13/41/1`, `${0x1019701}/13/41/1`];
 export const PLAYBACK_HINT_RULES: readonly PlaybackHintRule[] = [
   {
@@ -96,13 +107,20 @@ export const PLAYBACK_HINT_RULES: readonly PlaybackHintRule[] = [
         context && canLookupPlaybackHint(context) && MEMBERSHIP_TUPLES.includes(tupleOf(track)),
       ),
   },
+  {
+    key: 'playback.maybe-taken-down',
+    matches: (track, context) =>
+      Boolean(context && canLookupPlaybackHint(context) && hasTakenDownBit(track)),
+  },
 ];
 
-/** 条目本身带着上面两条规则认得的特征（不看取链结果）；挑替代版本时用来先跳过。 */
+/** 条目本身带着上面几条规则认得的特征（不看取链结果）；挑替代版本时用来先跳过。 */
 export const hasKnownUnplayableTraits = (track: unknown): boolean => {
   try {
     const tuple = tupleOf(track);
-    return REGION_TUPLES.includes(tuple) || MEMBERSHIP_TUPLES.includes(tuple);
+    return (
+      REGION_TUPLES.includes(tuple) || MEMBERSHIP_TUPLES.includes(tuple) || hasTakenDownBit(track)
+    );
   } catch {
     return false;
   }

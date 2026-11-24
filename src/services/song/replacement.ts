@@ -6,7 +6,7 @@ import type { AuthSession } from '../auth/qrLogin';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { songVersionsResult } from './versions';
 
-// 替代歌曲：原曲拿不到链接、而且命中已验证的不可播规则（地区或会员）时，才从「其他版本」里挑一首。
+// 替代歌曲：原曲拿不到链接、而且命中已验证的不可播规则（地区、会员或下架）时，才从「其他版本」里挑一首。
 // 跳过原曲，有这些特征的版本排后面，最多 3 个合成一次取链接；第一个真拿到链接的才算。
 // 原因没确认时不找：不能把一次没拿到链接说成这首放不了。
 
@@ -14,7 +14,11 @@ import { songVersionsResult } from './versions';
 export type PlayUrlReader = (mids: string[]) => Promise<Record<string, unknown> | null>;
 
 const MAX_CANDIDATES = 3;
-const REPLACEABLE_HINTS = ['playback.maybe-region-restricted', 'playback.maybe-membership'];
+const REPLACEABLE_HINTS = [
+  'playback.maybe-region-restricted',
+  'playback.maybe-membership',
+  'playback.maybe-taken-down',
+];
 
 const midOf = (raw: unknown): string => {
   const mid = typeof raw === 'string' ? raw.trim() : '';

@@ -2,7 +2,7 @@ import './helpers/sessionRoutes';
 import { CATALOG_RUNTIMES, callRoute } from './helpers/catalogRoutes';
 import { type SessionCall, useSessionUpstream } from './helpers/sessionRoutes';
 
-// 替代歌曲：原曲拿不到链接、且命中已验证的不可播规则（地区或会员）时，才从「其他版本」里找。
+// 替代歌曲：原曲拿不到链接、且命中已验证的不可播规则（地区、会员或下架）时，才从「其他版本」里找。
 // 跳过原曲和带已知不可播特征的版本，剩下的合成一次取链接，按版本顺序第一个真拿到链接的才算。
 // 编号与名字都是虚构示例。
 
@@ -21,6 +21,11 @@ const REGION_DETAIL = { action: { switch: 1, msgid: 23, alert: 0 }, pay: { pay_p
 const MEMBERSHIP_DETAIL = {
   action: { switch: 0x101d701, msgid: 13, alert: 21 },
   pay: { pay_play: 1 },
+};
+// switch 带 bit 27（0x8000000）：官方各端都放不了（下架、只剩 MV）。
+const TAKEN_DOWN_DETAIL = {
+  action: { switch: 141671807, msgid: 0, alert: 0 },
+  pay: { pay_play: 0 },
 };
 const version = (mid: string, extra: Record<string, unknown> = {}) => ({
   id: 90100,
@@ -111,6 +116,22 @@ describe.each(CATALOG_RUNTIMES)('/song/replacement（%s）', (runtime) => {
       original: { mid: 'origA', playable: false, hint: 'playback.maybe-membership' },
       song: list[1],
     });
+  });
+
+  it('原曲带下架特征也会找；带下架特征的版本排在后面', async () => {
+    upstream.state.songDetails = { origA: TAKEN_DOWN_DETAIL };
+    const list = [version('gone', TAKEN_DOWN_DETAIL), version('verB')];
+    const result = await call('?mid=origA', {
+      versions: { data: { versionList: list } },
+      vkeys: [vkeyReply(['origA']), vkeyReply(['verB', 'gone'], ['verB'])],
+    });
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({
+      code: 200,
+      original: { mid: 'origA', playable: false, hint: 'playback.maybe-taken-down' },
+      song: list[1],
+    });
+    expect(vkeyCallsOf(upstream.calls)[1].param.songmid).toEqual(['verB', 'gone']);
   });
 
   it('最多试 3 个候选，合成一次取链接', async () => {

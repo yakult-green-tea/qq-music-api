@@ -608,6 +608,7 @@ GET /getMusicPlay/demo-song-mid?quality=best
 
 - `playback.maybe-region-restricted`
 - `playback.maybe-membership`
+- `playback.maybe-taken-down`
 - `playback.preview-missing`
 - `playback.preview-unavailable`
 - `playback.quality-file-unavailable`
@@ -1031,7 +1032,7 @@ GET /song/replacement?mid=fixtureVersionA
 
 需要有效会话；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。`mid` 是原曲 MID，必填，1–64 个字母或数字。
 
-先用当前会话要原曲 128 的链接。拿到了就不找，回 `reason: "original-playable"`；拿不到但原因没确认（不是地区、会员规则），也不找，回 `reason: "reason-unconfirmed"`，因为一次没拿到链接不等于这首放不了。只有命中地区或会员规则时，才读其他版本：跳过原曲，将带这些特征的版本排在后面，最多 3 个合成一次要链接，原因没确认的照 `/getMusicPlay` 的规则再取一次；按排序后顺序，第一个真拿到链接的才算。
+先用当前会话要原曲 128 的链接。拿到了就不找，回 `reason: "original-playable"`；拿不到但原因没确认（不是地区、会员或下架规则），也不找，回 `reason: "reason-unconfirmed"`，因为一次没拿到链接不等于这首放不了。只有命中地区、会员或下架规则时，才读其他版本：跳过原曲，将带这些特征的版本排在后面，最多 3 个合成一次要链接，原因没确认的照 `/getMusicPlay` 的规则再取一次；按排序后顺序，第一个真拿到链接的才算。
 
 响应为 `{ code: 200, original: { mid, playable, hint }, song, label?, reason? }`。`song` 保留上游 `versionList` 的原始条目，找不到时为 `null`，`reason` 是 `no-other-version` 或 `no-playable-version`；`label` 只在版本有副标题时给，不自己编替代原因。回包不带链接，播放照常用 `/getMusicPlay`。读其他版本失败照新路由的错误回 `502`，不重试。
 
