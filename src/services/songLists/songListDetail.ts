@@ -79,13 +79,28 @@ const readPublicPlaylist = async (
  * 让调用方保留匿名 CGI 的原始回应。这里绝不抛错，也绝不变成 401：这是一条读歌单的路由，
  * 客户端收到 401 会清掉整个登录态。
  */
+/**
+ * 读完整了：上游说没有更多，而且歌数正好等于总数。4000 改用凭据读时要求这样，不完整就保留原来的 4000，
+ * 让调用方自己逐页读（Folia 就是）；`code 10` 的算法歌单照旧，不要求。
+ */
+const isCompleteRead = (adapted: SongListDetailResponse): boolean => {
+  const detail = adapted.cdlist[0];
+  const songs = Array.isArray(detail.songlist) ? detail.songlist.length : -1;
+  return detail.hasmore === 0 && numberOf(detail.total_song_num) === songs;
+};
+
 const readAlgorithmicPlaylist = async (
   disstid: string,
   readWithCredential: NonNullable<SongListDetailParams['readWithCredential']>,
   adaptOptions: Parameters<typeof toSongListDetailResponse>[1] = {},
+  requireComplete = false,
 ): Promise<SongListDetailResponse | null> => {
   try {
     const adapted = toSongListDetailResponse(await readWithCredential(disstid), adaptOptions);
+    if (adapted && requireComplete && !isCompleteRead(adapted)) {
+      logger.warn('service.credential_fallback_incomplete', { service: 'songListDetail', disstid });
+      return null;
+    }
     if (adapted) {
       logServiceSuccess('songListDetail', credentialUpstream, adapted, {
         disstid,
@@ -145,9 +160,12 @@ export default ({
         // 先匿名读（没登录的用户打开推荐歌单也会碰到）；读不到、请求又带着会话时再用凭据读。
         fallback = await readPublicPlaylist(disstid, readPublic);
         if (!fallback && readWithCredential)
-          fallback = await readAlgorithmicPlaylist(disstid, readWithCredential, {
-            publicPlaylist: true,
-          });
+          fallback = await readAlgorithmicPlaylist(
+            disstid,
+            readWithCredential,
+            { publicPlaylist: true },
+            true,
+          );
       }
       return {
         status: 200,

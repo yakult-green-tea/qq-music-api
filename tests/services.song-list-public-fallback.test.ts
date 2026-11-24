@@ -230,6 +230,46 @@ describe('readPublicSongListDetail', () => {
     await expect(readPublicSongListDetail('8322594955', { http })).resolves.toBeNull();
   });
 
+  const otherList = (begin: number, count: number, total: number) => {
+    const page = pageOf(begin, count, total);
+    page.dirinfo.id = 1;
+    return page;
+  };
+  const hiddenPage = (begin: number, count: number, total: number) => {
+    const page = pageOf(begin, count, total);
+    page.dirinfo.dir_show = 0;
+    return page;
+  };
+
+  it.each([
+    ['第二页里层码非零', [pageOf(0, 150, 200), { ...pageOf(150, 50, 200), code: 1 }]],
+    ['第二页里层 subcode 非零', [pageOf(0, 150, 200), { ...pageOf(150, 50, 200), subcode: 4000 }]],
+    ['第二页是另一张歌单', [pageOf(0, 150, 200), otherList(150, 50, 200)]],
+    ['第二页不公开', [pageOf(0, 150, 200), hiddenPage(150, 50, 200)]],
+    ['第一页的歌比总数多', [pageOf(0, 3, 2)]],
+    ['拼起来比总数多', [pageOf(0, 150, 200), pageOf(150, 150, 200)]],
+    ['最后一页比剩下的少', [pageOf(0, 150, 200), pageOf(150, 49, 200)]],
+  ])('%s：不改写，返回 null', async (_label, pages) => {
+    const { http } = transportOf(...pages.map((page) => reply(page)));
+    await expect(readPublicSongListDetail('8322594955', { http })).resolves.toBeNull();
+  });
+
+  it.each([
+    ['负数', -1],
+    ['小数', 1.5],
+    ['不安全的整数', Number.MAX_SAFE_INTEGER + 1],
+  ])('总数是%s：不改写，返回 null', async (_label, total) => {
+    const { http } = transportOf(reply(publicData({ total_song_num: total })));
+    await expect(readPublicSongListDetail('8322594955', { http })).resolves.toBeNull();
+  });
+
+  it('公开的空歌单（总数 0）照常返回', async () => {
+    const { http, requests } = transportOf(reply(publicData({ songlist: [], total_song_num: 0 })));
+    const result = await readPublicSongListDetail('8322594955', { http });
+    expect(requests).toHaveLength(1);
+    expect(result?.cdlist[0]).toMatchObject({ songlist: [], total_song_num: 0, hasmore: 0 });
+  });
+
   it('不知道总数：上游说没有更多才算读完', async () => {
     const done = publicData({ total_song_num: undefined, hasmore: 0 });
     delete (done.dirinfo as Record<string, unknown>).songnum;
@@ -330,6 +370,37 @@ describe('services/songListDetail：subcode 4000 时改读公开歌单', () => {
     expect(result.body).toEqual({
       response: toSongListDetailResponse(publicData(), { publicPlaylist: true }),
     });
+  });
+
+  it.each([
+    ['没读完（hasmore 1）', { ...publicData(), total_song_num: 200, hasmore: 1 }],
+    ['歌数对不上总数', { ...publicData(), total_song_num: 200, hasmore: 0 }],
+  ])('用凭据读到的%s：保留原来的 4000', async (_label, data) => {
+    mockYCommon.mockResolvedValue({ data: clone(privacyRejected) });
+
+    const result = await songListDetail({
+      params: { disstid: '8322594955' },
+      readPublicPlaylist: jest.fn().mockResolvedValue(null),
+      readWithCredential: jest.fn().mockResolvedValue(data),
+    });
+
+    expect(result).toEqual({ status: 200, body: { response: privacyRejected } });
+    expect(mockedLogger.warn).toHaveBeenCalledWith(
+      'service.credential_fallback_incomplete',
+      expect.objectContaining({ service: 'songListDetail', disstid: '8322594955' }),
+    );
+  });
+
+  it('code 10 用凭据读到没读完的算法歌单：照旧改写（行为不变）', async () => {
+    mockYCommon.mockResolvedValue({ data: fcgCode10() });
+    const partial = { ...publicData(), total_song_num: 200, hasmore: 1 };
+
+    const result = await songListDetail({
+      params: { disstid: '211192' },
+      readWithCredential: jest.fn().mockResolvedValue(partial),
+    });
+
+    expect(result.body).toEqual({ response: toSongListDetailResponse(partial) });
   });
 
   it('匿名读成功就不再用凭据读', async () => {

@@ -56,9 +56,9 @@ const logNotRewritten = (reason: string, pages: number, items: number, total?: n
   });
 
 /**
- * 读到并核对过（里层码为 0、歌单 id 对得上、`dir_show` 为 1）、而且**整张读完**才返回改写成旧 CGI 形状的
- * 结果；歌单 id 不是正整数、核对不过、超过页数上限、中间有一页不满或重复、读到的歌数对不上总数，都返回
- * `null`，让调用方保留原回应（Folia 自己还有逐页的回退）。上游拒绝或连不上会抛错，同样交给调用方。
+ * 每一页都核对过（里层码为 0、歌单 id 对得上、`dir_show` 为 1）、而且**整张读完、歌数正好等于总数**才返回改写成
+ * 旧 CGI 形状的结果；歌单 id 不是正整数、哪一页核对不过、超过页数上限、哪一页歌数不是预期的、整页重复、
+ * 总数不是非负整数，都返回 `null`，让调用方保留原回应（Folia 自己还有逐页的回退）。上游拒绝或连不上会抛错，同样交给调用方。
  */
 export const readPublicSongListDetail = async (
   disstid: string,
@@ -109,11 +109,17 @@ export const readPublicSongListDetail = async (
     }
     return finish();
   }
-  if (songs.length >= total) return finish();
-  if (songs.length !== size) {
-    logNotRewritten('short-page', 1, songs.length, total);
+  if (!Number.isSafeInteger(total) || total < 0) {
+    logNotRewritten('invalid-total', 1, songs.length);
     return null;
   }
+  // 每一页的歌数都要正好是预期的：中间的页满 150 首，最后一页是剩下的；多了少了都不改写。
+  const expectedAt = (offset: number) => Math.min(size, total - offset);
+  if (songs.length !== expectedAt(0)) {
+    logNotRewritten('count-mismatch', 1, songs.length, total);
+    return null;
+  }
+  if (songs.length === total) return finish();
   const pagesNeeded = Math.ceil(total / size);
   if (pagesNeeded > PUBLIC_SONG_LIST_MAX_PAGES) {
     logNotRewritten('limit', 1, songs.length, total);
@@ -130,8 +136,12 @@ export const readPublicSongListDetail = async (
 
   const seen = new Set(songs.map(songIdOf).filter(Boolean));
   for (const [index, page] of pages.entries()) {
+    // 后面的页同样要是这张公开歌单、里层码为 0。
+    if (!isReadablePublicPage(page, disstid)) {
+      logNotRewritten('unreadable-page', index + 2, songs.length, total);
+      return null;
+    }
     const pageSongs = songsOf(page);
-    const last = index === pages.length - 1;
     // 认不出身份的歌一律当成新的，不拿来判断重复。
     const repeated =
       pageSongs.length > 0 &&
@@ -139,8 +149,13 @@ export const readPublicSongListDetail = async (
         const songId = songIdOf(song);
         return songId !== '' && seen.has(songId);
       });
-    if (repeated || (!last && pageSongs.length !== size) || pageSongs.length === 0) {
-      logNotRewritten(repeated ? 'repeated-page' : 'short-page', index + 2, songs.length, total);
+    if (repeated || pageSongs.length !== expectedAt(offsets[index])) {
+      logNotRewritten(
+        repeated ? 'repeated-page' : 'count-mismatch',
+        index + 2,
+        songs.length,
+        total,
+      );
       return null;
     }
     for (const song of pageSongs) {
@@ -149,8 +164,8 @@ export const readPublicSongListDetail = async (
     }
     songs.push(...pageSongs);
   }
-  if (songs.length < total) {
-    logNotRewritten('short-page', pages.length + 1, songs.length, total);
+  if (songs.length !== total) {
+    logNotRewritten('count-mismatch', pages.length + 1, songs.length, total);
     return null;
   }
   return finish();
